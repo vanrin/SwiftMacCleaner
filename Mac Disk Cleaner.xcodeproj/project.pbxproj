@@ -372,11 +372,14 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 38SC4K3XSC;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSDesktopFolderUsageDescription = "Mac Disk Cleaner looks for build folders in the project folders you chose.";
+				INFOPLIST_KEY_NSDocumentsFolderUsageDescription = "Mac Disk Cleaner looks for build folders in the project folders you chose.";
+				INFOPLIST_KEY_NSDownloadsFolderUsageDescription = "Mac Disk Cleaner looks for old installers in your Downloads folder.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -404,11 +407,14 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 38SC4K3XSC;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSDesktopFolderUsageDescription = "Mac Disk Cleaner looks for build folders in the project folders you chose.";
+				INFOPLIST_KEY_NSDocumentsFolderUsageDescription = "Mac Disk Cleaner looks for build folders in the project folders you chose.";
+				INFOPLIST_KEY_NSDownloadsFolderUsageDescription = "Mac Disk Cleaner looks for old installers in your Downloads folder.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
