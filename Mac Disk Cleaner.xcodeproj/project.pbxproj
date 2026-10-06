@@ -1,0 +1,549 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 110;
+	objects = {
+
+/* Begin PBXContainerItemProxy section */
+		9AC48A723075470F0017B43C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9AC48A5C3075470E0017B43C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9AC48A633075470E0017B43C;
+			remoteInfo = "Mac Disk Cleaner";
+		};
+		9AC48A7C3075470F0017B43C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9AC48A5C3075470E0017B43C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9AC48A633075470E0017B43C;
+			remoteInfo = "Mac Disk Cleaner";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		9AC48A643075470E0017B43C /* Mac Disk Cleaner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Mac Disk Cleaner.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		9AC48A713075470F0017B43C /* Mac Disk CleanerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Mac Disk CleanerTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		9AC48A7B3075470F0017B43C /* Mac Disk CleanerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Mac Disk CleanerUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		9AC48A663075470E0017B43C /* Mac Disk Cleaner */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Mac Disk Cleaner";
+			sourceTree = "<group>";
+		};
+		9AC48A743075470F0017B43C /* Mac Disk CleanerTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Mac Disk CleanerTests";
+			sourceTree = "<group>";
+		};
+		9AC48A7E3075470F0017B43C /* Mac Disk CleanerUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Mac Disk CleanerUITests";
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		9AC48A613075470E0017B43C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+			);
+		};
+		9AC48A6E3075470F0017B43C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+			);
+		};
+		9AC48A783075470F0017B43C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+			);
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		9AC48A5B3075470E0017B43C = {
+			isa = PBXGroup;
+			children = (
+				9AC48A663075470E0017B43C /* Mac Disk Cleaner */,
+				9AC48A743075470F0017B43C /* Mac Disk CleanerTests */,
+				9AC48A7E3075470F0017B43C /* Mac Disk CleanerUITests */,
+				9AC48A653075470E0017B43C /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		9AC48A653075470E0017B43C /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				9AC48A643075470E0017B43C /* Mac Disk Cleaner.app */,
+				9AC48A713075470F0017B43C /* Mac Disk CleanerTests.xctest */,
+				9AC48A7B3075470F0017B43C /* Mac Disk CleanerUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		9AC48A633075470E0017B43C /* Mac Disk Cleaner */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9AC48A833075470F0017B43C /* Build configuration list for PBXNativeTarget "Mac Disk Cleaner" */;
+			buildPhases = (
+				9AC48A603075470E0017B43C /* Sources */,
+				9AC48A613075470E0017B43C /* Frameworks */,
+				9AC48A623075470E0017B43C /* Resources */,
+			);
+			buildRules = (
+			);
+			fileSystemSynchronizedGroups = (
+				9AC48A663075470E0017B43C /* Mac Disk Cleaner */,
+			);
+			name = "Mac Disk Cleaner";
+			productName = "Mac Disk Cleaner";
+			productReference = 9AC48A643075470E0017B43C /* Mac Disk Cleaner.app */;
+			productType = "com.apple.product-type.application";
+		};
+		9AC48A703075470F0017B43C /* Mac Disk CleanerTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9AC48A863075470F0017B43C /* Build configuration list for PBXNativeTarget "Mac Disk CleanerTests" */;
+			buildPhases = (
+				9AC48A6D3075470F0017B43C /* Sources */,
+				9AC48A6E3075470F0017B43C /* Frameworks */,
+				9AC48A6F3075470F0017B43C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				9AC48A733075470F0017B43C /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				9AC48A743075470F0017B43C /* Mac Disk CleanerTests */,
+			);
+			name = "Mac Disk CleanerTests";
+			productName = "Mac Disk CleanerTests";
+			productReference = 9AC48A713075470F0017B43C /* Mac Disk CleanerTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		9AC48A7A3075470F0017B43C /* Mac Disk CleanerUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9AC48A893075470F0017B43C /* Build configuration list for PBXNativeTarget "Mac Disk CleanerUITests" */;
+			buildPhases = (
+				9AC48A773075470F0017B43C /* Sources */,
+				9AC48A783075470F0017B43C /* Frameworks */,
+				9AC48A793075470F0017B43C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				9AC48A7D3075470F0017B43C /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				9AC48A7E3075470F0017B43C /* Mac Disk CleanerUITests */,
+			);
+			name = "Mac Disk CleanerUITests";
+			productName = "Mac Disk CleanerUITests";
+			productReference = 9AC48A7B3075470F0017B43C /* Mac Disk CleanerUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		9AC48A5C3075470E0017B43C /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2700;
+				LastUpgradeCheck = 2700;
+				TargetAttributes = {
+					9AC48A633075470E0017B43C = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					9AC48A703075470F0017B43C = {
+						CreatedOnToolsVersion = 27.0;
+						TestTargetID = 9AC48A633075470E0017B43C;
+					};
+					9AC48A7A3075470F0017B43C = {
+						CreatedOnToolsVersion = 27.0;
+						TestTargetID = 9AC48A633075470E0017B43C;
+					};
+				};
+			};
+			buildConfigurationList = 9AC48A5F3075470E0017B43C /* Build configuration list for PBXProject "Mac Disk Cleaner" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 9AC48A5B3075470E0017B43C;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 9AC48A653075470E0017B43C /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				9AC48A633075470E0017B43C /* Mac Disk Cleaner */,
+				9AC48A703075470F0017B43C /* Mac Disk CleanerTests */,
+				9AC48A7A3075470F0017B43C /* Mac Disk CleanerUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		9AC48A623075470E0017B43C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+			);
+		};
+		9AC48A6F3075470F0017B43C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+			);
+		};
+		9AC48A793075470F0017B43C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+			);
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		9AC48A603075470E0017B43C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
+		9AC48A6D3075470F0017B43C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
+		9AC48A773075470F0017B43C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		9AC48A733075470F0017B43C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9AC48A633075470E0017B43C /* Mac Disk Cleaner */;
+			targetProxy = 9AC48A723075470F0017B43C /* PBXContainerItemProxy */;
+		};
+		9AC48A7D3075470F0017B43C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9AC48A633075470E0017B43C /* Mac Disk Cleaner */;
+			targetProxy = 9AC48A7C3075470F0017B43C /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		9AC48A813075470F0017B43C /* Debug configuration for PBXProject "Mac Disk Cleaner" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 38SC4K3XSC;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		9AC48A823075470F0017B43C /* Release configuration for PBXProject "Mac Disk Cleaner" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 38SC4K3XSC;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		9AC48A843075470F0017B43C /* Debug configuration for PBXNativeTarget "Mac Disk Cleaner" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 38SC4K3XSC;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.thetinydev.Mac-Disk-Cleaner";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		9AC48A853075470F0017B43C /* Release configuration for PBXNativeTarget "Mac Disk Cleaner" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 38SC4K3XSC;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.thetinydev.Mac-Disk-Cleaner";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		9AC48A873075470F0017B43C /* Debug configuration for PBXNativeTarget "Mac Disk CleanerTests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 38SC4K3XSC;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.thetinydev.Mac-Disk-CleanerTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Mac Disk Cleaner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Mac Disk Cleaner";
+			};
+			name = Debug;
+		};
+		9AC48A883075470F0017B43C /* Release configuration for PBXNativeTarget "Mac Disk CleanerTests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 38SC4K3XSC;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.thetinydev.Mac-Disk-CleanerTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Mac Disk Cleaner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Mac Disk Cleaner";
+			};
+			name = Release;
+		};
+		9AC48A8A3075470F0017B43C /* Debug configuration for PBXNativeTarget "Mac Disk CleanerUITests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 38SC4K3XSC;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.thetinydev.Mac-Disk-CleanerUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = "Mac Disk Cleaner";
+			};
+			name = Debug;
+		};
+		9AC48A8B3075470F0017B43C /* Release configuration for PBXNativeTarget "Mac Disk CleanerUITests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 38SC4K3XSC;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.thetinydev.Mac-Disk-CleanerUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = "Mac Disk Cleaner";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		9AC48A5F3075470E0017B43C /* Build configuration list for PBXProject "Mac Disk Cleaner" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9AC48A813075470F0017B43C /* Debug configuration for PBXProject "Mac Disk Cleaner" */,
+				9AC48A823075470F0017B43C /* Release configuration for PBXProject "Mac Disk Cleaner" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		9AC48A833075470F0017B43C /* Build configuration list for PBXNativeTarget "Mac Disk Cleaner" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9AC48A843075470F0017B43C /* Debug configuration for PBXNativeTarget "Mac Disk Cleaner" */,
+				9AC48A853075470F0017B43C /* Release configuration for PBXNativeTarget "Mac Disk Cleaner" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		9AC48A863075470F0017B43C /* Build configuration list for PBXNativeTarget "Mac Disk CleanerTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9AC48A873075470F0017B43C /* Debug configuration for PBXNativeTarget "Mac Disk CleanerTests" */,
+				9AC48A883075470F0017B43C /* Release configuration for PBXNativeTarget "Mac Disk CleanerTests" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		9AC48A893075470F0017B43C /* Build configuration list for PBXNativeTarget "Mac Disk CleanerUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9AC48A8A3075470F0017B43C /* Debug configuration for PBXNativeTarget "Mac Disk CleanerUITests" */,
+				9AC48A8B3075470F0017B43C /* Release configuration for PBXNativeTarget "Mac Disk CleanerUITests" */,
+			);
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 9AC48A5C3075470E0017B43C /* Project object */;
+	validationLevel = 1;
+}
