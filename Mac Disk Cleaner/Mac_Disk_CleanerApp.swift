@@ -16,6 +16,12 @@ enum Launcher {
             ScanReportPrinter.run(areaNames: Array(CommandLine.arguments.dropFirst(flag + 1)))
             return
         }
+        // `Mac Disk Cleaner --quick-clean` does what the Quick Clean button does, from the terminal:
+        // scans, ticks only the Safe tier, applies every check the app applies, cleans, prints the receipt.
+        if CommandLine.arguments.contains("--quick-clean") {
+            ScanReportPrinter.quickClean()
+            return
+        }
         // `Mac Disk Cleaner --print-space <folder>` prints the largest folders inside it and exits.
         if let flag = CommandLine.arguments.firstIndex(of: "--print-space"),
            let folder = CommandLine.arguments.dropFirst(flag + 1).first {
@@ -90,6 +96,75 @@ nonisolated enum ScanReportPrinter {
                 }
             }
             print("\nTotal found: \(ByteFormat.string(total)), left alone on purpose: \(ByteFormat.string(protectedTotal))")
+            fflush(stdout)
+            finished.signal()
+        }
+        finished.wait()
+    }
+
+    /// The Quick Clean path without the window: the same scan, the same Safe-only selection, the same
+    /// guard, in-use and freshness checks, the same log. Only the confirmation click is missing,
+    /// which is why this exists for the terminal alone.
+    static func quickClean() {
+        let settings = AppSettings()
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let context = settings.scanContext()
+        let safety = SafetyGuard(
+            root: home,
+            extraRoots: GuardRoots.userTemporaryFolders(),
+            allowedApplications: settings.offersOldXcodes ? GuardRoots.otherXcodes() : [],
+            neverSuggest: settings.neverSuggest.map(\.path),
+            backupsAllowed: true
+        )
+        let areas = Area.allCases.filter { !Set(UserDefaults.standard.stringArray(forKey: "disabledAreas") ?? []).contains($0.rawValue) }
+
+        let finished = DispatchSemaphore(value: 0)
+        Task.detached {
+            print("Scanning \(areas.count) areas")
+            var findings: [Finding] = []
+            for await event in ScanEngine.events(areas: areas, context: context) {
+                if case .finished(let area, let result) = event {
+                    findings += result.findings
+                    print("   \(area.title): \(ByteFormat.string(result.findings.reduce(0) { $0 + $1.size }))"
+                          + (result.skipReason.map { "  (\($0))" } ?? ""))
+                }
+            }
+            let scannedAt = Date()
+            findings.sort { ($0.tier, -$0.size) < ($1.tier, -$1.size) }
+            let selection = Set(findings.filter { $0.tier == .safe }.flatMap { finding in
+                finding.items.filter { $0.preselected ?? true }.map(\.id)
+            })
+            let plan = CleanPlan.make(findings: findings, selection: selection)
+            var skipping: [String: String] = [:]
+            for step in plan.steps {
+                if let check = step.waitsFor, InUse.isActive(check) { skipping[step.id] = check.skipReason }
+            }
+
+            print("\nPlan: Safe tier only, \(plan.steps.count) groups, \(ByteFormat.string(plan.totalSize))")
+            for step in plan.steps {
+                let state = skipping[step.id].map { _ in "WAITS " } ?? "clean "
+                print("   \(state)\(ByteFormat.string(step.size).padding(toLength: 9, withPad: " ", startingAt: 0)) \(step.title)  |  \(step.summary)")
+            }
+            guard !plan.isEmpty else {
+                print("\nNothing safe to remove.")
+                fflush(stdout)
+                finished.signal()
+                return
+            }
+
+            print("\nCleaning")
+            let outcome = await Cleaner.run(plan: plan, safety: safety, skipping: skipping, scannedAt: scannedAt) { _ in }
+            print("\nReceipt")
+            for step in outcome.steps {
+                let mark = step.skippedReason != nil ? "-" : step.failures.isEmpty && step.skippedItems.isEmpty ? "ok" : "!"
+                print("   \(mark.padding(toLength: 3, withPad: " ", startingAt: 0))\(ByteFormat.string(step.size).padding(toLength: 9, withPad: " ", startingAt: 0)) \(step.title)")
+                if let reason = step.skippedReason { print("      \(reason)") }
+                for (_, reason) in step.skippedItems { print("      skipped: \(reason)") }
+                for failure in step.failures { print("      failed: \(failure)") }
+            }
+            print("\nFree space: \(ByteFormat.string(outcome.freeBefore)) before, \(ByteFormat.string(outcome.freeAfter)) after, "
+                  + "\(ByteFormat.string(outcome.reclaimed)) reclaimed in \(String(format: "%.0f", outcome.duration)) s")
+            if let log = outcome.logURL { print("Log: \(log.path)") }
             fflush(stdout)
             finished.signal()
         }
