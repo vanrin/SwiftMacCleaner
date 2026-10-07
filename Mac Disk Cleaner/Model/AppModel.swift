@@ -6,6 +6,7 @@
 import AppKit
 import Observation
 import SwiftUI
+import UserNotifications
 
 enum SidebarItem: Hashable {
     case overview
@@ -148,7 +149,75 @@ final class AppModel {
 
     func startScan() {
         reviewWhenScanned = false
+        notifyWhenScanned = false
         beginScan()
+    }
+
+    // MARK: Background check
+
+    static let weeklyInterval: TimeInterval = 7 * 86_400
+
+    @ObservationIgnored private var checkTimer: Timer?
+    /// Set by the weekly check: say what the scan found instead of showing it.
+    @ObservationIgnored private var notifyWhenScanned = false
+
+    /// Keeps the disk figure fresh and, once a week, scans on its own while the app sits idle.
+    func startBackgroundChecks() {
+        guard checkTimer == nil else { return }
+        checkTimer = Timer.scheduledTimer(withTimeInterval: 1800, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.backgroundTick() }
+        }
+        backgroundTick()
+    }
+
+    func backgroundTick() {
+        disk = DiskInfo.current()
+        guard settings.weeklyCheck, phase == .home, scanTask == nil, isWeeklyCheckDue else { return }
+        notifyWhenScanned = true
+        reviewWhenScanned = false
+        beginScan()
+    }
+
+    var isWeeklyCheckDue: Bool {
+        guard let last = settings.lastScanDate else { return true }
+        return Date().timeIntervalSince(last) >= Self.weeklyInterval
+    }
+
+    /// What the Safe tier adds up to in the last scan, which is what the menu bar offers.
+    var safeSize: Int64 { findings.filter { $0.tier == .safe }.reduce(0) { $0 + $1.size } }
+
+    /// The areas with the most found, largest first.
+    func largestAreas(_ count: Int) -> [(area: Area, size: Int64)] {
+        Area.allCases.map { ($0, foundSize(in: $0)) }.filter { $0.1 > 0 }.sorted { $0.1 > $1.1 }.prefix(count).map { $0 }
+    }
+
+    /// The menu bar's one-click path: tick the Safe tier from the last scan and confirm, or scan first.
+    func cleanSafe() {
+        switch phase {
+        case .results, .done:
+            phase = .results
+            selection = Set(findings.filter { $0.tier == .safe }.flatMap { finding in
+                finding.items.filter { $0.preselected ?? true }.map(\.id)
+            })
+            sidebarSelection = .overview
+            showingReview = selectedSize > 0
+        default:
+            quickClean()
+        }
+    }
+
+    private func notifyAboutScan() {
+        let safe = safeSize
+        let center = UNUserNotificationCenter.current()
+        center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
+            guard granted else { return }
+            let content = UNMutableNotificationContent()
+            content.title = safe > 0 ? "\(ByteFormat.string(safe)) can go safely" : "Your disk is in good shape"
+            content.body = safe > 0
+                ? "Build output and caches that rebuild themselves. Open Mac Disk Cleaner to review and clean."
+                : "The weekly check found nothing worth removing."
+            center.add(UNNotificationRequest(identifier: "weekly-check", content: content, trigger: nil))
+        }
     }
 
     /// Scans everything, keeps only the Safe tier ticked, and goes straight to the confirmation.
@@ -216,8 +285,13 @@ final class AppModel {
         })
         scanDuration = Date().timeIntervalSince(scanStarted)
         scanFinished = Date()
+        settings.lastScanDate = scanFinished
         disk = DiskInfo.current()
         phase = findings.isEmpty && areaStates.values.allSatisfy({ $0 == .idle }) ? .home : .results
+        if notifyWhenScanned {
+            notifyWhenScanned = false
+            notifyAboutScan()
+        }
         if reviewWhenScanned {
             reviewWhenScanned = false
             selection = Set(findings.filter { $0.tier == .safe }.flatMap { finding in

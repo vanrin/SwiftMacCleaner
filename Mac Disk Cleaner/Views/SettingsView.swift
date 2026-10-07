@@ -50,6 +50,12 @@ private struct GeneralSettings: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            Section {
+                Toggle("Show disk space in the menu bar", isOn: $settings.showsMenuBarItem)
+                Toggle("Check once a week", isOn: $settings.weeklyCheck)
+            } footer: {
+                Text("The weekly check scans on its own while the app is open and idle, then tells you what it found. It never removes anything.")
+            }
         }
         .formStyle(.grouped)
         .fixedSize(horizontal: false, vertical: true)

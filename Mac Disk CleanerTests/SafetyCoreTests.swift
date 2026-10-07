@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SwiftUI
 import Testing
 @testable import Mac_Disk_Cleaner
 
@@ -268,6 +269,38 @@ struct GuardRootsTests {
         let selected = GuardRoots.selectedXcode()
         let others = GuardRoots.otherXcodes()
         #expect(selected.map { s in others.contains { $0.standardizedFileURL.path == s.standardizedFileURL.path } } != true)
+    }
+}
+
+@MainActor
+struct MenuBarTests {
+    @Test func theWeeklyCheckIsDueAfterSevenDays() throws {
+        let sandbox = try Sandbox()
+        defer { sandbox.remove() }
+        let model = AppModel(home: sandbox.root)
+        model.settings.lastScanDate = Date()
+        #expect(!model.isWeeklyCheckDue)
+        model.settings.lastScanDate = Date().addingTimeInterval(-8 * 86_400)
+        #expect(model.isWeeklyCheckDue)
+        model.settings.lastScanDate = nil
+        #expect(model.isWeeklyCheckDue)
+    }
+
+    @Test func cleanSafeTicksOnlyTheSafeTierAndOpensTheConfirmation() throws {
+        let sandbox = try Sandbox()
+        defer { sandbox.remove() }
+        let model = AppModel(home: sandbox.root)
+        let safe = finding(id: "safe", items: [FindingItem(id: "s/1", title: "", detail: "", size: 10, paths: [sandbox.root.appending(path: ".npm/_cacache")])])
+        let review = finding(id: "review", tier: .review, method: .trash, items: [FindingItem(id: "r/1", title: "", detail: "", size: 20, paths: [sandbox.root.appending(path: "Downloads/x.dmg")])])
+        model.show(findings: [safe, review])
+        model.binding(for: review.items[0]).wrappedValue = true
+        #expect(model.selection == ["s/1", "r/1"])
+
+        model.cleanSafe()
+        #expect(model.selection == ["s/1"])
+        #expect(model.showingReview)
+        #expect(model.safeSize == 10)
+        #expect(model.largestAreas(1).first?.size == 30)
     }
 }
 

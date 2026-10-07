@@ -31,9 +31,11 @@ struct Mac_Disk_CleanerApp: App {
     @State private var model = AppModel()
 
     var body: some Scene {
+        @Bindable var settings = model.settings
         Window("Mac Disk Cleaner", id: "main") {
             RootView()
                 .environment(model)
+                .task { model.startBackgroundChecks() }
         }
         .defaultSize(width: 1100, height: 760)
 
@@ -41,6 +43,12 @@ struct Mac_Disk_CleanerApp: App {
             SettingsView()
                 .environment(model)
         }
+
+        MenuBarExtra("Mac Disk Cleaner", systemImage: "internaldrive", isInserted: $settings.showsMenuBarItem) {
+            MenuBarView()
+                .environment(model)
+        }
+        .menuBarExtraStyle(.window)
     }
 }
 

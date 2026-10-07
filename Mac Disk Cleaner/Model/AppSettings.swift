@@ -50,10 +50,28 @@ final class AppSettings {
         didSet { defaults.set(offersSnapshots, forKey: "offersSnapshots") }
     }
 
+    /// Whether the disk status item sits in the menu bar.
+    var showsMenuBarItem: Bool {
+        didSet { defaults.set(showsMenuBarItem, forKey: "showsMenuBarItem") }
+    }
+
+    /// Whether the app scans on its own once a week and says what it found. Nothing is ever removed by it.
+    var weeklyCheck: Bool {
+        didSet { defaults.set(weeklyCheck, forKey: "weeklyCheck") }
+    }
+
+    /// When the last scan finished, for the menu bar and the weekly check.
+    var lastScanDate: Date? {
+        didSet { defaults.set(lastScanDate, forKey: "lastScanDate") }
+    }
+
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        showsMenuBarItem = defaults.object(forKey: "showsMenuBarItem") as? Bool ?? true
+        weeklyCheck = defaults.object(forKey: "weeklyCheck") as? Bool ?? true
+        lastScanDate = defaults.object(forKey: "lastScanDate") as? Date
         let storedDays = defaults.integer(forKey: "staleDays")
         staleDays = Self.staleChoices.contains(storedDays) ? storedDays : 60
         let storedLarge = defaults.integer(forKey: "largeFileDays")
