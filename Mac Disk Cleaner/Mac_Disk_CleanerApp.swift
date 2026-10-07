@@ -16,6 +16,12 @@ enum Launcher {
             ScanReportPrinter.run(areaNames: Array(CommandLine.arguments.dropFirst(flag + 1)))
             return
         }
+        // `Mac Disk Cleaner --print-space <folder>` prints the largest folders inside it and exits.
+        if let flag = CommandLine.arguments.firstIndex(of: "--print-space"),
+           let folder = CommandLine.arguments.dropFirst(flag + 1).first {
+            ScanReportPrinter.printSpace(folder: folder)
+            return
+        }
         #endif
         Mac_Disk_CleanerApp.main()
     }
@@ -74,6 +80,35 @@ nonisolated enum ScanReportPrinter {
             finished.signal()
         }
         finished.wait()
+    }
+
+    static func printSpace(folder: String) {
+        let started = Date()
+        var items = 0
+        let root = SpaceScanner.measure(
+            root: URL(fileURLWithPath: folder, isDirectory: true),
+            threshold: SpaceScanner.listingThreshold
+        ) { items = $0.items }
+        guard let root else {
+            print("Could not read \(folder)")
+            return
+        }
+        let seconds = String(format: "%.1f", Date().timeIntervalSince(started))
+        print("\(root.path): \(ByteFormat.string(root.size)), \(items) items in \(seconds) s\(root.isIncomplete ? " (incomplete)" : "")")
+        for child in root.children.prefix(12) {
+            print("  \(line(for: child))")
+            for grandchild in child.children.prefix(3) {
+                print("      \(line(for: grandchild))")
+            }
+        }
+        print("  \(ByteFormat.string(root.smallerItemsSize).padding(toLength: 9, withPad: " ", startingAt: 0)) (smaller items)")
+        fflush(stdout)
+    }
+
+    private static func line(for node: SpaceNode) -> String {
+        let size = node.isUnreadable ? "unknown" : ByteFormat.string(node.size)
+        let flag = node.isUnreadable ? "  [unreadable]" : node.isIncomplete ? "  [incomplete]" : ""
+        return "\(size.padding(toLength: 9, withPad: " ", startingAt: 0)) \(node.name)\(node.isDirectory ? "/" : "")\(flag)"
     }
 }
 #endif

@@ -10,6 +10,8 @@ import SwiftUI
 enum SidebarItem: Hashable {
     case overview
     case area(Area)
+    /// Largest Folders, which is independent of the clean-up scan.
+    case space
 }
 
 @Observable
@@ -26,6 +28,7 @@ final class AppModel {
     let settings = AppSettings()
     /// The folder everything is cleaned inside. Tests pass a temporary folder.
     let home: URL
+    let space: SpaceModel
 
     private(set) var phase: Phase = .home
     private(set) var disk = DiskInfo.current()
@@ -49,6 +52,7 @@ final class AppModel {
 
     init(home: URL = FileManager.default.homeDirectoryForCurrentUser) {
         self.home = home
+        space = SpaceModel(home: home)
         if let stored = UserDefaults.standard.stringArray(forKey: "enabledAreas") {
             enabledAreas = Set(stored.compactMap(Area.init(rawValue:)))
         } else {
@@ -56,7 +60,8 @@ final class AppModel {
         }
         #if DEBUG
         if let flag = CommandLine.arguments.firstIndex(of: "--demo") {
-            loadDemo(screen: CommandLine.arguments.dropFirst(flag + 1).first ?? "results")
+            let arguments = Array(CommandLine.arguments.dropFirst(flag + 1))
+            loadDemo(screen: arguments.first ?? "results", arguments: Array(arguments.dropFirst()))
         }
         #endif
     }
@@ -71,9 +76,24 @@ final class AppModel {
     }
 
     /// Fills the app with made-up results and opens the named screen. See `DemoData`.
-    private func loadDemo(screen: String) {
+    private func loadDemo(screen: String, arguments: [String]) {
         show(findings: DemoData.findings())
         switch screen {
+        case "space":
+            // `--demo space <folder> [steps]` measures that folder straight away, then steps into its
+            // largest folder that many times. Without a folder it shows the intro.
+            sidebarSelection = .space
+            if let path = arguments.first {
+                let folder = URL(fileURLWithPath: path, isDirectory: true)
+                space.start(root: folder, title: folder.lastPathComponent)
+                let steps = arguments.dropFirst().first.flatMap(Int.init) ?? 0
+                Task {
+                    while space.phase == .measuring { try? await Task.sleep(for: .milliseconds(100)) }
+                    for _ in 0..<steps {
+                        if let largest = space.current?.children.first { space.open(largest) }
+                    }
+                }
+            }
         case "scanning":
             let done: Set<Area> = [.xcode, .projects, .android]
             findings.removeAll { !done.contains($0.area) }
@@ -226,6 +246,8 @@ final class AppModel {
 
     func select(_ item: SidebarItem) {
         switch (phase, item) {
+        case (_, .space):
+            sidebarSelection = .space
         case (.results, _):
             sidebarSelection = item
         case (.done, .area):
@@ -296,6 +318,15 @@ final class AppModel {
     func copyShellScript() {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(plan.shellScript(), forType: .string)
+    }
+
+    /// Whether macOS lets the app read protected folders. There is no API to ask, so the check
+    /// tries to open a file that only Full Disk Access can reach.
+    var hasFullDiskAccess: Bool {
+        let probe = home.appending(path: "Library/Application Support/com.apple.TCC/TCC.db")
+        guard let handle = try? FileHandle(forReadingFrom: probe) else { return false }
+        try? handle.close()
+        return true
     }
 
     func openFullDiskAccessSettings() {

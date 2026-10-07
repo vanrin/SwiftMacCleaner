@@ -25,32 +25,40 @@ struct RootView: View {
 
     @ViewBuilder
     private var detail: some View {
-        switch model.phase {
-        case .home:
-            HomeView()
-        case .scanning:
-            ScanningView()
-        case .results:
-            switch model.sidebarSelection {
-            case .overview: OverviewView()
-            case .area(let area): AreaDetailView(area: area)
+        if model.sidebarSelection == .space {
+            // Largest Folders stands apart from the clean-up flow and is reachable in any phase.
+            SpaceView()
+        } else {
+            switch model.phase {
+            case .home:
+                HomeView()
+            case .scanning:
+                ScanningView()
+            case .results:
+                if case .area(let area) = model.sidebarSelection {
+                    AreaDetailView(area: area)
+                } else {
+                    OverviewView()
+                }
+            case .cleaning:
+                CleaningView()
+            case .done:
+                DoneView()
             }
-        case .cleaning:
-            CleaningView()
-        case .done:
-            DoneView()
         }
     }
 
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
-        if model.phase == .scanning {
+        // Largest Folders brings its own toolbar, so these belong to the clean-up flow only.
+        let inCleanUp = model.sidebarSelection != .space
+        if inCleanUp, model.phase == .scanning {
             ToolbarItem(placement: .primaryAction) {
                 Button("Stop", systemImage: "stop.fill") { model.stopScan() }
                     .help("Stop scanning and show what was found so far")
             }
         }
-        if model.phase == .results || model.phase == .done {
+        if inCleanUp, model.phase == .results || model.phase == .done {
             ToolbarItem(placement: .primaryAction) {
                 Button("Rescan", systemImage: "arrow.clockwise") { model.startScan() }
                     .help("Scan again")
@@ -72,6 +80,10 @@ struct SidebarView: View {
             }
             Section("System") {
                 ForEach(Area.allCases.filter { !$0.isDeveloper }) { row(for: $0) }
+            }
+            Section("Explore") {
+                Label("Largest Folders", systemImage: "chart.bar.doc.horizontal")
+                    .tag(SidebarItem.space)
             }
         }
         .safeAreaInset(edge: .bottom, alignment: .leading) {

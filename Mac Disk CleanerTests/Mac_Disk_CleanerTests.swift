@@ -271,6 +271,139 @@ struct FileSizerTests {
     }
 }
 
+struct SpaceScannerTests {
+    private func measure(_ root: URL) throws -> SpaceNode {
+        try #require(SpaceScanner.measure(root: root, threshold: 1_000_000) { _ in })
+    }
+
+    @Test func listsBigFoldersAndFilesAndFoldsTheRestIntoSmallerItems() throws {
+        let sandbox = try Sandbox()
+        defer { sandbox.remove() }
+        try sandbox.file("Movies/holiday.mov", bytes: 5_000_000)
+        try sandbox.file("Code/app/node_modules/pkg/index.js", bytes: 3_000_000)
+        try sandbox.file("Code/app/src/main.swift", bytes: 4_000)
+        try sandbox.file("notes.txt", bytes: 4_000)
+
+        let root = try measure(sandbox.root)
+        #expect(root.children.map(\.name) == ["Movies", "Code"])
+        #expect(root.size >= 8_000_000)
+        #expect(root.smallerItemsSize > 0)
+        #expect(root.smallerItemsSize < 100_000)
+
+        // Each level keeps its own big children, and a big file is listed like a folder.
+        let movies = try #require(root.children.first)
+        #expect(movies.children.map(\.name) == ["holiday.mov"])
+        #expect(movies.children.first?.isDirectory == false)
+        let app = try #require(root.children.last?.children.first)
+        #expect(app.name == "app")
+        #expect(app.children.map(\.name) == ["node_modules"])
+        // src is far below the threshold, so it only shows up in the remainder.
+        #expect(app.smallerItemsSize > 0)
+        #expect(!root.isIncomplete)
+    }
+
+    @Test func aFolderItCannotOpenIsFlaggedAllTheWayUp() throws {
+        let sandbox = try Sandbox()
+        let locked = sandbox.root.appending(path: "Library/Private")
+        let noAccess: NSNumber = 0o000
+        let open: NSNumber = 0o755
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: open], ofItemAtPath: locked.path)
+            sandbox.remove()
+        }
+        try sandbox.file("Library/Private/secret.db", bytes: 3_000_000)
+        try sandbox.file("Library/Caches/blob.bin", bytes: 3_000_000)
+        try FileManager.default.setAttributes([.posixPermissions: noAccess], ofItemAtPath: locked.path)
+
+        let root = try measure(sandbox.root)
+        let library = try #require(root.children.first { $0.name == "Library" })
+        let unreadable = try #require(library.children.first { $0.name == "Private" })
+        #expect(unreadable.isUnreadable)
+        #expect(library.isIncomplete)
+        #expect(root.isIncomplete)
+        // What could be read is still counted and listed.
+        #expect(library.children.contains { $0.name == "Caches" && !$0.isIncomplete })
+    }
+
+    @Test func countsAHardLinkedFileOnceAndDoesNotFollowSymlinks() throws {
+        let sandbox = try Sandbox()
+        let outside = try Sandbox()
+        defer { sandbox.remove(); outside.remove() }
+        let original = try sandbox.file("store/blob.bin", bytes: 2_000_000)
+        try FileManager.default.linkItem(at: original, to: sandbox.root.appending(path: "store/copy.bin"))
+        try outside.file("big.bin", bytes: 5_000_000)
+        try FileManager.default.createSymbolicLink(at: sandbox.root.appending(path: "link"), withDestinationURL: outside.root)
+
+        let root = try measure(sandbox.root)
+        #expect(root.size >= 2_000_000)
+        #expect(root.size < 3_000_000)
+    }
+
+    @Test func namesASimulatorFolderByItsDeviceInsteadOfItsIdentifier() throws {
+        let sandbox = try Sandbox()
+        defer { sandbox.remove() }
+        let device = sandbox.root.appending(path: "Library/Developer/CoreSimulator/Devices/0D0CC341-95D3")
+        try FileManager.default.createDirectory(at: device, withIntermediateDirectories: true)
+        let info: [String: Any] = ["name": "iPhone 18 Pro", "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-27-0"]
+        try PropertyListSerialization.data(fromPropertyList: info, format: .xml, options: 0)
+            .write(to: device.appending(path: "device.plist"))
+
+        #expect(SpaceScanner.friendlyName(forFolderAt: device.path) == "iPhone 18 Pro simulator, iOS 27.0")
+        #expect(SpaceScanner.friendlyName(forFolderAt: sandbox.root.appending(path: "Library").path) == nil)
+    }
+
+    @Test func aMissingFolderGivesNothing() {
+        let missing = URL(fileURLWithPath: "/tmp/mdc-does-not-exist-\(UUID().uuidString)")
+        #expect(SpaceScanner.measure(root: missing, threshold: 1) { _ in } == nil)
+    }
+}
+
+@MainActor
+struct SpaceModelTests {
+    @Test func measuresThenWalksDownAndBackUp() async throws {
+        let sandbox = try Sandbox()
+        defer { sandbox.remove() }
+        try sandbox.file("Library/Developer/CoreSimulator/device.img", bytes: 25_000_000)
+        try sandbox.file("notes.txt")
+
+        let model = SpaceModel(home: sandbox.root)
+        model.start()
+        #expect(model.phase == .measuring)
+        for _ in 0..<200 where model.phase != .done {
+            try await Task.sleep(for: .milliseconds(25))
+        }
+        #expect(model.phase == .done)
+        #expect(model.title(at: 0) == "Home Folder")
+
+        let library = try #require(model.current?.children.first)
+        #expect(library.name == "Library")
+        model.open(library)
+        model.open(try #require(model.current?.children.first))
+        #expect(model.trail.map(\.name).dropFirst() == ["Library", "Developer"])
+        #expect(model.displayPath(try #require(model.current).path) == "~/Library/Developer")
+
+        // A file is not somewhere to go, and going back trims the trail.
+        let simulator = try #require(model.current?.children.first)
+        model.open(simulator)
+        model.open(try #require(model.current?.children.first))
+        #expect(model.current?.name == "CoreSimulator")
+        model.goBack(to: 0)
+        #expect(model.trail.count == 1)
+
+        model.reset()
+        #expect(model.phase == .idle)
+        #expect(model.current == nil)
+    }
+
+    @Test func showsPathsOnTheDataVolumeTheWayFinderDoes() {
+        let model = SpaceModel(home: URL(fileURLWithPath: "/Users/me"))
+        #expect(model.displayPath("/Users/me") == "~")
+        #expect(model.displayPath("/Users/me/Code/app") == "~/Code/app")
+        #expect(model.displayPath("/System/Volumes/Data/Applications/Xcode.app") == "/Applications/Xcode.app")
+        #expect(model.displayPath("/System/Volumes/Data") == "/")
+    }
+}
+
 struct ProjectScannerTests {
     @Test func offersBuildFoldersOnlyInStaleProjects() async throws {
         let sandbox = try Sandbox()
