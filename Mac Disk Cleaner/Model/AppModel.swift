@@ -172,6 +172,7 @@ final class AppModel {
 
     func backgroundTick() {
         disk = DiskInfo.current()
+        if phase == .results { refreshActiveChecks() }
         guard settings.weeklyCheck, phase == .home, scanTask == nil, isWeeklyCheckDue else { return }
         notifyWhenScanned = true
         reviewWhenScanned = false
@@ -287,6 +288,7 @@ final class AppModel {
         scanFinished = Date()
         settings.lastScanDate = scanFinished
         disk = DiskInfo.current()
+        refreshActiveChecks()
         phase = findings.isEmpty && areaStates.values.allSatisfy({ $0 == .idle }) ? .home : .results
         if notifyWhenScanned {
             notifyWhenScanned = false
@@ -459,8 +461,13 @@ final class AppModel {
         return blocked
     }
 
-    /// Findings whose in-use check is active right now, for the badges on rows.
-    func activeChecks() -> [String: InUseCheck] {
+    /// Findings whose in-use check was active the last time it was looked at, for the badges on rows.
+    /// Asking costs a process launch, so it happens after a scan and on the background tick, not per render.
+    private(set) var activeChecksByFinding: [String: InUseCheck] = [:]
+
+    func activeChecks() -> [String: InUseCheck] { activeChecksByFinding }
+
+    func refreshActiveChecks() {
         var active: [String: InUseCheck] = [:]
         var cache: [InUseCheck: Bool] = [:]
         for finding in findings {
@@ -468,7 +475,7 @@ final class AppModel {
             if cache[check] == nil { cache[check] = InUse.isActive(check) }
             if cache[check] == true { active[finding.id] = check }
         }
-        return active
+        activeChecksByFinding = active
     }
 
     private func finishClean(_ result: CleanOutcome) {

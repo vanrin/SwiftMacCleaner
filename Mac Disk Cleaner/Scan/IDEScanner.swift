@@ -7,8 +7,11 @@ import Foundation
 
 /// Editor caches, and the folders JetBrains IDEs leave behind for versions you no longer run.
 nonisolated enum IDEScanner {
-    static let jetBrainsCheck = InUseCheck.process(pattern: "JetBrains|IntelliJ|Android Studio",
-                                                   name: "A JetBrains IDE", remedy: "Quit the IDE")
+    /// Matches the IDE processes themselves, not the Toolbox agent that sits in the menu bar all day.
+    static let jetBrainsCheck = InUseCheck.process(
+        pattern: "Contents/MacOS/(idea|pycharm|webstorm|goland|clion|rider|rubymine|phpstorm|datagrip|appcode|fleet|studio)",
+        name: "A JetBrains IDE", remedy: "Quit the IDE"
+    )
 
     /// Where one product-version keeps its folders.
     struct Install {

@@ -103,7 +103,7 @@ nonisolated enum Catalog {
     )
 
     static let goModules = LocationGroup(
-        id: "packages.goModules", area: .packageCaches, tier: .review, method: .delete,
+        id: "packages.goModules", area: .packageCaches, tier: .review, method: .trash,
         title: "Go module cache",
         explanation: "Every Go module you have ever built against. The next go build downloads what the project needs again, which can take a while on a slow connection.",
         actionTarget: "~/go/pkg/mod",

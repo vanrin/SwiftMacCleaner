@@ -89,7 +89,12 @@ nonisolated enum ToolchainScanner {
         let folders = Files.subdirectories(of: root.appending(path: "node-versions"))
         guard !folders.isEmpty else { return Report() }
         let defaultLink = root.appending(path: "aliases/default")
-        let alias = Files.isSymlink(defaultLink) ? defaultLink.resolvingSymlinksInPath().lastPathComponent : ""
+        // The link points at `<version>/installation`, so the version is one level up from where it lands.
+        var alias = ""
+        if Files.isSymlink(defaultLink) {
+            let target = defaultLink.resolvingSymlinksInPath()
+            alias = target.lastPathComponent == "installation" ? target.deletingLastPathComponent().lastPathComponent : target.lastPathComponent
+        }
         let inUse = nodeVersionsInUse(folders.map(\.lastPathComponent), defaultAlias: alias)
         return nodeReport(folders: folders, inUse: inUse, manager: "fnm", hintPrefix: "~/Library/Application Support/fnm/node-versions/")
     }

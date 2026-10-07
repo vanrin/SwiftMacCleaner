@@ -61,7 +61,7 @@ struct CatalogTests {
         #expect(Set(ids).count == ids.count)
         for group in Catalog.allGroups {
             #expect(group.method == .delete || group.method == .trash, "\(group.id) is a folder group")
-            #expect(group.tier != .careful || group.method == .trash, "careful groups must go to the Trash")
+            #expect(group.tier == .safe || group.method == .trash, "Review and Careful groups must go to the Trash")
         }
     }
 
@@ -160,6 +160,45 @@ struct FreshnessTests {
         #expect(outcome.failureCount == 0)
     }
 
+    /// An item with several paths is left whole when any one of them changed.
+    @Test func skipsTheWholeItemWhenOneOfItsPathsChanged() async throws {
+        let sandbox = try Sandbox()
+        defer { sandbox.remove() }
+        let support = try sandbox.file("Library/Application Support/com.x.app/db.sqlite", age: 3).deletingLastPathComponent()
+        let caches = try sandbox.file("Library/Caches/com.x.app/blob.bin", age: 3).deletingLastPathComponent()
+        try sandbox.setAge(3, of: support)
+        try sandbox.setAge(3, of: caches)
+        let scannedAt = Date().addingTimeInterval(-60)
+        try sandbox.file("Library/Application Support/com.x.app/new.sqlite")
+
+        let plan = CleanPlan.make(findings: [finding(tier: .review, method: .trash, items: [
+            FindingItem(id: "l/app", title: "app", detail: "", size: 10, paths: [support, caches]),
+        ])], selection: ["l/app"])
+        let outcome = await Cleaner.run(plan: plan, safety: SafetyGuard(root: sandbox.root), scannedAt: scannedAt) { _ in }
+        #expect(outcome.cleanedItemIDs.isEmpty)
+        #expect(Files.exists(support))
+        #expect(Files.exists(caches))
+        #expect(outcome.trashed.isEmpty)
+    }
+
+    @Test func newestChangeSeesDeepWrites() throws {
+        let sandbox = try Sandbox()
+        defer { sandbox.remove() }
+        let folder = try sandbox.file("T/com.x.word/a/b/c/old.bin", age: 10).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+        for path in ["T/com.x.word", "T/com.x.word/a", "T/com.x.word/a/b", "T/com.x.word/a/b/c"] {
+            try sandbox.setAge(10, of: sandbox.root.appending(path: path))
+        }
+        let old = try #require(Cleaner.newestChange(in: folder))
+        #expect(old < Date().addingTimeInterval(-9 * 86_400))
+        try sandbox.file("T/com.x.word/a/b/c/fresh.bin")
+        for path in ["T/com.x.word", "T/com.x.word/a", "T/com.x.word/a/b", "T/com.x.word/a/b/c"] {
+            try sandbox.setAge(10, of: sandbox.root.appending(path: path))
+        }
+        let newest = try #require(Cleaner.newestChange(in: folder))
+        #expect(newest > Date().addingTimeInterval(-60))
+    }
+
     @Test func newestChangeLooksOneLevelDown() throws {
         let sandbox = try Sandbox()
         defer { sandbox.remove() }
@@ -201,6 +240,22 @@ struct PutBackTests {
         #expect(Files.exists(installer))
         #expect(!Files.exists(trashed.inTrash))
         #expect(PutBack.pending(home: sandbox.root) == nil)
+    }
+
+    /// A later clean that trashes nothing must not forget what an earlier one trashed.
+    @Test func aLaterCleanKeepsTheEarlierItemsInTheManifest() throws {
+        let sandbox = try Sandbox()
+        defer { sandbox.remove() }
+        let stillThere = try sandbox.file(".Trash/Tool.dmg", bytes: 10)
+        let earlier = TrashedItem(original: sandbox.root.appending(path: "Downloads/Tool.dmg"), inTrash: stillThere, size: 10)
+        let first = CleanOutcome(steps: [StepOutcome(id: "a", title: "a", method: .trash, size: 10, cleanedItemIDs: [],
+                                                     failures: [], trashed: [earlier])],
+                                 freeBefore: 0, freeAfter: 0, trashedSize: 10, duration: 0, logURL: nil, started: Date())
+        PutBack.save(first, home: sandbox.root)
+        let second = CleanOutcome(steps: [StepOutcome(id: "b", title: "b", method: .delete, size: 5, cleanedItemIDs: ["x"], failures: [])],
+                                  freeBefore: 0, freeAfter: 0, trashedSize: 0, duration: 0, logURL: nil, started: Date())
+        PutBack.save(second, home: sandbox.root)
+        #expect(PutBack.pending(home: sandbox.root)?.items == [earlier])
     }
 
     @Test func anEmptiedTrashLeavesNothingToPutBack() throws {
@@ -252,6 +307,27 @@ struct NeverSuggestScanTests {
         // A finding whose every item is excluded disappears, and the context matches children too.
         context.excluded = [home.appending(path: ".cache").path, models.path]
         #expect(ScanEngine.applyingExclusions(to: result, context: context).findings.isEmpty)
+    }
+}
+
+struct FnmAliasTests {
+    /// fnm's default alias lands on `<version>/installation`; the version is the folder above.
+    @Test func readsTheDefaultThroughTheInstallationLink() async throws {
+        let sandbox = try Sandbox()
+        defer { sandbox.remove() }
+        let versions = sandbox.root.appending(path: "Library/Application Support/fnm/node-versions")
+        try sandbox.file("Library/Application Support/fnm/node-versions/v18.19.0/installation/bin/node", bytes: 25_000_000)
+        try sandbox.file("Library/Application Support/fnm/node-versions/v22.3.0/installation/bin/node", bytes: 25_000_000)
+        try sandbox.file("Library/Application Support/fnm/node-versions/v16.20.2/installation/bin/node", bytes: 25_000_000)
+        let aliases = sandbox.root.appending(path: "Library/Application Support/fnm/aliases")
+        try FileManager.default.createDirectory(at: aliases, withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(at: aliases.appending(path: "default"),
+                                                   withDestinationURL: versions.appending(path: "v18.19.0/installation"))
+
+        let result = await ToolchainScanner.scan(ScanContext(home: sandbox.root))
+        let offered = result.findings.flatMap(\.items).map(\.title)
+        #expect(offered == ["Node v16.20.2"])
+        #expect(Set(result.protected.map(\.title)) == ["Node v18.19.0", "Node v22.3.0"])
     }
 }
 

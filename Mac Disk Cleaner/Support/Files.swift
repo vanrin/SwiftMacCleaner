@@ -38,6 +38,32 @@ nonisolated enum Files {
     }
 }
 
+nonisolated extension Files {
+    /// The newest modification date anywhere inside `url`, the item itself included. Stops after
+    /// `limit` entries so a huge tree costs a bounded amount; what it has seen by then is returned.
+    /// Nil when the item cannot be read.
+    static func newestModification(in url: URL, limit: Int = 50_000) -> Date? {
+        guard let path = strdup(url.path) else { return nil }
+        defer { free(path) }
+        var arguments: [UnsafeMutablePointer<CChar>?] = [path, nil]
+        guard let stream = fts_open(&arguments, FTS_PHYSICAL | FTS_NOCHDIR | FTS_XDEV, nil) else { return nil }
+        defer { fts_close(stream) }
+
+        var newest: Date?
+        var visited = 0
+        while let entry = fts_read(stream) {
+            visited += 1
+            if visited > limit { break }
+            let kind = Int32(entry.pointee.fts_info)
+            guard kind == FTS_F || kind == FTS_D || kind == FTS_SL || kind == FTS_SLNONE || kind == FTS_DEFAULT,
+                  let status = entry.pointee.fts_statp?.pointee else { continue }
+            let modified = Date(timeIntervalSince1970: Double(status.st_mtimespec.tv_sec) + Double(status.st_mtimespec.tv_nsec) / 1e9)
+            if newest.map({ modified > $0 }) ?? true { newest = modified }
+        }
+        return newest
+    }
+}
+
 nonisolated enum FileSizer {
     /// Space a file or a whole folder takes on disk, in bytes. Hard-linked files are counted once.
     static func allocatedSize(of url: URL) -> Int64 {

@@ -202,17 +202,27 @@ nonisolated enum Cleaner {
             var outcome = StepOutcome(id: step.id, title: step.title, method: step.method, size: step.size,
                                       cleanedItemIDs: [], failures: [], skippedReason: nil)
             var failedItems = Set<String>()
+            // The freshness check runs per item, so an item with several paths is left whole or removed whole.
+            if let scannedAt {
+                for operation in step.operations where outcome.skippedItems[operation.itemID] == nil {
+                    if let change = changedSinceScan(operation, scannedAt: scannedAt) {
+                        outcome.skippedItems[operation.itemID] = change
+                        failedItems.insert(operation.itemID)
+                        log.append("skipped \(change)")
+                    }
+                }
+            }
             for operation in step.operations {
                 if Task.isCancelled {
                     outcome.failures.append("Stopped before finishing")
                     failedItems.formUnion(step.operations.map(\.itemID))
                     break
                 }
-                if let scannedAt, let change = changedSinceScan(operation, scannedAt: scannedAt) {
-                    outcome.skippedItems[operation.itemID] = change
-                    failedItems.insert(operation.itemID)
-                    log.append("skipped \(change)")
-                } else {
+                if outcome.skippedItems[operation.itemID] != nil {
+                    finished += 1
+                    continue
+                }
+                do {
                     switch perform(operation, safety: safety) {
                     case .failed(let failure):
                         outcome.failures.append(failure)
@@ -261,21 +271,10 @@ nonisolated enum Cleaner {
         return "\(url.path): changed since the scan, so it was left alone"
     }
 
-    /// The item's own modification date, or the newest among it and its direct children for a folder.
+    /// The newest modification date anywhere inside the item. An app writing deep inside a folder
+    /// counts as a change to the folder; the walk is bounded so a huge tree stays cheap.
     static func newestChange(in url: URL) -> Date? {
-        let keys: Set<URLResourceKey> = [.contentModificationDateKey, .isDirectoryKey]
-        guard let values = try? url.resourceValues(forKeys: keys), var newest = values.contentModificationDate else {
-            return nil
-        }
-        if values.isDirectory == true,
-           let children = try? FileManager.default.contentsOfDirectory(at: url, includingPropertiesForKeys: [.contentModificationDateKey], options: []) {
-            for child in children {
-                if let date = (try? child.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate, date > newest {
-                    newest = date
-                }
-            }
-        }
-        return newest
+        Files.newestModification(in: url)
     }
 
     enum Result: Sendable {
@@ -382,9 +381,11 @@ nonisolated enum PutBack {
         home.appending(path: "Library/Application Support").appending(path: CleanLog.folderName).appending(path: manifestName)
     }
 
+    /// Records what this clean trashed, keeping whatever an earlier clean trashed that is still in the Trash.
     static func save(_ outcome: CleanOutcome, home: URL) {
         let url = manifestURL(home: home)
-        let manifest = Manifest(date: outcome.started, items: outcome.trashed)
+        let earlier = pending(home: home)?.items.filter { item in !outcome.trashed.contains { $0.inTrash == item.inTrash } } ?? []
+        let manifest = Manifest(date: outcome.started, items: earlier + outcome.trashed)
         guard !manifest.items.isEmpty else {
             try? FileManager.default.removeItem(at: url)
             return

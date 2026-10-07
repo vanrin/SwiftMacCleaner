@@ -133,9 +133,10 @@ nonisolated enum GuardRoots {
         return URL(fileURLWithPath: String(developer.dropLast("/Contents/Developer".count)), isDirectory: true)
     }
 
-    /// Xcode bundles in /Applications other than the selected one.
+    /// Xcode bundles in /Applications other than the selected one. When no Xcode is selected, for
+    /// example because xcode-select points at the Command Line Tools, nothing is offered at all.
     static func otherXcodes() -> [URL] {
-        let selected = selectedXcode()?.standardizedFileURL.path
+        guard let selected = selectedXcode()?.standardizedFileURL.path else { return [] }
         return Files.children(of: URL(fileURLWithPath: "/Applications", isDirectory: true))
             .filter { $0.lastPathComponent.hasPrefix("Xcode") && $0.pathExtension == "app" && !Files.isSymlink($0) }
             .filter { Files.isDirectory($0.appending(path: "Contents/Developer")) }

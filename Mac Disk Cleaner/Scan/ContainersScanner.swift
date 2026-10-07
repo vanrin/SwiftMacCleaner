@@ -61,6 +61,14 @@ nonisolated enum ContainersScanner {
         if docker == nil, colima == nil, limactl == nil, !hasOrbStack, result.findings.isEmpty {
             result.skipReason = "No container tools are installed."
         }
+        // A Docker problem must not hide what the other tools found; it becomes a line under Protected instead.
+        if let reason = result.skipReason, !result.findings.isEmpty {
+            result.skipReason = nil
+            result.protected.insert(ProtectedItem(
+                id: "docker.problem", area: .containers, title: "Docker was not scanned",
+                why: reason, rule: .shownOnly, size: nil
+            ), at: 0)
+        }
         return result
     }
 

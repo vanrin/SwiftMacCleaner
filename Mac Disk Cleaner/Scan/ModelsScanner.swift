@@ -14,11 +14,15 @@ nonisolated enum ModelsScanner {
         var result = AreaScanResult()
         let group = Catalog.modelDownloads
         let ollama = Shell.which("ollama")
+        // The models folder is only left to `ollama list` when Ollama actually answers; otherwise the
+        // folder is offered as a whole so the space does not vanish from the numbers.
+        let ollamaList = ollama.flatMap { Shell.run($0, ["list"], timeout: 20) }
+        let ollamaAnswered = ollamaList?.succeeded == true
 
         var candidates: [PathCandidate] = []
         for location in group.locations {
             if location.path == huggingFaceHub { continue }
-            if location.path == ollamaFolder, ollama != nil { continue }
+            if location.path == ollamaFolder, ollamaAnswered { continue }
             candidates.append(PathCandidate(title: location.title, detail: location.detail,
                                             url: context.home.appending(path: location.path),
                                             preselected: location.preselected, hint: location.hint))
@@ -40,7 +44,7 @@ nonisolated enum ModelsScanner {
             ))
         }
 
-        if let ollama, let output = Shell.run(ollama, ["list"], timeout: 20), output.succeeded {
+        if let ollama, let output = ollamaList, output.succeeded {
             let models = ollamaItems(fromList: output.stdout, ollama: ollama)
             if !models.isEmpty {
                 result.findings.append(Finding(
