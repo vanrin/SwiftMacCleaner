@@ -7,51 +7,21 @@ import Foundation
 
 nonisolated enum AndroidScanner {
     static func scan(_ context: ScanContext) async -> AreaScanResult {
-        var findings: [Finding] = []
-        if let finding = await gradleCaches(context) { findings.append(finding) }
-        if let finding = await emulators(context) { findings.append(finding) }
-        guard !findings.isEmpty else {
+        var result = AreaScanResult()
+        if let finding = await CatalogScanner.finding(for: Catalog.gradle, context: context) { result.findings.append(finding) }
+        let emulators = await emulators(context)
+        if let finding = emulators.finding { result.findings.append(finding) }
+        result.protected += emulators.protected
+        guard !result.findings.isEmpty else {
             let home = context.home
             let installed = Files.exists(home.appending(path: ".gradle")) || Files.exists(home.appending(path: ".android"))
-            return AreaScanResult(skipReason: installed ? nil : "Gradle and the Android SDK are not installed.")
+            result.skipReason = installed ? nil : "Gradle and the Android SDK are not installed."
+            return result
         }
-        return AreaScanResult(findings: findings)
+        return result
     }
 
-    private static func gradleCaches(_ context: ScanContext) async -> Finding? {
-        let home = context.home
-        let items = await Sizing.items(prefix: "android.gradle", from: [
-            PathCandidate(title: "Gradle dependencies and build cache",
-                          detail: "Downloaded again on the next Gradle sync",
-                          url: home.appending(path: ".gradle/caches")),
-            PathCandidate(title: "Gradle wrapper distributions",
-                          detail: "Each Gradle version is downloaded again when a project asks for it",
-                          url: home.appending(path: ".gradle/wrapper/dists")),
-            PathCandidate(title: "Gradle daemon logs",
-                          detail: "Logs left by past Gradle daemons",
-                          url: home.appending(path: ".gradle/daemon")),
-            PathCandidate(title: "Android build cache",
-                          detail: "Build output shared between Android projects",
-                          url: home.appending(path: ".android/build-cache")),
-            PathCandidate(title: "Android SDK cache",
-                          detail: "Downloads kept by the SDK tools",
-                          url: home.appending(path: ".android/cache")),
-        ])
-        guard !items.isEmpty else { return nil }
-        return Finding(
-            id: "android.gradle",
-            area: .android,
-            tier: .safe,
-            title: "Gradle caches",
-            summary: "~/.gradle/caches, wrapper distributions and build cache",
-            explanation: "Dependencies and build output Gradle has downloaded or produced. The next Gradle sync fetches what it needs again, which makes that first build slower.",
-            method: .delete,
-            actionTarget: "~/.gradle/caches, ~/.gradle/wrapper/dists",
-            items: items
-        )
-    }
-
-    private static func emulators(_ context: ScanContext) async -> Finding? {
+    private static func emulators(_ context: ScanContext) async -> (finding: Finding?, protected: [ProtectedItem]) {
         let home = context.home
         let avdRoot = home.appending(path: ".android/avd")
         let sdk = home.appending(path: "Library/Android/sdk")
@@ -59,14 +29,21 @@ nonisolated enum AndroidScanner {
 
         var usedImages = Set<String>()
         var candidates: [PathCandidate] = []
-        var keptCount = 0
+        var protected: [ProtectedItem] = []
         for avd in avds {
             if let image = systemImagePath(forEmulatorAt: avd) { usedImages.insert(image) }
             let name = avd.deletingPathExtension().lastPathComponent
             let started = Files.modificationDate(avd)
             // An emulator that ran recently is in use, not clutter.
             if let started, started > context.staleCutoff {
-                keptCount += 1
+                protected.append(ProtectedItem(
+                    id: "android.emulators/recent/\(name)",
+                    area: .android,
+                    title: name.replacingOccurrences(of: "_", with: " ") + " emulator",
+                    why: "Ran \(context.relative(started))",
+                    rule: .recentlyUsed,
+                    size: nil
+                ))
                 continue
             }
             candidates.append(PathCandidate(
@@ -94,13 +71,13 @@ nonisolated enum AndroidScanner {
         }
 
         let items = await Sizing.items(prefix: "android.emulators", from: candidates, minimumSize: 20_000_000)
-        guard !items.isEmpty else { return nil }
+        guard !items.isEmpty else { return (nil, protected) }
         var note: String?
-        if keptCount > 0 {
-            let emulators = keptCount == 1 ? "1 emulator" : "\(keptCount) emulators"
+        if !protected.isEmpty {
+            let emulators = protected.count == 1 ? "1 emulator" : "\(protected.count) emulators"
             note = "Left out on purpose: \(emulators) used in the last \(context.staleDays) days."
         }
-        return Finding(
+        let finding = Finding(
             id: "android.emulators",
             area: .android,
             tier: .review,
@@ -112,6 +89,7 @@ nonisolated enum AndroidScanner {
             items: items,
             note: note
         )
+        return (finding, protected)
     }
 
     /// Reads `image.sysdir.1` from an emulator's config, such as "system-images/android-34/google_apis/arm64-v8a".

@@ -11,12 +11,23 @@ struct HomeView: View {
 
     private let columns = [GridItem(.flexible(), spacing: 32), GridItem(.flexible())]
 
+    static let neverTouched = [
+        "Your source files", "Git repositories", "iCloud Drive and cloud folders", "Files not downloaded from iCloud",
+        "Photos, Mail, Messages libraries", "Keychains and credentials", "Docker volumes",
+        "Other disks and network volumes", "The current Xcode and your default toolchains",
+        "Anything changed after the scan", "Your Never Suggest list",
+    ]
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
                 diskStatus
                 if model.isSandboxed { sandboxNote }
+                if !model.hasFullDiskAccess { fullDiskAccessNote }
+                if let pending = model.putBackPending { PutBackCard(manifest: pending) }
+                if let message = model.putBackMessage { PutBackMessage(text: message) }
                 areaPicker
+                neverTouched
             }
             .pageLayout()
         }
@@ -24,9 +35,13 @@ struct HomeView: View {
             ActionBar {
                 ActionSummary(
                     title: "\(model.enabledAreas.count) of \(Area.allCases.count) areas selected",
-                    detail: "About a minute. Scanning only measures, and nothing is removed until you confirm."
+                    detail: "About a minute. Nothing is removed until you confirm, and nothing here needs your password unless a step says so."
                 )
             } trailing: {
+                Button("Quick Clean, Safe only") { model.quickClean() }
+                    .controlSize(.large)
+                    .help("Scan everything, keep only what rebuilds itself ticked, then show the confirmation")
+                    .disabled(model.enabledAreas.isEmpty)
                 Button("Scan \(model.disk.name)") { model.startScan() }
                     .buttonStyle(.glassProminent)
                     .controlSize(.large)
@@ -39,36 +54,45 @@ struct HomeView: View {
     }
 
     private var diskStatus: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        let disk = model.disk
+        return VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 10) {
                     Text("Free space")
                         .font(.callout.weight(.semibold))
                         .foregroundStyle(.secondary)
-                    if model.disk.isLow {
-                        Text("Running low")
-                            .font(.caption.weight(.semibold))
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 2)
-                            .foregroundStyle(Color.orange.mix(with: .primary, by: 0.45))
-                            .background(Color.orange.opacity(0.2), in: .rect(cornerRadius: 5))
+                    if disk.isLow {
+                        Badge(text: "Running low", style: .waits)
                     }
                 }
-                Text(ByteFormat.string(model.disk.free))
+                Text(ByteFormat.string(disk.free))
                     .font(.system(size: 56, weight: .bold))
                     .monospacedDigit()
-                Text("of \(ByteFormat.string(model.disk.capacity)) on \(model.disk.name)")
+                Text(footnote(for: disk))
                     .font(.callout)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             DiskBar(
-                segments: [
-                    .init(id: "used", label: "Used", bytes: model.disk.used, color: DiskBar.keepColor),
-                    .init(id: "free", label: "Free", bytes: model.disk.free, color: .clear, isRemainder: true),
-                ],
-                total: model.disk.capacity
+                segments: segments(for: disk),
+                total: disk.capacity
             )
         }
+    }
+
+    private func footnote(for disk: DiskInfo) -> String {
+        let base = "of \(ByteFormat.string(disk.capacity)) on \(disk.name)."
+        guard disk.purgeable > 0 else { return base }
+        return base + " Another \(ByteFormat.string(disk.purgeable)) is purgeable: files macOS frees on its own schedule."
+    }
+
+    private func segments(for disk: DiskInfo) -> [DiskBar.Segment] {
+        var segments = [DiskBar.Segment(id: "used", label: "Used", bytes: disk.used, color: DiskBar.keepColor)]
+        if disk.purgeable > 0 {
+            segments.append(.init(id: "purgeable", label: "Purgeable", bytes: disk.purgeable, color: DiskBar.purgeableColor, pattern: true))
+        }
+        segments.append(.init(id: "free", label: "Free", bytes: disk.free, color: .clear, isRemainder: true))
+        return segments
     }
 
     private var areaPicker: some View {
@@ -76,7 +100,7 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("What the scan looks at")
                     .font(.headline)
-                Text("Untick anything you want left alone. Tools that are not installed are skipped.")
+                Text("Untick anything you want left alone. Tools that are not installed are skipped. Scanning only measures.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
@@ -90,8 +114,13 @@ struct HomeView: View {
                                     .frame(width: 22)
                                     .foregroundStyle(.secondary)
                                 VStack(alignment: .leading, spacing: 1) {
-                                    Text(area.title)
-                                        .fontWeight(.semibold)
+                                    HStack(spacing: 8) {
+                                        Text(area.title)
+                                            .fontWeight(.semibold)
+                                        if area.isNew {
+                                            Badge(text: "New", style: .new)
+                                        }
+                                    }
                                     Text(area.summary)
                                         .font(.callout)
                                         .foregroundStyle(.secondary)
@@ -105,6 +134,49 @@ struct HomeView: View {
                     }
                 }
             }
+        }
+    }
+
+    private var neverTouched: some View {
+        Card {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark.shield")
+                        .foregroundStyle(.tint)
+                    Text("Never touched, whatever you tick")
+                        .fontWeight(.semibold)
+                }
+                FlowLayout(spacing: 8) {
+                    ForEach(Self.neverTouched, id: \.self) { chip in
+                        Text(chip)
+                            .font(.caption)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(.quaternary.opacity(0.6), in: .rect(cornerRadius: 6))
+                    }
+                }
+            }
+            .padding(14)
+        }
+    }
+
+    private var fullDiskAccessNote: some View {
+        Card {
+            HStack(spacing: 12) {
+                Image(systemName: "lock")
+                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Full Disk Access is off")
+                        .fontWeight(.semibold)
+                    Text("Downloads, the Trash, Mail and app containers stay private without it, so those areas are skipped. Everything else is scanned either way. The app checks again each time it opens.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 12)
+                Button("Open Privacy Settings") { model.openFullDiskAccessSettings() }
+            }
+            .padding(14)
         }
     }
 
@@ -123,6 +195,42 @@ struct HomeView: View {
             }
             .padding(14)
         }
+    }
+}
+
+/// Lays chips out left to right, wrapping to a new line when a row is full.
+struct FlowLayout: Layout {
+    var spacing: CGFloat = 8
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? 600
+        return place(in: width, subviews: subviews, assign: false)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        _ = place(in: bounds.width, subviews: subviews, assign: true, origin: bounds.origin)
+    }
+
+    private func place(in width: CGFloat, subviews: Subviews, assign: Bool, origin: CGPoint = .zero) -> CGSize {
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var rowHeight: CGFloat = 0
+        var maxX: CGFloat = 0
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x > 0, x + size.width > width {
+                x = 0
+                y += rowHeight + spacing
+                rowHeight = 0
+            }
+            if assign {
+                subview.place(at: CGPoint(x: origin.x + x, y: origin.y + y), proposal: ProposedViewSize(size))
+            }
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+            maxX = max(maxX, x - spacing)
+        }
+        return CGSize(width: maxX, height: y + rowHeight)
     }
 }
 
@@ -165,7 +273,7 @@ struct ScanningView: View {
                 .frame(width: 18)
             Text(area.title)
                 .fontWeight(.semibold)
-                .frame(width: 170, alignment: .leading)
+                .frame(width: 190, alignment: .leading)
             Text(detail(for: area, state: state))
                 .font(.callout)
                 .foregroundStyle(.secondary)

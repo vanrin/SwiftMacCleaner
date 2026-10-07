@@ -12,10 +12,18 @@ struct OverviewView: View {
     var body: some View {
         Group {
             if model.findings.isEmpty {
-                ContentUnavailableView {
-                    Label("Nothing to reclaim", systemImage: "checkmark.circle")
-                } description: {
-                    Text("The scan found nothing worth removing in the areas it looked at.")
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 28) {
+                        ContentUnavailableView {
+                            Label("Nothing to reclaim", systemImage: "checkmark.circle")
+                        } description: {
+                            Text("The scan found nothing worth removing in the areas it looked at.")
+                        }
+                        if !model.protected.isEmpty {
+                            ProtectedList(items: model.protected)
+                        }
+                    }
+                    .pageLayout()
                 }
             } else {
                 results
@@ -27,14 +35,18 @@ struct OverviewView: View {
 
     private var results: some View {
         let largest = model.findings.map(\.size).max() ?? 1
+        let active = model.activeChecks()
         return ScrollView {
             VStack(alignment: .leading, spacing: 28) {
                 summary
                 ForEach(SafetyTier.allCases, id: \.self) { tier in
                     let group = model.findings.filter { $0.tier == tier }
                     if !group.isEmpty {
-                        TierSection(tier: tier, findings: group, largest: largest)
+                        TierSection(tier: tier, findings: group, largest: largest, active: active)
                     }
+                }
+                if !model.protected.isEmpty {
+                    ProtectedList(items: model.protected)
                 }
                 if !model.unreadableFolders.isEmpty {
                     FullDiskAccessNote()
@@ -46,29 +58,38 @@ struct OverviewView: View {
             ActionBar {
                 ActionSummary(
                     title: "\(model.selectedFindingCount) of \(model.findings.count) selected",
-                    detail: "Rebuildable items are deleted right away. Everything else goes to the Trash first."
+                    detail: "Rebuildable items are deleted right away. Everything else goes to the Trash first and can be put back."
                 )
             } trailing: {
-                Button("Review and Clean \(ByteFormat.string(model.selectedSize))") {
+                Button(reviewTitle) {
                     model.showingReview = true
                 }
                 .buttonStyle(.glassProminent)
                 .controlSize(.large)
-                .disabled(model.selectedSize == 0)
+                .disabled(model.selectedSize == 0 && !model.selectionHasUnknownSize)
             }
         }
+    }
+
+    private var reviewTitle: String {
+        let size = ByteFormat.string(model.selectedSize)
+        return model.selectionHasUnknownSize ? "Review and Clean at least \(size)" : "Review and Clean \(size)"
     }
 
     private var summary: some View {
         let found = model.foundSize
         let selected = model.selectedSize
         let places = model.findings.count == 1 ? "1 place" : "\(model.findings.count) places"
+        var footnote = "of \(ByteFormat.string(found)) found in \(places)."
+        if !model.protected.isEmpty {
+            footnote += " \(ByteFormat.string(model.protectedSize)) more was left alone on purpose, listed at the bottom."
+        }
         return VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .bottom) {
                 HeroFigure(
                     caption: "Selected to reclaim",
                     bytes: selected,
-                    footnote: "of \(ByteFormat.string(found)) found in \(places)"
+                    footnote: footnote
                 )
                 Spacer(minLength: 24)
                 VStack(alignment: .trailing, spacing: 2) {
@@ -106,6 +127,7 @@ private struct TierSection: View {
     let tier: SafetyTier
     let findings: [Finding]
     let largest: Int64
+    let active: [String: InUseCheck]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -123,7 +145,7 @@ private struct TierSection: View {
             VStack(spacing: 0) {
                 ForEach(findings) { finding in
                     Divider()
-                    FindingRow(finding: finding, largest: largest)
+                    FindingRow(finding: finding, largest: largest, active: active[finding.id])
                 }
             }
         }
@@ -134,6 +156,7 @@ private struct FindingRow: View {
     @Environment(AppModel.self) private var model
     let finding: Finding
     let largest: Int64
+    let active: InUseCheck?
 
     var body: some View {
         let selected = model.selectedSize(in: finding)
@@ -149,8 +172,12 @@ private struct FindingRow: View {
                 .frame(width: 22)
                 .foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 1) {
-                Text(finding.title)
-                    .fontWeight(.semibold)
+                HStack(spacing: 8) {
+                    Text(finding.title)
+                        .fontWeight(.semibold)
+                        .lineLimit(1)
+                    FindingBadges(finding: finding, active: active)
+                }
                 Text(finding.summary)
                     .font(.callout)
                     .foregroundStyle(.secondary)
@@ -159,7 +186,7 @@ private struct FindingRow: View {
             Spacer(minLength: 12)
 
             VStack(alignment: .trailing, spacing: 5) {
-                SizeLabel(bytes: finding.size)
+                SizeLabel(bytes: finding.size, unknown: finding.hasUnknownSize && finding.size == 0)
                 Capsule()
                     .fill(.quaternary)
                     .frame(width: 96, height: 4)

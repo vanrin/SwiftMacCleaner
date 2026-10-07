@@ -35,8 +35,8 @@ struct DoneView: View {
             if let outcome = model.outcome {
                 VStack(alignment: .leading, spacing: 28) {
                     result(outcome)
-                    receipt(outcome)
                     followUps(outcome)
+                    receipt(outcome)
                 }
                 .pageLayout()
             }
@@ -46,11 +46,13 @@ struct DoneView: View {
     }
 
     private func result(_ outcome: CleanOutcome) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
+        let seconds = Int(outcome.duration.rounded())
+        let took = seconds >= 60 ? "\(seconds / 60) min \(seconds % 60) s" : "\(seconds) s"
+        return VStack(alignment: .leading, spacing: 16) {
             HeroFigure(
                 caption: "Reclaimed",
                 bytes: outcome.reclaimed,
-                footnote: "Free space went from \(ByteFormat.string(outcome.freeBefore)) to \(ByteFormat.string(outcome.freeAfter))"
+                footnote: "Free space went from \(ByteFormat.string(outcome.freeBefore)) to \(ByteFormat.string(outcome.freeAfter)), measured on the disk, in \(took)."
             )
             DiskBar(
                 segments: [
@@ -66,7 +68,7 @@ struct DoneView: View {
     private func receipt(_ outcome: CleanOutcome) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("What was removed")
+                Text("What happened, step by step")
                     .font(.headline)
                 Spacer()
                 if let log = outcome.logURL {
@@ -77,8 +79,7 @@ struct DoneView: View {
                 ForEach(outcome.steps) { step in
                     Divider()
                     HStack(alignment: .top, spacing: 12) {
-                        Image(systemName: step.succeeded ? "checkmark" : "exclamationmark.triangle")
-                            .foregroundStyle(step.succeeded ? AnyShapeStyle(.tint) : AnyShapeStyle(.orange))
+                        icon(for: step)
                             .frame(width: 18)
                         VStack(alignment: .leading, spacing: 1) {
                             Text(step.title)
@@ -89,7 +90,8 @@ struct DoneView: View {
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                         Spacer(minLength: 12)
-                        SizeLabel(bytes: step.size)
+                        SizeLabel(bytes: step.size, weight: step.skippedReason == nil ? .semibold : .regular)
+                            .foregroundStyle(step.skippedReason == nil ? .primary : .secondary)
                     }
                     .padding(.vertical, 9)
                 }
@@ -97,29 +99,63 @@ struct DoneView: View {
         }
     }
 
+    @ViewBuilder
+    private func icon(for step: StepOutcome) -> some View {
+        if step.skippedReason != nil {
+            Image(systemName: "minus.circle").foregroundStyle(.secondary)
+        } else if step.failures.isEmpty && step.skippedItems.isEmpty {
+            Image(systemName: "checkmark").foregroundStyle(.tint)
+        } else {
+            Image(systemName: "exclamationmark.triangle").foregroundStyle(.orange)
+        }
+    }
+
     private func detail(for step: StepOutcome) -> String {
         if let reason = step.skippedReason { return reason }
-        if let first = step.failures.first {
+        var parts: [String] = []
+        let total = step.cleanedItemIDs.count + step.skippedItems.count + step.failures.count
+        if !step.skippedItems.isEmpty {
+            let done = step.cleanedItemIDs.count
+            parts.append("\(verb(for: step.method)) \(done) of \(total) \(total == 1 ? "item" : "items"). \(step.skippedItems.count) skipped: changed since the scan.")
+        } else if let first = step.failures.first {
             let more = step.failures.count > 1 ? " (and \(step.failures.count - 1) more in the log)" : ""
-            return first + more
+            parts.append(first + more)
+        } else {
+            switch step.method {
+            case .delete: parts.append("Deleted. It is rebuilt or downloaded again when needed.")
+            case .trash: parts.append("Moved to the Trash. Put Back returns it until the Trash is emptied.")
+            case .command: parts.append("Removed by the tool that owns it.")
+            case .adminCommand: parts.append("Removed with your password. The space comes back over the next minutes.")
+            }
         }
-        switch step.method {
-        case .delete: return "Deleted. It is rebuilt or downloaded again when needed."
-        case .trash: return "Moved to the Trash."
-        case .command: return "Removed by the tool that owns it."
+        return parts.joined(separator: " ")
+    }
+
+    private func verb(for method: CleanMethod) -> String {
+        switch method {
+        case .delete: "Deleted"
+        case .trash: "Moved"
+        case .command, .adminCommand: "Removed"
         }
     }
 
     @ViewBuilder
     private func followUps(_ outcome: CleanOutcome) -> some View {
         let estimate = outcome.steps.filter { $0.succeeded && $0.method != .trash }.reduce(Int64(0)) { $0 + $1.size }
+        let snapshotsDone = outcome.steps.contains { $0.method == .adminCommand && $0.skippedReason == nil && $0.failures.isEmpty }
         VStack(alignment: .leading, spacing: 16) {
-            if outcome.trashedSize > 0 {
+            if let pending = model.putBackPending {
+                PutBackCard(manifest: pending)
+            }
+            if let message = model.putBackMessage {
+                PutBackMessage(text: message)
+            }
+            if snapshotsDone {
                 followUp(
-                    title: "\(ByteFormat.string(outcome.trashedSize)) is waiting in the Trash",
-                    text: "That space comes back when you empty the Trash.",
-                    action: "Show Trash"
-                ) { model.openTrash() }
+                    title: "Snapshots are gone, but macOS returns their space gradually",
+                    text: "The space held by local snapshots comes back over the next minutes as APFS reclaims it. The number above will catch up on the next rescan.",
+                    action: nil
+                ) {}
             }
             if outcome.reclaimed < estimate / 2, estimate > 500_000_000 {
                 followUp(
@@ -131,11 +167,19 @@ struct DoneView: View {
             if model.foundSize > 0 {
                 followUp(
                     title: "\(ByteFormat.string(model.foundSize)) more needs your call",
-                    text: "These were not selected, or could not be removed this time.",
+                    text: needsYourCallText(outcome),
                     action: "Review Them"
                 ) { model.showResults() }
             }
         }
+    }
+
+    private func needsYourCallText(_ outcome: CleanOutcome) -> String {
+        var text = "These were not selected, or could not be removed this time."
+        if outcome.skippedSize > 0 {
+            text += " Quit what was open to include the \(ByteFormat.string(outcome.skippedSize)) that waited."
+        }
+        return text
     }
 
     private func followUp(title: String, text: String, action: String?, perform: @escaping () -> Void) -> some View {

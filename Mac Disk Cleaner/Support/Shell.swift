@@ -28,6 +28,15 @@ nonisolated enum Shell {
         searchDirectories.map { "\($0)/\(name)" }.first { FileManager.default.isExecutableFile(atPath: $0) }
     }
 
+    /// Runs a command as root through macOS's own password prompt. Only `tmutil` needs this.
+    /// Cancelling the prompt makes `osascript` fail with error -128, which the caller reads as "skipped".
+    static func runAsAdministrator(_ command: [String], timeout: TimeInterval = 600) -> Output? {
+        let quoted = command.map { "'" + $0.replacingOccurrences(of: "'", with: "'\\''") + "'" }.joined(separator: " ")
+        let escaped = quoted.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
+        let script = "do shell script \"\(escaped)\" with administrator privileges"
+        return run("/usr/bin/osascript", ["-e", script], timeout: timeout)
+    }
+
     /// Runs a tool and waits for it, giving up after `timeout` seconds.
     ///
     /// Output goes to temporary files rather than pipes: a tool such as `docker` can leave helper

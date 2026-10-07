@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// App caches and logs in the user's Library.
+/// App caches and logs in the user's Library, app container caches, and the per-user temp folders.
 nonisolated enum CachesLogsScanner {
     /// System caches that are not named com.apple.* but are still best left to macOS.
     static let systemCacheFolders: Set<String> = [
@@ -17,53 +17,119 @@ nonisolated enum CachesLogsScanner {
         "mac", "macos", "osx", "app", "desktop", "client", "helper", "default", "editor",
         "ShipIt", "Updater", "ImageCache",
     ]
+    /// How long something in the temp folders must sit untouched before it is offered.
+    static let tempIdleDays = 7.0
 
     static func scan(_ context: ScanContext) async -> AreaScanResult {
         var findings: [Finding] = []
         let ownName = Bundle.main.bundleIdentifier ?? ""
 
+        if let finding = await appCaches(context, ownName: ownName) { findings.append(finding) }
+        if let finding = await containerCaches(context, ownName: ownName) { findings.append(finding) }
+        if let finding = await temporaryFolders(context) { findings.append(finding) }
+        if let finding = await logs(context) { findings.append(finding) }
+        return AreaScanResult(findings: findings)
+    }
+
+    private static func appCaches(_ context: ScanContext, ownName: String) async -> Finding? {
         let cacheRoot = context.home.appending(path: "Library/Caches")
-        let claimed = PackageCacheScanner.claimedCacheFolders.union(systemCacheFolders).union(["com.apple.dt.Xcode", ownName])
-        let cacheCandidates = Files.children(of: cacheRoot)
+        let claimed = Catalog.claimedCacheFolders.union(systemCacheFolders).union(["com.apple.dt.Xcode", ownName])
+        let candidates = Files.children(of: cacheRoot)
             .filter { url in
                 let name = url.lastPathComponent
                 return !name.hasPrefix("com.apple.") && !name.hasPrefix(".") && !claimed.contains(name) && !Files.isSymlink(url)
             }
             .map { PathCandidate(title: displayName($0.lastPathComponent), detail: $0.lastPathComponent, url: $0) }
-        let caches = await Sizing.items(prefix: "caches.apps", from: cacheCandidates, minimumSize: 10_000_000)
-        if !caches.isEmpty {
-            findings.append(Finding(
-                id: "caches.apps",
-                area: .cachesLogs,
-                tier: .safe,
-                title: "App caches",
-                summary: "\(context.tilde(cacheRoot)) for \(caches.count) \(caches.count == 1 ? "app" : "apps")",
-                explanation: "Temporary files apps keep to start faster. Each app recreates its cache as it runs. macOS's own caches are left alone.",
-                method: .delete,
-                actionTarget: context.tilde(cacheRoot),
-                items: caches
-            ))
-        }
+        let items = await Sizing.items(prefix: "caches.apps", from: candidates, minimumSize: 10_000_000)
+        guard !items.isEmpty else { return nil }
+        return Finding(
+            id: "caches.apps",
+            area: .cachesLogs,
+            tier: .safe,
+            title: "App caches",
+            summary: "\(context.tilde(cacheRoot)) for \(items.count) \(items.count == 1 ? "app" : "apps")",
+            explanation: "Temporary files apps keep to start faster. Each app recreates its cache as it runs. macOS's own caches are left alone.",
+            method: .delete,
+            actionTarget: context.tilde(cacheRoot),
+            items: items
+        )
+    }
 
+    /// Sandboxed apps keep their cache inside their container rather than in ~/Library/Caches.
+    private static func containerCaches(_ context: ScanContext, ownName: String) async -> Finding? {
+        let containers = context.home.appending(path: "Library/Containers")
+        let candidates = Files.subdirectories(of: containers)
+            .filter { !$0.lastPathComponent.hasPrefix("com.apple.") && $0.lastPathComponent != ownName }
+            .map { container in
+                PathCandidate(
+                    title: displayName(container.lastPathComponent),
+                    detail: "Container cache for \(container.lastPathComponent)",
+                    url: container.appending(path: "Data/Library/Caches")
+                )
+            }
+        let items = await Sizing.items(prefix: "caches.containers", from: candidates, minimumSize: 10_000_000)
+        guard !items.isEmpty else { return nil }
+        return Finding(
+            id: "caches.containers",
+            area: .cachesLogs,
+            tier: .safe,
+            title: "App container caches",
+            summary: "\(items.count) sandboxed \(items.count == 1 ? "app" : "apps") in \(context.tilde(containers))",
+            explanation: "Caches kept by sandboxed apps inside their own containers. Each app recreates its cache as it runs. Settings and documents in the containers are left alone.",
+            method: .delete,
+            actionTarget: "~/Library/Containers/*/Data/Library/Caches",
+            items: items
+        )
+    }
+
+    /// Items apps left in the per-user folders under /var/folders and then forgot about.
+    private static func temporaryFolders(_ context: ScanContext) async -> Finding? {
+        let cutoff = context.now.addingTimeInterval(-tempIdleDays * 86_400)
+        var candidates: [PathCandidate] = []
+        for folder in GuardRoots.userTemporaryFolders() {
+            let kind = folder.lastPathComponent == "C" ? "cache" : "temp"
+            for entry in Files.children(of: folder) where !entry.lastPathComponent.hasPrefix("com.apple.") && !Files.isSymlink(entry) {
+                guard let newest = Cleaner.newestChange(in: entry), newest < cutoff else { continue }
+                candidates.append(PathCandidate(
+                    title: entry.lastPathComponent,
+                    detail: "In your \(kind) folder, untouched since \(context.relative(newest))",
+                    url: entry
+                ))
+            }
+        }
+        let items = await Sizing.items(prefix: "caches.temp", from: candidates, minimumSize: 10_000_000)
+        guard !items.isEmpty else { return nil }
+        return Finding(
+            id: "caches.temp",
+            area: .cachesLogs,
+            tier: .safe,
+            title: "Your temp and cache folders",
+            summary: "\(items.count) \(items.count == 1 ? "item" : "items") untouched for \(Int(tempIdleDays))+ days under /var/folders",
+            explanation: "Files apps left in the per-user temp and cache folders macOS gives you under /var/folders. Only items untouched for a week are offered; macOS clears the rest on reboot.",
+            method: .delete,
+            actionTarget: "Your folders under /var/folders",
+            items: items
+        )
+    }
+
+    private static func logs(_ context: ScanContext) async -> Finding? {
         let logRoot = context.home.appending(path: "Library/Logs")
-        let logCandidates = Files.children(of: logRoot)
+        let candidates = Files.children(of: logRoot)
             .filter { !$0.lastPathComponent.hasPrefix(".") && $0.lastPathComponent != CleanLog.folderName && !Files.isSymlink($0) }
             .map { PathCandidate(title: displayName($0.lastPathComponent), detail: $0.lastPathComponent, url: $0) }
-        let logs = await Sizing.items(prefix: "caches.logs", from: logCandidates, minimumSize: 5_000_000)
-        if !logs.isEmpty {
-            findings.append(Finding(
-                id: "caches.logs",
-                area: .cachesLogs,
-                tier: .safe,
-                title: "Logs",
-                summary: "\(context.tilde(logRoot)), \(logs.count) \(logs.count == 1 ? "item" : "items")",
-                explanation: "Log files and crash reports apps have written. Apps start new logs as they run.",
-                method: .delete,
-                actionTarget: context.tilde(logRoot),
-                items: logs
-            ))
-        }
-        return AreaScanResult(findings: findings)
+        let items = await Sizing.items(prefix: "caches.logs", from: candidates, minimumSize: 5_000_000)
+        guard !items.isEmpty else { return nil }
+        return Finding(
+            id: "caches.logs",
+            area: .cachesLogs,
+            tier: .safe,
+            title: "Logs and crash reports",
+            summary: "\(context.tilde(logRoot)), \(items.count) \(items.count == 1 ? "item" : "items")",
+            explanation: "Log files and crash reports apps have written. Apps start new logs as they run.",
+            method: .delete,
+            actionTarget: context.tilde(logRoot),
+            items: items
+        )
     }
 
     /// "com.google.Chrome" -> "Chrome", "com.microsoft.VSCode.ShipIt" -> "VSCode"
@@ -78,9 +144,10 @@ nonisolated enum CachesLogsScanner {
     }
 }
 
-/// Installers left in Downloads, and whatever is sitting in the Trash.
+/// Installers and large old files left in Downloads, and whatever is sitting in the Trash.
 nonisolated enum InstallersTrashScanner {
     static let installerExtensions: Set<String> = ["dmg", "pkg", "iso", "xip", "ipsw"]
+    static let largeFileMinimum: Int64 = 100_000_000
 
     static func scan(_ context: ScanContext) async -> AreaScanResult {
         var result = AreaScanResult()
@@ -88,29 +155,14 @@ nonisolated enum InstallersTrashScanner {
 
         let downloads = context.home.appending(path: "Downloads")
         do {
-            let files = try fileManager.contentsOfDirectory(at: downloads, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])
-            let candidates = files
-                .filter { installerExtensions.contains($0.pathExtension.lowercased()) }
-                .map { file in
-                    PathCandidate(
-                        title: file.lastPathComponent,
-                        detail: Files.modificationDate(file).map { "Downloaded \(context.relative($0))" } ?? "Installer",
-                        url: file
-                    )
-                }
-            let items = await Sizing.items(prefix: "installers.downloads", from: candidates, minimumSize: 5_000_000)
-            if !items.isEmpty {
-                result.findings.append(Finding(
-                    id: "installers.downloads",
-                    area: .installersTrash,
-                    tier: .review,
-                    title: "Installers in Downloads",
-                    summary: "\(items.count) disk \(items.count == 1 ? "image or installer" : "images and installers")",
-                    explanation: "Disk images and installer packages. Once the app is installed these are rarely needed, and they can be downloaded again.",
-                    method: .trash,
-                    actionTarget: context.tilde(downloads),
-                    items: items
-                ))
+            let files = try fileManager.contentsOfDirectory(
+                at: downloads, includingPropertiesForKeys: [.isRegularFileKey, .contentModificationDateKey], options: [.skipsHiddenFiles]
+            )
+            if let finding = await installers(in: files, downloads: downloads, context: context) {
+                result.findings.append(finding)
+            }
+            if let finding = await largeFiles(in: files, downloads: downloads, context: context) {
+                result.findings.append(finding)
             }
         } catch where isPermissionError(error) {
             result.unreadable.append("Downloads")
@@ -150,6 +202,73 @@ nonisolated enum InstallersTrashScanner {
                 + "Grant Full Disk Access in Privacy & Security, then scan again."
         }
         return result
+    }
+
+    private static func installers(in files: [URL], downloads: URL, context: ScanContext) async -> Finding? {
+        let candidates = files
+            .filter { installerExtensions.contains($0.pathExtension.lowercased()) }
+            .map { file in
+                PathCandidate(
+                    title: file.lastPathComponent,
+                    detail: Files.modificationDate(file).map { "Downloaded \(context.relative($0))" } ?? "Installer",
+                    url: file
+                )
+            }
+        let items = await Sizing.items(prefix: "installers.downloads", from: candidates, minimumSize: 5_000_000)
+        guard !items.isEmpty else { return nil }
+        return Finding(
+            id: "installers.downloads",
+            area: .installersTrash,
+            tier: .review,
+            title: "Installers in Downloads",
+            summary: "\(items.count) disk \(items.count == 1 ? "image or installer" : "images and installers")",
+            explanation: "Disk images and installer packages. Once the app is installed these are rarely needed, and they can be downloaded again.",
+            method: .trash,
+            actionTarget: context.tilde(downloads),
+            items: items
+        )
+    }
+
+    /// Big files that have sat in Downloads untouched for longer than the user's limit.
+    private static func largeFiles(in files: [URL], downloads: URL, context: ScanContext) async -> Finding? {
+        var candidates: [PathCandidate] = []
+        for file in files where !installerExtensions.contains(file.pathExtension.lowercased()) {
+            guard let values = try? file.resourceValues(forKeys: [.isRegularFileKey, .contentModificationDateKey]),
+                  values.isRegularFile == true,
+                  let modified = values.contentModificationDate, modified < context.largeFileCutoff else { continue }
+            candidates.append(PathCandidate(
+                title: file.lastPathComponent,
+                detail: "\(kind(of: file)), last changed \(context.relative(modified))",
+                url: file
+            ))
+        }
+        let items = await Sizing.items(prefix: "installers.large", from: candidates, minimumSize: largeFileMinimum)
+        guard !items.isEmpty else { return nil }
+        return Finding(
+            id: "installers.large",
+            area: .installersTrash,
+            tier: .review,
+            title: "Large files in Downloads",
+            summary: "\(items.count) \(items.count == 1 ? "file" : "files") of \(ByteFormat.string(largeFileMinimum)) or more untouched for \(context.largeFileDays)+ days",
+            explanation: "Big downloads you have not opened in a while. They go to the Trash, so they can be put back if one turns out to matter.",
+            method: .trash,
+            actionTarget: context.tilde(downloads),
+            items: items
+        )
+    }
+
+    /// A plain word for what a file is, from its extension.
+    static func kind(of file: URL) -> String {
+        switch file.pathExtension.lowercased() {
+        case "zip", "tar", "gz", "tgz", "bz2", "xz", "7z", "rar": "Archive"
+        case "mov", "mp4", "m4v", "mkv", "avi", "webm": "Video"
+        case "mp3", "m4a", "wav", "aac", "flac": "Audio"
+        case "pdf": "PDF"
+        case "jpg", "jpeg", "png", "heic", "gif", "tiff", "psd", "raw": "Image"
+        case "app": "App"
+        case "": "File"
+        default: file.pathExtension.uppercased() + " file"
+        }
     }
 
     /// True when macOS refused access, as opposed to the folder simply not being there.

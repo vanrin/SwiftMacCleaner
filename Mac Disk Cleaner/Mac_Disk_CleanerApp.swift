@@ -49,17 +49,15 @@ struct Mac_Disk_CleanerApp: App {
 nonisolated enum ScanReportPrinter {
     static func run(areaNames: [String]) {
         let requested = areaNames.compactMap(Area.init(rawValue:))
-        // Downloads and the Trash raise permission prompts, so they are only scanned when asked for.
-        let areas = requested.isEmpty ? Area.allCases.filter { $0 != .installersTrash } : requested
-        let roots = UserDefaults.standard.stringArray(forKey: "projectRoots") ?? AppSettings.detectedRoots()
-        let context = ScanContext(
-            home: FileManager.default.homeDirectoryForCurrentUser,
-            projectRoots: roots.map { URL(fileURLWithPath: $0, isDirectory: true) }
-        )
+        // Downloads, the Trash and device backups raise permission prompts, so those areas are only scanned when asked for.
+        let prompting: Set<Area> = [.installersTrash, .leftovers, .snapshots]
+        let areas = requested.isEmpty ? Area.allCases.filter { !prompting.contains($0) } : requested
+        let context = AppSettings().scanContext()
 
         let finished = DispatchSemaphore(value: 0)
         Task.detached {
             var total: Int64 = 0
+            var protectedTotal: Int64 = 0
             for area in areas {
                 let started = Date()
                 let result = await ScanEngine.scan(area, context: context)
@@ -68,14 +66,22 @@ nonisolated enum ScanReportPrinter {
                 if let reason = result.skipReason { print("   skipped: \(reason)") }
                 for finding in result.findings {
                     total += finding.size
-                    print("   [\(finding.tier.label)] \(finding.title): \(ByteFormat.string(finding.size)) in \(finding.items.count) items")
+                    let size = finding.hasUnknownSize && finding.size == 0 ? "size unknown" : ByteFormat.string(finding.size)
+                    let waits = finding.waitsFor.map { "  (waits for \($0.name))" } ?? ""
+                    print("   [\(finding.tier.label)] \(finding.title): \(size) in \(finding.items.count) items, \(finding.method.verb.lowercased())\(waits)")
                     for item in finding.items.prefix(6) {
-                        print("      \(ByteFormat.string(item.size).padding(toLength: 9, withPad: " ", startingAt: 0)) \(item.title)  |  \(item.detail)")
+                        let itemSize = item.sizeUnknown ? "unknown" : ByteFormat.string(item.size)
+                        print("      \(itemSize.padding(toLength: 9, withPad: " ", startingAt: 0)) \(item.title)  |  \(item.detail)")
                     }
                     if let note = finding.note { print("      note: \(note)") }
                 }
+                for item in result.protected {
+                    protectedTotal += item.size ?? 0
+                    let size = item.size.map(ByteFormat.string) ?? "kept"
+                    print("   [Protected: \(item.rule.rawValue)] \(item.title): \(size)  |  \(item.why)")
+                }
             }
-            print("\nTotal found: \(ByteFormat.string(total))")
+            print("\nTotal found: \(ByteFormat.string(total)), left alone on purpose: \(ByteFormat.string(protectedTotal))")
             fflush(stdout)
             finished.signal()
         }

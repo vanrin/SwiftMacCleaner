@@ -90,10 +90,10 @@ struct CleanerTests {
         let cache = try sandbox.file("Library/Caches/com.example.app/blob.bin").deletingLastPathComponent()
         let keep = try sandbox.file("Documents/thesis.txt").deletingLastPathComponent()
 
-        #expect(Cleaner.perform(CleanOperation(itemID: "a", kind: .delete(cache)), safety: safety) == nil)
+        #expect(Cleaner.perform(CleanOperation(itemID: "a", kind: .delete(cache)), safety: safety).failure == nil)
         #expect(!Files.exists(cache))
 
-        let refusal = Cleaner.perform(CleanOperation(itemID: "b", kind: .delete(keep)), safety: safety)
+        let refusal = Cleaner.perform(CleanOperation(itemID: "b", kind: .delete(keep)), safety: safety).failure
         #expect(refusal != nil)
         #expect(Files.exists(keep.appending(path: "thesis.txt")))
     }
@@ -108,7 +108,7 @@ struct CleanerTests {
         try FileManager.default.createSymbolicLink(at: link, withDestinationURL: precious.deletingLastPathComponent())
 
         let result = Cleaner.perform(CleanOperation(itemID: "a", kind: .delete(link)), safety: SafetyGuard(root: sandbox.root))
-        #expect(result == nil)
+        #expect(result.failure == nil)
         #expect(Files.exists(precious))
     }
 
@@ -121,7 +121,7 @@ struct CleanerTests {
         try FileManager.default.setAttributes([.posixPermissions: readOnly], ofItemAtPath: folder.path)
 
         let target = sandbox.root.appending(path: "go/pkg")
-        #expect(Cleaner.perform(CleanOperation(itemID: "a", kind: .delete(target)), safety: SafetyGuard(root: sandbox.root)) == nil)
+        #expect(Cleaner.perform(CleanOperation(itemID: "a", kind: .delete(target)), safety: SafetyGuard(root: sandbox.root)).failure == nil)
         #expect(!Files.exists(target))
     }
 
@@ -169,9 +169,9 @@ struct CleanerTests {
 /// The whole path behind the Clean button, on a throwaway folder.
 @MainActor
 struct AppModelCleanTests {
-    private func finding(id: String, items: [FindingItem], quitBundleID: String? = nil) -> Finding {
+    private func finding(id: String, items: [FindingItem], waitsFor: InUseCheck? = nil) -> Finding {
         Finding(id: id, area: .packageCaches, tier: .safe, title: id, summary: "", explanation: "",
-                method: .delete, actionTarget: "", items: items, quitBundleID: quitBundleID)
+                method: .delete, actionTarget: "", items: items, waitsFor: waitsFor)
     }
 
     private func waitUntilDone(_ model: AppModel) async throws {
@@ -214,7 +214,7 @@ struct AppModelCleanTests {
         // Finder is always running, so it stands in for an open Xcode.
         model.show(findings: [
             finding(id: "derived", items: [FindingItem(id: "d/app", title: "App", detail: "", size: 10, paths: [derived])],
-                    quitBundleID: "com.apple.finder"),
+                    waitsFor: .app(bundleID: "com.apple.finder", name: "Finder")),
             finding(id: "caches", items: [FindingItem(id: "c/npm", title: "npm", detail: "", size: 10, paths: [cache])]),
         ])
         #expect(model.blockedSteps(in: model.plan).keys.sorted() == ["derived"])
@@ -244,14 +244,14 @@ struct CleanPlanTests {
 
     @Test func commandFindingsBecomeRunOperations() {
         let finding = Finding(
-            id: "docker.unused", area: .docker, tier: .review, title: "Docker", summary: "", explanation: "",
+            id: "docker.unused", area: .containers, tier: .review, title: "Docker", summary: "", explanation: "",
             method: .command, actionTarget: "docker image prune",
             items: [FindingItem(id: "d/images", title: "", detail: "", size: 5,
                                 command: ["/usr/local/bin/docker", "image", "prune", "--all", "--force"])]
         )
         let plan = CleanPlan.make(findings: [finding], selection: ["d/images"])
         #expect(plan.steps.first?.operations == [
-            CleanOperation(itemID: "d/images", kind: .run(["/usr/local/bin/docker", "image", "prune", "--all", "--force"])),
+            CleanOperation(itemID: "d/images", kind: .run(["/usr/local/bin/docker", "image", "prune", "--all", "--force"]), size: 5),
         ])
         #expect(plan.trashedSize == 0)
     }
@@ -520,10 +520,10 @@ struct XcodeScannerTests {
 
 struct DockerScannerTests {
     @Test func readsDockerSizes() {
-        #expect(DockerScanner.bytes(from: "10.2GB (80%)") == 10_200_000_000)
-        #expect(DockerScanner.bytes(from: "512.3MB") == 512_300_000)
-        #expect(DockerScanner.bytes(from: "45kB (3%)") == 45_000)
-        #expect(DockerScanner.bytes(from: "0B (0%)") == 0)
+        #expect(ContainersScanner.bytes(from: "10.2GB (80%)") == 10_200_000_000)
+        #expect(ContainersScanner.bytes(from: "512.3MB") == 512_300_000)
+        #expect(ContainersScanner.bytes(from: "45kB (3%)") == 45_000)
+        #expect(ContainersScanner.bytes(from: "0B (0%)") == 0)
     }
 
     @Test func turnsDiskUsageRowsIntoPruneCommandsAndLeavesVolumesAlone() {
@@ -533,7 +533,7 @@ struct DockerScannerTests {
         {"Active":"3","Reclaimable":"4GB (50%)","Size":"8GB","TotalCount":"6","Type":"Local Volumes"}
         {"Active":"0","Reclaimable":"2.1GB","Size":"2.1GB","TotalCount":"90","Type":"Build Cache"}
         """
-        let items = DockerScanner.items(from: DockerScanner.parse(output), docker: "/usr/local/bin/docker")
+        let items = ContainersScanner.items(from: ContainersScanner.parse(output), docker: "/usr/local/bin/docker")
         #expect(items.map(\.id) == ["docker.unused/images", "docker.unused/buildCache", "docker.unused/containers"])
         #expect(items.first?.detail == "12 of 14 images are not used by any container")
         #expect(items.allSatisfy { $0.command?.contains("volume") == false })

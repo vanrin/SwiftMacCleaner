@@ -31,19 +31,45 @@ nonisolated enum ProjectScanner {
         guard !roots.isEmpty else {
             return AreaScanResult(skipReason: "No project folders to look in. Add one in Settings.")
         }
+        var result = AreaScanResult()
         var projects: [URL: Project] = [:]
+        var cloudRoots: [URL] = []
         for root in roots {
-            walk(root, depth: 0, owner: nil, projects: &projects)
+            if isInCloud(root, context: context) {
+                cloudRoots.append(root)
+                continue
+            }
+            walk(root, depth: 0, owner: nil, projects: &projects, cloud: &cloudRoots, context: context)
+        }
+        for root in cloudRoots {
+            result.protected.append(ProtectedItem(
+                id: "projects.cloud/\(root.path)",
+                area: .projects,
+                title: root.lastPathComponent,
+                why: "Project folders in iCloud are left alone: deleting there deletes everywhere",
+                rule: .protectedList,
+                size: nil
+            ))
         }
 
         let withOutput = projects.values.filter { !$0.generated.isEmpty }
         let stale = withOutput.filter { $0.lastTouched < context.staleCutoff }
-        let activeCount = withOutput.count - stale.count
+        let active = withOutput.filter { $0.lastTouched >= context.staleCutoff }.sorted { $0.lastTouched > $1.lastTouched }
+        for project in active {
+            result.protected.append(ProtectedItem(
+                id: "projects.active/\(project.root.path)",
+                area: .projects,
+                title: project.root.lastPathComponent,
+                why: "\(context.tilde(project.root)), touched \(context.relative(project.lastTouched))",
+                rule: .recentlyUsed,
+                size: nil
+            ))
+        }
         guard !stale.isEmpty else {
-            let reason = activeCount > 0
-                ? "Every project with build output was touched in the last \(context.staleDays) days."
-                : nil
-            return AreaScanResult(skipReason: reason)
+            result.skipReason = active.isEmpty && cloudRoots.isEmpty
+                ? nil
+                : "Every project with build output was touched in the last \(context.staleDays) days."
+            return result
         }
 
         let sizes = await Sizing.sizes(of: stale.flatMap(\.generated))
@@ -65,15 +91,15 @@ nonisolated enum ProjectScanner {
                 hint: project.restore.isEmpty ? nil : project.restore.joined(separator: ", then ")
             ))
         }
-        guard !items.isEmpty else { return AreaScanResult() }
+        guard !items.isEmpty else { return result }
         items.sort { $0.size > $1.size }
 
         var note: String?
-        if activeCount > 0 {
-            let projects = activeCount == 1 ? "1 project" : "\(activeCount) projects"
+        if !active.isEmpty {
+            let projects = active.count == 1 ? "1 project" : "\(active.count) projects"
             note = "Left out on purpose: \(projects) touched in the last \(context.staleDays) days."
         }
-        let finding = Finding(
+        result.findings.append(Finding(
             id: "projects.stale",
             area: .projects,
             tier: .safe,
@@ -84,15 +110,27 @@ nonisolated enum ProjectScanner {
             actionTarget: "Generated folders only, in " + roots.map(context.tilde).joined(separator: ", "),
             items: items,
             note: note
-        )
-        return AreaScanResult(findings: [finding])
+        ))
+        return result
+    }
+
+    /// Whether a folder lives in iCloud, where a local delete becomes a delete everywhere.
+    static func isInCloud(_ url: URL, context: ScanContext) -> Bool {
+        let path = url.standardizedFileURL.path
+        let home = context.home.path
+        for cloud in ["Library/Mobile Documents", "Library/CloudStorage"] where path.hasPrefix("\(home)/\(cloud)") {
+            return true
+        }
+        return (try? url.resourceValues(forKeys: [.isUbiquitousItemKey]))?.isUbiquitousItem == true
     }
 
     /// Walks a folder tree, grouping generated folders under the project that owns them.
     ///
     /// A project starts at a Git repository, or failing that at the first folder holding a
     /// project file. Everything below belongs to it until a nested repository begins.
-    static func walk(_ directory: URL, depth: Int, owner: URL?, projects: inout [URL: Project]) {
+    /// A project folder kept in iCloud is noted in `cloud` and never entered.
+    static func walk(_ directory: URL, depth: Int, owner: URL?, projects: inout [URL: Project],
+                     cloud: inout [URL], context: ScanContext) {
         guard depth <= maxDepth, !Task.isCancelled else { return }
         let keys: Set<URLResourceKey> = [.isDirectoryKey, .isSymbolicLinkKey, .contentModificationDateKey]
         guard let entries = try? FileManager.default.contentsOfDirectory(
@@ -106,6 +144,10 @@ nonisolated enum ProjectScanner {
 
         var owner = owner
         if names.contains(".git") || (owner == nil && (hasMarker || !generatedNames.isEmpty)) {
+            if owner == nil || names.contains(".git"), isInCloud(directory, context: context) {
+                cloud.append(directory)
+                return
+            }
             owner = directory
         }
         if let owner, projects[owner] == nil {
@@ -140,7 +182,7 @@ nonisolated enum ProjectScanner {
                 continue
             }
             if name.hasPrefix(".") || skippedFolders.contains(name) { continue }
-            walk(entry, depth: depth + 1, owner: owner, projects: &projects)
+            walk(entry, depth: depth + 1, owner: owner, projects: &projects, cloud: &cloud, context: context)
         }
     }
 

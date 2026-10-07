@@ -6,39 +6,56 @@
 import Foundation
 
 nonisolated enum XcodeScanner {
+    static let oldXcodesFindingID = "xcode.oldVersions"
+
     static func scan(_ context: ScanContext) async -> AreaScanResult {
         let developer = context.home.appending(path: "Library/Developer")
         guard Files.isDirectory(developer.appending(path: "Xcode"))
                 || Files.isDirectory(developer.appending(path: "CoreSimulator")) else {
             return AreaScanResult(skipReason: "Xcode has not been used on this Mac.")
         }
-        var findings: [Finding] = []
-        if let finding = await derivedData(context) { findings.append(finding) }
-        if let finding = await deviceSupport(context) { findings.append(finding) }
-        if let finding = await caches(context) { findings.append(finding) }
-        if let finding = simulators(context) { findings.append(finding) }
-        if let finding = await archives(context) { findings.append(finding) }
-        return AreaScanResult(findings: findings)
+        var result = AreaScanResult()
+        let derived = await derivedData(context)
+        if let finding = derived.finding { result.findings.append(finding) }
+        result.protected += derived.protected
+        if let finding = await deviceSupport(context) { result.findings.append(finding) }
+        if let finding = await CatalogScanner.finding(for: Catalog.xcodeCaches, context: context) { result.findings.append(finding) }
+        if let finding = await CatalogScanner.finding(for: Catalog.xcodeLeftovers, context: context) { result.findings.append(finding) }
+        let simulators = simulators(context)
+        if let finding = simulators.finding { result.findings.append(finding) }
+        result.protected += simulators.protected
+        if let finding = await archives(context) { result.findings.append(finding) }
+        let xcodes = await oldXcodes(context)
+        if let finding = xcodes.finding { result.findings.append(finding) }
+        result.protected += xcodes.protected
+        return result
     }
 
     // MARK: DerivedData
 
-    private static func derivedData(_ context: ScanContext) async -> Finding? {
+    private static func derivedData(_ context: ScanContext) async -> (finding: Finding?, protected: [ProtectedItem]) {
         let root = context.home.appending(path: "Library/Developer/Xcode/DerivedData")
         let folders = Files.subdirectories(of: root)
-        guard !folders.isEmpty else { return nil }
+        guard !folders.isEmpty else { return (nil, []) }
         let sizes = await Sizing.sizes(of: folders)
 
         var items: [FindingItem] = []
-        var keptCount = 0
+        var protected: [ProtectedItem] = []
         var keptSize: Int64 = 0
         for folder in folders {
             let size = sizes[folder] ?? 0
             guard size >= 1_000_000 else { continue }
             let entry = derivedDataEntry(folder, context: context)
             if let lastUsed = entry.lastUsed, lastUsed > context.recentBuildCutoff {
-                keptCount += 1
                 keptSize += size
+                protected.append(ProtectedItem(
+                    id: "xcode.derivedData/recent/\(folder.lastPathComponent)",
+                    area: .xcode,
+                    title: "\(entry.title) DerivedData",
+                    why: "Built \(context.relative(lastUsed)). Its build cache is still saving you time",
+                    rule: .recentlyUsed,
+                    size: size
+                ))
                 continue
             }
             items.append(FindingItem(
@@ -49,16 +66,16 @@ nonisolated enum XcodeScanner {
                 paths: [folder]
             ))
         }
-        guard !items.isEmpty else { return nil }
+        guard !items.isEmpty else { return (nil, protected) }
         items.sort { $0.size > $1.size }
 
         var note: String?
-        if keptCount > 0 {
-            let projects = keptCount == 1 ? "1 project" : "\(keptCount) projects"
+        if !protected.isEmpty {
+            let projects = protected.count == 1 ? "1 project" : "\(protected.count) projects"
             note = "Left out on purpose: \(projects) built in the last \(context.recentBuildDays) days, "
                 + "\(ByteFormat.string(keptSize)). Their build cache is still saving you time."
         }
-        return Finding(
+        let finding = Finding(
             id: "xcode.derivedData",
             area: .xcode,
             tier: .safe,
@@ -69,8 +86,9 @@ nonisolated enum XcodeScanner {
             actionTarget: context.tilde(root),
             items: items,
             note: note,
-            quitBundleID: "com.apple.dt.Xcode"
+            waitsFor: .xcode
         )
+        return (finding, protected)
     }
 
     private static func derivedDataEntry(_ folder: URL, context: ScanContext) -> (title: String, detail: String, lastUsed: Date?) {
@@ -158,30 +176,6 @@ nonisolated enum XcodeScanner {
         return nil
     }
 
-    // MARK: Caches
-
-    private static func caches(_ context: ScanContext) async -> Finding? {
-        let home = context.home
-        let items = await Sizing.items(prefix: "xcode.caches", from: [
-            PathCandidate(title: "Xcode cache", detail: "Downloads and temporary files Xcode keeps around",
-                          url: home.appending(path: "Library/Caches/com.apple.dt.Xcode")),
-            PathCandidate(title: "Simulator caches", detail: "Shared caches the simulators rebuild when they boot",
-                          url: home.appending(path: "Library/Developer/CoreSimulator/Caches")),
-        ], minimumSize: 20_000_000)
-        guard !items.isEmpty else { return nil }
-        return Finding(
-            id: "xcode.caches",
-            area: .xcode,
-            tier: .safe,
-            title: "Xcode caches",
-            summary: "Temporary files kept by Xcode and the simulators",
-            explanation: "Temporary files Xcode and the simulators recreate when they need them.",
-            method: .delete,
-            actionTarget: "~/Library/Caches/com.apple.dt.Xcode, ~/Library/Developer/CoreSimulator/Caches",
-            items: items
-        )
-    }
-
     // MARK: Simulators
 
     struct SimDeviceList: Decodable {
@@ -207,33 +201,45 @@ nonisolated enum XcodeScanner {
         var lastUsedAt: String?
     }
 
-    private static func simulators(_ context: ScanContext) -> Finding? {
-        guard let xcrun = Shell.which("xcrun") else { return nil }
+    private static func simulators(_ context: ScanContext) -> (finding: Finding?, protected: [ProtectedItem]) {
+        guard let xcrun = Shell.which("xcrun") else { return (nil, []) }
         var items: [FindingItem] = []
+        var protected: [ProtectedItem] = []
         if let output = Shell.run(xcrun, ["simctl", "list", "devices", "-j"], timeout: 40), output.succeeded {
-            items += deviceItems(fromJSON: output.stdout, xcrun: xcrun, context: context)
+            let report = deviceReport(fromJSON: output.stdout, xcrun: xcrun, context: context)
+            items += report.items
+            protected += report.protected
         }
         if let output = Shell.run(xcrun, ["simctl", "runtime", "list", "-j"], timeout: 40), output.succeeded {
-            items += runtimeItems(fromJSON: output.stdout, xcrun: xcrun, context: context)
+            let report = runtimeReport(fromJSON: output.stdout, xcrun: xcrun, context: context)
+            items += report.items
+            protected += report.protected
         }
-        guard !items.isEmpty else { return nil }
+        guard !items.isEmpty else { return (nil, protected) }
         items.sort { $0.size > $1.size }
-        return Finding(
+        let finding = Finding(
             id: "xcode.simulators",
             area: .xcode,
             tier: .review,
             title: "Simulator runtimes and devices",
             summary: "\(items.count) \(items.count == 1 ? "item" : "items") you have not used in \(context.staleDays)+ days",
-            explanation: "Runtimes and devices you have not used in a while. A runtime is a multi-gigabyte download from Xcode if you need it back, and a deleted device loses its installed apps and data.",
+            explanation: "Runtimes and devices you have not used in a while. A runtime is a multi-gigabyte download from Xcode if you need it back, and a deleted device loses its installed apps and data. Booted devices and the newest runtime for each platform are never offered.",
             method: .command,
             actionTarget: "xcrun simctl delete, xcrun simctl runtime delete",
             items: items
         )
+        return (finding, protected)
     }
 
     static func deviceItems(fromJSON json: String, xcrun: String, context: ScanContext) -> [FindingItem] {
-        guard let list = try? JSONDecoder().decode(SimDeviceList.self, from: Data(json.utf8)) else { return [] }
+        deviceReport(fromJSON: json, xcrun: xcrun, context: context).items
+    }
+
+    /// Devices worth offering, and the booted ones that were left alone.
+    static func deviceReport(fromJSON json: String, xcrun: String, context: ScanContext) -> (items: [FindingItem], protected: [ProtectedItem]) {
+        guard let list = try? JSONDecoder().decode(SimDeviceList.self, from: Data(json.utf8)) else { return ([], []) }
         var items: [FindingItem] = []
+        var protected: [ProtectedItem] = []
 
         let unavailable = list.devices.values.flatMap { $0 }.filter { $0.isAvailable == false }
         let unavailableSize = unavailable.reduce(Int64(0)) { $0 + ($1.dataPathSize ?? 0) }
@@ -248,24 +254,41 @@ nonisolated enum XcodeScanner {
         }
 
         for (runtimeKey, devices) in list.devices {
-            for device in devices where device.isAvailable != false && device.state != "Booted" {
+            for device in devices where device.isAvailable != false {
+                let title = "\(device.name) (\(runtimeName(fromKey: runtimeKey)))"
+                if device.state == "Booted" {
+                    protected.append(ProtectedItem(
+                        id: "xcode.simulators/booted/\(device.udid)",
+                        area: .xcode,
+                        title: title,
+                        why: "Booted right now",
+                        rule: .inUse,
+                        size: device.dataPathSize
+                    ))
+                    continue
+                }
                 guard let size = device.dataPathSize, size >= 200_000_000 else { continue }
                 let lastUsed = device.lastUsedAt.flatMap(date(from:))
                 if let lastUsed, lastUsed > context.staleCutoff { continue }
                 items.append(FindingItem(
                     id: "xcode.simulators/device/\(device.udid)",
-                    title: "\(device.name) (\(runtimeName(fromKey: runtimeKey)))",
+                    title: title,
                     detail: lastUsed.map { "Simulator device, last used \(context.relative($0))" } ?? "Simulator device, never used",
                     size: size,
                     command: [xcrun, "simctl", "delete", device.udid]
                 ))
             }
         }
-        return items
+        return (items, protected)
     }
 
     static func runtimeItems(fromJSON json: String, xcrun: String, context: ScanContext) -> [FindingItem] {
-        guard let runtimes = try? JSONDecoder().decode([String: SimRuntime].self, from: Data(json.utf8)) else { return [] }
+        runtimeReport(fromJSON: json, xcrun: xcrun, context: context).items
+    }
+
+    /// Runtimes worth offering, and the newest never-used one per platform that was kept.
+    static func runtimeReport(fromJSON json: String, xcrun: String, context: ScanContext) -> (items: [FindingItem], protected: [ProtectedItem]) {
+        guard let runtimes = try? JSONDecoder().decode([String: SimRuntime].self, from: Data(json.utf8)) else { return ([], []) }
         let ready = runtimes.values.filter { $0.deletable == true && $0.state == "Ready" }
         var newest: [String: [Int]] = [:]
         for runtime in ready {
@@ -275,24 +298,34 @@ nonisolated enum XcodeScanner {
         }
 
         var items: [FindingItem] = []
+        var protected: [ProtectedItem] = []
         for runtime in ready {
             guard let size = runtime.sizeBytes, size > 0 else { continue }
+            let title = "\(platformName(runtime.platformIdentifier)) \(runtime.version ?? "") Simulator runtime"
             let lastUsed = runtime.lastUsedAt.flatMap(date(from:))
             if let lastUsed {
                 if lastUsed > context.staleCutoff { continue }
             } else if newest[runtime.platformIdentifier ?? ""] == versionKey(runtime.version) {
                 // Never used, but the newest one for its platform: most likely just installed.
+                protected.append(ProtectedItem(
+                    id: "xcode.simulators/newest/\(runtime.identifier)",
+                    area: .xcode,
+                    title: title,
+                    why: "Newest \(platformName(runtime.platformIdentifier)) runtime on this Mac, kept by default",
+                    rule: .defaultVersion,
+                    size: size
+                ))
                 continue
             }
             items.append(FindingItem(
                 id: "xcode.simulators/runtime/\(runtime.identifier)",
-                title: "\(platformName(runtime.platformIdentifier)) \(runtime.version ?? "") Simulator runtime",
+                title: title,
                 detail: lastUsed.map { "Last used \(context.relative($0))" } ?? "Never used",
                 size: size,
                 command: [xcrun, "simctl", "runtime", "delete", runtime.identifier]
             ))
         }
-        return items
+        return (items, protected)
     }
 
     /// "com.apple.CoreSimulator.SimRuntime.iOS-17-0" -> "iOS 17.0"
@@ -352,5 +385,64 @@ nonisolated enum XcodeScanner {
             actionTarget: context.tilde(root),
             items: items
         )
+    }
+
+    // MARK: Older Xcode versions
+
+    /// Xcode bundles in /Applications other than the one `xcode-select` points at.
+    /// Switched off by the Advanced setting, which arrives here as an excluded id.
+    static func oldXcodes(_ context: ScanContext) async -> (finding: Finding?, protected: [ProtectedItem]) {
+        guard !context.excluded.contains(oldXcodesFindingID) else { return (nil, []) }
+        return await oldXcodes(others: GuardRoots.otherXcodes(), selected: GuardRoots.selectedXcode(), context: context)
+    }
+
+    /// The same, with the bundles passed in so a test can run it on a throwaway folder.
+    static func oldXcodes(others: [URL], selected: URL?, context: ScanContext,
+                          minimumSize: Int64 = 1_000_000_000) async -> (finding: Finding?, protected: [ProtectedItem]) {
+        guard !others.isEmpty else { return (nil, []) }
+        let keptName = selected.map { "\(xcodeTitle($0)) at \($0.path) is the selected version and is kept" }
+            ?? "The selected Xcode is kept"
+        let candidates = others.map { bundle in
+            PathCandidate(
+                title: xcodeTitle(bundle),
+                detail: "\(bundle.path). \(keptName)",
+                url: bundle,
+                hint: bundle.path
+            )
+        }
+        let items = await Sizing.items(prefix: oldXcodesFindingID, from: candidates, minimumSize: minimumSize)
+        var protected: [ProtectedItem] = []
+        if let selected {
+            protected.append(ProtectedItem(
+                id: "\(oldXcodesFindingID)/selected",
+                area: .xcode,
+                title: xcodeTitle(selected),
+                why: "The Xcode xcode-select points at. Never offered",
+                rule: .defaultVersion,
+                size: nil
+            ))
+        }
+        guard !items.isEmpty else { return (nil, protected) }
+        let finding = Finding(
+            id: oldXcodesFindingID,
+            area: .xcode,
+            tier: .careful,
+            title: "Older Xcode versions in Applications",
+            summary: "\(items.count) \(items.count == 1 ? "copy" : "copies") of Xcode besides the selected one",
+            explanation: "Whole Xcode installs that are not the one your tools use. Each is a multi-gigabyte download from Apple if a project turns out to need it. Moved to the Trash, so it can be put back.",
+            method: .trash,
+            actionTarget: "/Applications",
+            items: items
+        )
+        return (finding, protected)
+    }
+
+    /// "Xcode 16.4", from the bundle's Info.plist, or the folder name when there is none.
+    static func xcodeTitle(_ bundle: URL) -> String {
+        let info = Files.plist(at: bundle.appending(path: "Contents/Info.plist"))
+        guard let version = info?["CFBundleShortVersionString"] as? String else {
+            return bundle.deletingPathExtension().lastPathComponent
+        }
+        return "Xcode \(version)"
     }
 }

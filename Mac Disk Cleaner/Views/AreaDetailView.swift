@@ -12,19 +12,36 @@ struct AreaDetailView: View {
 
     var body: some View {
         let findings = model.findings(in: area)
+        let protected = model.protected(in: area)
         Group {
             if findings.isEmpty {
-                ContentUnavailableView {
-                    Label("Nothing to clean in \(area.title)", systemImage: "checkmark.circle")
-                } description: {
-                    Text(model.skipReason(for: area) ?? "The scan found nothing worth removing here.")
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 24) {
+                        ContentUnavailableView {
+                            Label("Nothing to clean in \(area.title)", systemImage: "checkmark.circle")
+                        } description: {
+                            Text(model.skipReason(for: area) ?? "The scan found nothing worth removing here.")
+                        }
+                        if !protected.isEmpty {
+                            ProtectedList(title: "Also found, left alone",
+                                          subtitle: "Why each one stays, so the number adds up.",
+                                          items: protected)
+                        }
+                    }
+                    .pageLayout()
                 }
             } else {
+                let active = model.activeChecks()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 24) {
                         summary(findings)
                         ForEach(findings) { finding in
-                            FindingCard(finding: finding)
+                            FindingCard(finding: finding, active: active[finding.id])
+                        }
+                        if !protected.isEmpty {
+                            ProtectedList(title: "Also found, left alone",
+                                          subtitle: "Why each one stays, so the number adds up.",
+                                          items: protected)
                         }
                     }
                     .pageLayout()
@@ -33,23 +50,36 @@ struct AreaDetailView: View {
                     ActionBar {
                         ActionSummary(
                             title: "\(ByteFormat.string(model.selectedSize(in: area))) selected in \(area.title)",
-                            detail: "What you tick here is part of the clean-up on the Overview."
+                            detail: footerDetail(findings)
                         )
                     } trailing: {
                         Button("Back to Overview") { model.select(.overview) }
                             .controlSize(.large)
-                        Button("Review and Clean \(ByteFormat.string(model.selectedSize))") {
+                        Button(reviewTitle) {
                             model.showingReview = true
                         }
                         .buttonStyle(.glassProminent)
                         .controlSize(.large)
-                        .disabled(model.selectedSize == 0)
+                        .disabled(model.selectedSize == 0 && !model.selectionHasUnknownSize)
                     }
                 }
             }
         }
         .navigationTitle(area.title)
         .navigationSubtitle(subtitle(findings))
+    }
+
+    private var reviewTitle: String {
+        let size = ByteFormat.string(model.selectedSize)
+        return model.selectionHasUnknownSize ? "Review and Clean at least \(size)" : "Review and Clean \(size)"
+    }
+
+    private func footerDetail(_ findings: [Finding]) -> String {
+        var text = "What you tick here is part of the clean-up on the Overview."
+        if findings.allSatisfy({ $0.method == .trash }) {
+            text += " These go to the Trash and can be put back."
+        }
+        return text
     }
 
     private func subtitle(_ findings: [Finding]) -> String {
@@ -60,11 +90,15 @@ struct AreaDetailView: View {
 
     private func summary(_ findings: [Finding]) -> some View {
         let total = model.foundSize(in: area)
+        var footnote = "of \(ByteFormat.string(total)) found."
+        if findings.allSatisfy({ $0.tier != .safe }) {
+            footnote += " Nothing here is ticked for you: each row is a guess backed by the evidence shown, and you decide."
+        }
         return VStack(alignment: .leading, spacing: 16) {
             HeroFigure(
                 caption: "Selected in \(area.title)",
                 bytes: model.selectedSize(in: area),
-                footnote: "of \(ByteFormat.string(total)) found",
+                footnote: footnote,
                 size: 44
             )
             if findings.count > 1 {
@@ -95,6 +129,7 @@ struct AreaDetailView: View {
 private struct FindingCard: View {
     @Environment(AppModel.self) private var model
     let finding: Finding
+    let active: InUseCheck?
 
     var body: some View {
         Card {
@@ -106,8 +141,9 @@ private struct FindingCard: View {
                     }
                     .toggleStyle(.checkbox)
                     TierBadge(tier: finding.tier)
+                    FindingBadges(finding: finding, active: active)
                     Spacer(minLength: 12)
-                    SizeLabel(bytes: finding.size)
+                    SizeLabel(bytes: finding.size, unknown: finding.hasUnknownSize && finding.size == 0)
                 }
                 Text(finding.explanation)
                     .font(.callout)
@@ -138,7 +174,7 @@ private struct FindingCard: View {
 
             ForEach(finding.items) { item in
                 Divider()
-                ItemRow(item: item, method: finding.method)
+                ItemRow(item: item, finding: finding)
             }
         }
     }
@@ -147,7 +183,7 @@ private struct FindingCard: View {
 private struct ItemRow: View {
     @Environment(AppModel.self) private var model
     let item: FindingItem
-    let method: CleanMethod
+    let finding: Finding
 
     var body: some View {
         HStack(spacing: 12) {
@@ -173,7 +209,7 @@ private struct ItemRow: View {
             }
             .toggleStyle(.checkbox)
             Spacer(minLength: 12)
-            SizeLabel(bytes: item.size)
+            SizeLabel(bytes: item.size, unknown: item.sizeUnknown)
             if let first = item.paths.first {
                 Button {
                     model.showInFinder(first)
@@ -185,8 +221,30 @@ private struct ItemRow: View {
                 .help("Show in Finder")
                 .accessibilityLabel("Show \(item.title) in Finder")
             }
+            Menu {
+                rowActions
+            } label: {
+                Image(systemName: "ellipsis")
+                    .frame(width: 24, height: 24)
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .frame(width: 28)
+            .help("More")
+            .accessibilityLabel("More actions for \(item.title)")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
+        .contextMenu { rowActions }
+    }
+
+    @ViewBuilder
+    private var rowActions: some View {
+        if let first = item.paths.first {
+            Button("Show in Finder") { model.showInFinder(first) }
+            Button("Copy Path") { model.copyPath(first) }
+            Divider()
+        }
+        Button("Never Suggest This") { model.neverSuggest(item, in: finding) }
     }
 }

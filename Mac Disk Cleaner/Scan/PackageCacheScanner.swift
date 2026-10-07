@@ -6,67 +6,91 @@
 import Foundation
 
 nonisolated enum PackageCacheScanner {
-    struct Cache {
-        var title: String
-        var path: String
-        var detail: String
-        var preselected: Bool? = nil
-    }
-
-    static let caches: [Cache] = [
-        Cache(title: "npm cache", path: ".npm/_cacache", detail: "Packages npm has downloaded"),
-        Cache(title: "npx cache", path: ".npm/_npx", detail: "Packages npx fetched to run once"),
-        Cache(title: "pnpm store", path: "Library/pnpm/store", detail: "Packages pnpm has downloaded. Installed projects keep working"),
-        Cache(title: "Yarn cache", path: "Library/Caches/Yarn", detail: "Packages Yarn has downloaded"),
-        Cache(title: "Yarn Berry cache", path: ".yarn/berry/cache", detail: "Packages Yarn has downloaded"),
-        Cache(title: "Bun cache", path: ".bun/install/cache", detail: "Packages Bun has downloaded"),
-        Cache(title: "CocoaPods cache", path: "Library/Caches/CocoaPods", detail: "Pods downloaded for past installs"),
-        Cache(title: "Dart and Flutter packages", path: ".pub-cache/hosted", detail: "Packages from pub.dev, fetched again by flutter pub get"),
-        Cache(title: "Dart packages from Git", path: ".pub-cache/git", detail: "Git dependencies, cloned again by flutter pub get"),
-        Cache(title: "Homebrew downloads", path: "Library/Caches/Homebrew", detail: "Installers for formulae and casks you already installed"),
-        Cache(title: "pip cache", path: "Library/Caches/pip", detail: "Wheels pip has downloaded or built"),
-        Cache(title: "uv cache", path: ".cache/uv", detail: "Packages uv has downloaded or built"),
-        Cache(title: "Poetry cache", path: "Library/Caches/pypoetry", detail: "Packages Poetry has downloaded"),
-        Cache(title: "Swift Package Manager cache", path: "Library/Caches/org.swift.swiftpm", detail: "Package checkouts, cloned again when resolved"),
-        Cache(title: "Carthage cache", path: "Library/Caches/org.carthage.CarthageKit", detail: "Dependencies Carthage has built"),
-        Cache(title: "Cargo registry", path: ".cargo/registry", detail: "Crates downloaded from crates.io"),
-        Cache(title: "Cargo Git checkouts", path: ".cargo/git", detail: "Git dependencies, cloned again by cargo build"),
-        Cache(title: "Go build cache", path: "Library/Caches/go-build", detail: "Compiled packages, rebuilt on the next go build"),
-        Cache(title: "Playwright browsers", path: "Library/Caches/ms-playwright", detail: "Browsers downloaded for tests"),
-        Cache(title: "Cypress binaries", path: "Library/Caches/Cypress", detail: "Cypress versions downloaded for tests"),
-        Cache(title: "Puppeteer browsers", path: ".cache/puppeteer", detail: "Browsers downloaded for automation"),
-        Cache(title: "Electron downloads", path: "Library/Caches/electron", detail: "Electron builds downloaded by npm"),
-        Cache(title: "node-gyp headers", path: "Library/Caches/node-gyp", detail: "Node headers for building native modules"),
-        Cache(title: "Maven repository", path: ".m2/repository",
-              detail: "Downloaded again by Maven, except anything you installed locally with mvn install",
-              preselected: false),
-    ]
-
     /// Folders in ~/Library/Caches that belong to this area, so the general cache scan skips them.
-    static let claimedCacheFolders: Set<String> = Set(caches.compactMap { cache in
-        let prefix = "Library/Caches/"
-        return cache.path.hasPrefix(prefix) ? String(cache.path.dropFirst(prefix.count)) : nil
-    })
+    static var claimedCacheFolders: Set<String> { Catalog.claimedCacheFolders }
 
     static func scan(_ context: ScanContext) async -> AreaScanResult {
-        let candidates = caches.map {
-            PathCandidate(title: $0.title, detail: $0.detail, url: context.home.appending(path: $0.path),
-                          preselected: $0.preselected, hint: "~/" + $0.path)
+        var findings: [Finding] = []
+        if let finding = await CatalogScanner.finding(for: Catalog.packageCaches, context: context) {
+            findings.append(finding)
         }
-        let items = await Sizing.items(prefix: "packages.caches", from: candidates, minimumSize: 5_000_000)
-        guard !items.isEmpty else { return AreaScanResult() }
-        let names = items.prefix(4).map(\.title).joined(separator: ", ")
-        let finding = Finding(
-            id: "packages.caches",
+        if let finding = await goModules(context) { findings.append(finding) }
+        if let finding = homebrew(context) { findings.append(finding) }
+        return AreaScanResult(findings: findings)
+    }
+
+    // MARK: Go
+
+    /// The Go module cache lives wherever `go env GOMODCACHE` says, which is ~/go/pkg/mod unless moved.
+    private static func goModules(_ context: ScanContext) async -> Finding? {
+        let group = Catalog.goModules
+        var path = context.home.appending(path: group.locations[0].path)
+        if let go = Shell.which("go"),
+           let output = Shell.run(go, ["env", "GOMODCACHE"], timeout: 15), output.succeeded {
+            let reported = output.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+            if reported.hasPrefix("/") { path = URL(fileURLWithPath: reported, isDirectory: true) }
+        }
+        let location = group.locations[0]
+        let candidate = PathCandidate(title: location.title, detail: location.detail, url: path,
+                                      preselected: location.preselected, hint: context.tilde(path))
+        let items = await Sizing.items(prefix: group.id, from: [candidate], minimumSize: group.minimumSize)
+        guard !items.isEmpty else { return nil }
+        return Finding(
+            id: group.id, area: group.area, tier: group.tier, title: group.title,
+            summary: context.tilde(path), explanation: group.explanation,
+            method: group.method, actionTarget: context.tilde(path), items: items
+        )
+    }
+
+    // MARK: Homebrew
+
+    /// Asks Homebrew what `brew cleanup` would remove. The dry run is the only way to get a size.
+    private static func homebrew(_ context: ScanContext) -> Finding? {
+        guard let brew = Shell.which("brew") else { return nil }
+        guard let output = Shell.run(brew, ["cleanup", "-n", "--prune=all"], timeout: 60), output.succeeded else { return nil }
+        let size = bytes(fromCleanupOutput: output.stdout)
+        guard size > 50_000_000 else { return nil }
+        let removals = output.stdout.split(whereSeparator: \.isNewline).filter { $0.hasPrefix("Would remove:") }.count
+        let item = FindingItem(
+            id: "packages.homebrew/cleanup",
+            title: "Old Homebrew versions and downloads",
+            detail: removals == 1 ? "1 item brew cleanup would remove" : "\(removals) items brew cleanup would remove",
+            size: size,
+            command: [brew, "cleanup", "--prune=all"]
+        )
+        return Finding(
+            id: "packages.homebrew",
             area: .packageCaches,
             tier: .safe,
-            title: "Package manager caches",
-            summary: names + (items.count > 4 ? " and \(items.count - 4) more" : ""),
-            explanation: "Copies of packages your package managers have already downloaded. Anything a project needs is fetched again the next time you install.",
-            method: .delete,
-            actionTarget: "Each package manager's cache folder",
-            items: items
+            title: "Old Homebrew versions and downloads",
+            summary: "What brew cleanup would remove, \(removals == 1 ? "1 item" : "\(removals) items")",
+            explanation: "Outdated versions of formulae and casks Homebrew keeps after upgrades, and downloads it has already installed. brew cleanup removes them; nothing you use goes away.",
+            method: .command,
+            actionTarget: "brew cleanup --prune=all",
+            items: [item]
         )
-        return AreaScanResult(findings: [finding])
+    }
+
+    /// "==> This operation would free approximately 2.4GB of disk space." -> 2_400_000_000.
+    /// Homebrew reports decimal units. Anything unexpected gives 0.
+    static func bytes(fromCleanupOutput output: String) -> Int64 {
+        let marker = "would free approximately "
+        for line in output.split(whereSeparator: \.isNewline).reversed() {
+            guard let range = line.range(of: marker) else { continue }
+            let rest = line[range.upperBound...]
+            guard let token = rest.split(separator: " ").first else { continue }
+            let number = token.prefix { $0.isNumber || $0 == "." || $0 == "," }
+            guard let value = Double(number.replacingOccurrences(of: ",", with: "")) else { return 0 }
+            let multiplier: Double = switch token.dropFirst(number.count).uppercased() {
+            case "KB": 1e3
+            case "MB": 1e6
+            case "GB": 1e9
+            case "TB": 1e12
+            case "B", "": 1
+            default: 0
+            }
+            return Int64((value * multiplier).rounded())
+        }
+        return 0
     }
 }

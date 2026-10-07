@@ -7,7 +7,8 @@ import Foundation
 
 /// A part of the disk the app knows how to look at.
 nonisolated enum Area: String, CaseIterable, Identifiable, Sendable {
-    case xcode, projects, android, docker, packageCaches, toolchains, cachesLogs, installersTrash
+    case xcode, projects, android, containers, packageCaches, toolchains, ides, models
+    case cachesLogs, installersTrash, leftovers, snapshots
 
     var id: String { rawValue }
 
@@ -16,24 +17,32 @@ nonisolated enum Area: String, CaseIterable, Identifiable, Sendable {
         case .xcode: "Xcode"
         case .projects: "Projects"
         case .android: "Android and Gradle"
-        case .docker: "Docker"
+        case .containers: "Containers and VMs"
         case .packageCaches: "Package caches"
         case .toolchains: "Toolchains"
+        case .ides: "IDEs and editors"
+        case .models: "AI models and datasets"
         case .cachesLogs: "Caches and logs"
         case .installersTrash: "Installers and Trash"
+        case .leftovers: "App leftovers"
+        case .snapshots: "Snapshots and backups"
         }
     }
 
     var summary: String {
         switch self {
-        case .xcode: "DerivedData, device support, simulators, archives"
-        case .projects: "node_modules, Pods and build folders in stale projects"
+        case .xcode: "DerivedData, device support, simulators, previews, archives, old Xcode versions"
+        case .projects: "node_modules, Pods, build and target folders in stale projects"
         case .android: "~/.gradle, emulators, SDK system images"
-        case .docker: "Unused images, stopped containers, build cache"
-        case .packageCaches: "npm, pnpm, Yarn, CocoaPods, pub, Homebrew and more"
-        case .toolchains: "Old JDKs, Node versions and SDKs"
-        case .cachesLogs: "~/Library/Caches and ~/Library/Logs"
-        case .installersTrash: "Disk images in Downloads, items in the Trash"
+        case .containers: "Docker, OrbStack, Colima, minikube: unused images, build cache, idle machines"
+        case .packageCaches: "npm, pnpm, Yarn, Go, Cargo, pip, Composer, gems, Homebrew and more"
+        case .toolchains: "Old JDKs, Node, Python, Ruby, Rust and Flutter versions"
+        case .ides: "VS Code, Cursor, JetBrains and Android Studio caches, logs and old versions"
+        case .models: "Hugging Face, Ollama, PyTorch and LM Studio downloads"
+        case .cachesLogs: "~/Library/Caches, app containers, your temp folder, logs and crash reports"
+        case .installersTrash: "Disk images, large old files in Downloads, items in the Trash"
+        case .leftovers: "Support files of apps that are no longer installed"
+        case .snapshots: "Time Machine local snapshots, iPhone backups"
         }
     }
 
@@ -42,18 +51,30 @@ nonisolated enum Area: String, CaseIterable, Identifiable, Sendable {
         case .xcode: "hammer"
         case .projects: "folder"
         case .android: "iphone"
-        case .docker: "shippingbox"
+        case .containers: "shippingbox"
         case .packageCaches: "archivebox"
         case .toolchains: "terminal"
+        case .ides: "chevron.left.forwardslash.chevron.right"
+        case .models: "brain"
         case .cachesLogs: "doc.text"
         case .installersTrash: "trash"
+        case .leftovers: "app.dashed"
+        case .snapshots: "clock.arrow.circlepath"
         }
     }
 
     var isDeveloper: Bool {
         switch self {
-        case .cachesLogs, .installersTrash: false
+        case .cachesLogs, .installersTrash, .leftovers, .snapshots: false
         default: true
+        }
+    }
+
+    /// Areas added in version 2, called out on the home screen.
+    var isNew: Bool {
+        switch self {
+        case .ides, .models, .leftovers, .snapshots: true
+        default: false
         }
     }
 }
@@ -83,7 +104,7 @@ nonisolated enum SafetyTier: Int, CaseIterable, Comparable, Sendable {
     var explanation: String {
         switch self {
         case .safe: "Caches and build output. Your tools recreate them the next time they run."
-        case .review: "Removable, but you would have to fetch or set these up again."
+        case .review: "Removable, but you would have to fetch or set these up again. Goes to the Trash, so it can be put back."
         case .careful: "Never selected for you. Remove only if you are sure."
         }
     }
@@ -93,16 +114,59 @@ nonisolated enum SafetyTier: Int, CaseIterable, Comparable, Sendable {
 nonisolated enum CleanMethod: Sendable, Hashable {
     /// Removed for good, right away.
     case delete
-    /// Moved to the Trash, so space comes back once the Trash is emptied.
+    /// Moved to the Trash, so space comes back once the Trash is emptied, and it can be put back.
     case trash
     /// Handed to the tool that owns the data, such as `docker` or `xcrun simctl`.
     case command
+    /// A command that only root may run. macOS asks for the password; nothing else does.
+    case adminCommand
 
     var verb: String {
         switch self {
         case .delete: "Deletes"
         case .trash: "Moves to Trash"
         case .command: "Runs"
+        case .adminCommand: "Runs with your password"
+        }
+    }
+
+    var needsPassword: Bool { self == .adminCommand }
+}
+
+/// Something that has to be closed or stopped before a finding can be cleaned.
+/// Nothing is ever quit or stopped on the user's behalf: the step simply waits for next time.
+nonisolated enum InUseCheck: Sendable, Hashable {
+    /// An app, by bundle identifier, with the name the user knows it by.
+    case app(bundleID: String, name: String)
+    /// A background process, matched by `pgrep -f` pattern, with what the user can do about it.
+    case process(pattern: String, name: String, remedy: String)
+
+    static let xcode = InUseCheck.app(bundleID: "com.apple.dt.Xcode", name: "Xcode")
+    static let gradleDaemon = InUseCheck.process(pattern: "GradleDaemon", name: "A Gradle daemon",
+                                                remedy: "Run gradle --stop")
+
+    var name: String {
+        switch self {
+        case .app(_, let name): name
+        case .process(_, let name, _): name
+        }
+    }
+
+    /// The sentence shown on the receipt when the step was left alone.
+    var skipReason: String {
+        switch self {
+        case .app(_, let name):
+            "\(name) was open, so this was left alone. Quit \(name) and clean again to include it."
+        case .process(_, let name, let remedy):
+            "\(name) was running, so this was left alone. \(remedy) and clean again to include it."
+        }
+    }
+
+    /// The short badge on a row.
+    var badge: String {
+        switch self {
+        case .app(_, let name): "Waits for \(name)"
+        case .process(_, let name, _): "\(name) running"
         }
     }
 }
@@ -119,6 +183,8 @@ nonisolated struct FindingItem: Identifiable, Sendable, Hashable {
     var preselected: Bool? = nil
     /// Shown in monospace under the detail, such as the command that brings a project back.
     var hint: String? = nil
+    /// macOS gives no size for this, so `size` is 0 and the row says so instead of showing a number.
+    var sizeUnknown: Bool = false
 }
 
 /// A suggestion: a group of items that share a location, a risk level and a way of being removed.
@@ -134,14 +200,38 @@ nonisolated struct Finding: Identifiable, Sendable {
     var actionTarget: String
     var items: [FindingItem]
     var note: String? = nil
-    /// An app that should quit before this finding is cleaned.
-    var quitBundleID: String? = nil
+    /// Something that must not be running while this finding is cleaned.
+    var waitsFor: InUseCheck? = nil
 
     var size: Int64 { items.reduce(0) { $0 + $1.size } }
+    var hasUnknownSize: Bool { items.contains(where: \.sizeUnknown) }
+}
+
+/// Why something that could have been offered was left alone.
+nonisolated enum ProtectionRule: String, Sendable, CaseIterable {
+    case recentlyUsed = "Recently used"
+    case inUse = "In use"
+    case protectedList = "Protected list"
+    case neverSuggest = "Never Suggest"
+    case defaultVersion = "Default version"
+    case otherDisk = "Other disk"
+    case shownOnly = "Shown only"
+}
+
+/// Something the scan found and deliberately did not offer, so the numbers add up.
+nonisolated struct ProtectedItem: Identifiable, Sendable, Hashable {
+    var id: String
+    var area: Area
+    var title: String
+    var why: String
+    var rule: ProtectionRule
+    /// Nil when measuring it would have cost more than it is worth.
+    var size: Int64?
 }
 
 nonisolated struct AreaScanResult: Sendable {
     var findings: [Finding] = []
+    var protected: [ProtectedItem] = []
     /// Why the area produced nothing, when that is worth telling the user.
     var skipReason: String? = nil
     /// Folders macOS would not let the app read, named the way the user knows them.
@@ -154,10 +244,15 @@ nonisolated struct ScanContext: Sendable {
     var now = Date()
     var staleDays = 60
     var recentBuildDays = 7
+    /// How old a large file in Downloads must be before it is offered.
+    var largeFileDays = 90
     var projectRoots: [URL] = []
+    /// Paths the user never wants to see again, as the Never Suggest list stores them.
+    var excluded: [String] = []
 
     var staleCutoff: Date { now.addingTimeInterval(-Double(staleDays) * 86_400) }
     var recentBuildCutoff: Date { now.addingTimeInterval(-Double(recentBuildDays) * 86_400) }
+    var largeFileCutoff: Date { now.addingTimeInterval(-Double(largeFileDays) * 86_400) }
 
     /// The path with the home folder written as `~`.
     func tilde(_ url: URL) -> String {
@@ -173,14 +268,22 @@ nonisolated struct ScanContext: Sendable {
         formatter.unitsStyle = .full
         return formatter.localizedString(for: date, relativeTo: now)
     }
+
+    /// Whether the user asked never to see this path again.
+    func isExcluded(_ url: URL) -> Bool {
+        let path = url.standardizedFileURL.path
+        return excluded.contains { path == $0 || path.hasPrefix($0 + "/") }
+    }
 }
 
 nonisolated struct DiskInfo: Sendable, Equatable {
     var name: String
     var capacity: Int64
     var free: Int64
+    /// Space macOS can evict on its own, such as iCloud copies and local snapshots.
+    var purgeable: Int64 = 0
 
-    var used: Int64 { max(0, capacity - free) }
+    var used: Int64 { max(0, capacity - free - purgeable) }
     var isLow: Bool { capacity > 0 && (Double(free) / Double(capacity) < 0.10 || free < 20_000_000_000) }
 
     static func current(for location: URL = FileManager.default.homeDirectoryForCurrentUser) -> DiskInfo {
@@ -190,7 +293,13 @@ nonisolated struct DiskInfo: Sendable, Equatable {
             .volumeTotalCapacityKey, .volumeAvailableCapacityForImportantUsageKey, .volumeAvailableCapacityKey,
         ])
         let name = (try? URL(fileURLWithPath: "/").resourceValues(forKeys: [.volumeNameKey]))?.volumeName
-        let free = values?.volumeAvailableCapacityForImportantUsage ?? Int64(values?.volumeAvailableCapacity ?? 0)
-        return DiskInfo(name: name ?? "Macintosh HD", capacity: Int64(values?.volumeTotalCapacity ?? 0), free: free)
+        let available = Int64(values?.volumeAvailableCapacity ?? 0)
+        let important = values?.volumeAvailableCapacityForImportantUsage ?? available
+        return DiskInfo(
+            name: name ?? "Macintosh HD",
+            capacity: Int64(values?.volumeTotalCapacity ?? 0),
+            free: available,
+            purgeable: max(0, important - available)
+        )
     }
 }

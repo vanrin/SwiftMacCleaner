@@ -5,30 +5,118 @@
 
 import Foundation
 
-/// The last line of defence before anything is removed: only paths well inside `root` pass.
+/// The last line of defence before anything is removed.
+///
+/// A path passes only when it sits well inside one of the roots, is not on the protected list,
+/// does not live in iCloud, and is on the same volume as the home folder. Scanners are expected
+/// to follow the same rules; the guard is there for the day one of them does not.
 nonisolated struct SafetyGuard: Sendable {
+    /// The home folder: the main place things are cleaned.
     var root: URL
+    /// Folders outside home whose direct children may be removed, such as the per-user temp folder.
+    var extraRoots: [URL] = []
+    /// Application bundles that may be moved to the Trash whole, such as an Xcode that is not selected.
+    var allowedApplications: [URL] = []
+    /// Paths the user never wants touched, as stored in the Never Suggest list.
+    var neverSuggest: [String] = []
 
-    func allows(_ url: URL) -> Bool {
-        let rootPath = root.resolvingSymlinksInPath().path
+    /// Places inside home that hold things no cleaner should ever touch, relative to home.
+    static let protectedPrefixes: [String] = [
+        "Library/Mobile Documents", "Library/CloudStorage", "Library/Mail", "Library/Messages",
+        "Library/Keychains", "Library/Accounts", "Library/Cookies", "Library/Photos",
+        "Library/Application Support/MobileSync/Backup", "Library/Application Support/AddressBook",
+        "Library/Application Support/CallHistoryDB", "Library/Application Support/com.apple.sharedfilelist",
+        "Library/Application Support/Knowledge", "Library/Group Containers/group.com.apple.notes",
+        "Library/Containers/com.apple.mail", "Library/Containers/com.apple.Notes",
+        "Library/Containers/com.apple.Photos", "Library/Containers/com.apple.MobileSMS",
+        ".ssh", ".gnupg", ".aws", ".kube", ".config/gcloud", ".password-store",
+    ]
+
+    /// Folder names that mark something as a repository or a library, never to be removed or entered.
+    static let protectedComponents: Set<String> = [".git", ".hg", ".svn"]
+    static let protectedExtensions: Set<String> = ["photoslibrary", "aplibrary", "musiclibrary", "tvlibrary", "keychain-db"]
+
+    /// Careful findings may name an iPhone backup explicitly; nothing else may reach into it.
+    var backupsAllowed = false
+
+    func allows(_ url: URL) -> Bool { refusal(for: url) == nil }
+
+    /// Nil when the path may be removed, otherwise the reason it may not.
+    func refusal(for url: URL) -> String? {
         let target = url.standardizedFileURL
         // Resolve the parent, not the item: a symlink is removed as a link, never followed.
         let parent = target.deletingLastPathComponent().resolvingSymlinksInPath().path
         let resolved = (parent == "/" ? "" : parent) + "/" + target.lastPathComponent
-        guard resolved.hasPrefix(rootPath + "/") else { return false }
+        let components = resolved.split(separator: "/").map(String.init)
+        guard !components.contains(".."), !components.isEmpty else { return "outside the allowed area" }
 
-        let components = resolved.dropFirst(rootPath.count + 1).split(separator: "/")
-        // Never a direct child of the root (Documents, Library, .gradle itself...).
-        guard components.count >= 2, !components.contains("..") else { return false }
-        // Inside Library, never a whole top-level folder such as Library/Caches.
-        if components[0] == "Library", components.count < 3 { return false }
-        return true
+        if neverSuggest.contains(where: { resolved == $0 || resolved.hasPrefix($0 + "/") }) {
+            return "on your Never Suggest list"
+        }
+        if let reason = structuralRefusal(resolved: resolved) { return reason }
+        if let reason = contentRefusal(resolved: resolved) { return reason }
+        return nil
+    }
+
+    private func structuralRefusal(resolved: String) -> String? {
+        let rootPath = root.resolvingSymlinksInPath().path
+        if resolved.hasPrefix(rootPath + "/") {
+            let relative = Array(resolved.dropFirst(rootPath.count + 1).split(separator: "/").map(String.init))
+            // Never a direct child of the root (Documents, Library, .gradle itself...).
+            guard relative.count >= 2 else { return "a whole top-level folder" }
+            // Inside Library, never a whole top-level folder such as Library/Caches.
+            if relative[0] == "Library", relative.count < 3 { return "a whole Library folder" }
+            let relativePath = relative.joined(separator: "/")
+            for prefix in Self.protectedPrefixes
+            where relativePath == prefix || relativePath.hasPrefix(prefix + "/") {
+                if backupsAllowed, prefix.hasSuffix("MobileSync/Backup"), relative.count == 5 { continue }
+                return "on the protected list"
+            }
+            if relative.contains(where: Self.protectedComponents.contains) { return "part of a repository" }
+            if relative.contains(where: { Self.protectedExtensions.contains(($0 as NSString).pathExtension.lowercased()) }) {
+                return "a library macOS manages"
+            }
+            return nil
+        }
+        for extra in extraRoots {
+            let extraPath = extra.resolvingSymlinksInPath().path
+            if resolved.hasPrefix(extraPath + "/") {
+                let depth = resolved.dropFirst(extraPath.count + 1).split(separator: "/").count
+                return depth >= 1 ? nil : "a whole temp folder"
+            }
+        }
+        if allowedApplications.contains(where: { $0.standardizedFileURL.path == resolved }) {
+            return nil
+        }
+        return "outside the allowed area"
+    }
+
+    /// Rules that need a look at the item itself. A path that does not exist is left to the caller.
+    private func contentRefusal(resolved: String) -> String? {
+        let url = URL(fileURLWithPath: resolved)
+        guard let values = try? url.resourceValues(forKeys: [.isUbiquitousItemKey, .volumeIdentifierKey]) else {
+            return nil
+        }
+        if values.isUbiquitousItem == true { return "kept in iCloud" }
+        if let volume = values.volumeIdentifier as? NSObject,
+           let home = (try? root.resourceValues(forKeys: [.volumeIdentifierKey]))?.volumeIdentifier as? NSObject,
+           !volume.isEqual(home) {
+            return "on another disk"
+        }
+        return nil
     }
 }
 
 nonisolated struct CleanProgress: Sendable, Equatable {
     var fraction: Double
     var status: String
+}
+
+/// Where something moved to the Trash came from, so it can be put back.
+nonisolated struct TrashedItem: Sendable, Codable, Hashable {
+    var original: URL
+    var inTrash: URL
+    var size: Int64
 }
 
 nonisolated struct StepOutcome: Identifiable, Sendable {
@@ -38,9 +126,12 @@ nonisolated struct StepOutcome: Identifiable, Sendable {
     var size: Int64
     var cleanedItemIDs: [String]
     var failures: [String]
+    /// Items left alone because they changed after the scan, with the sentence for the receipt.
+    var skippedItems: [String: String] = [:]
     var skippedReason: String?
+    var trashed: [TrashedItem] = []
 
-    var succeeded: Bool { failures.isEmpty && skippedReason == nil }
+    var succeeded: Bool { failures.isEmpty && skippedReason == nil && skippedItems.isEmpty }
 }
 
 nonisolated struct CleanOutcome: Sendable {
@@ -50,11 +141,14 @@ nonisolated struct CleanOutcome: Sendable {
     var trashedSize: Int64
     var duration: TimeInterval
     var logURL: URL?
+    var started: Date
 
     /// What the volume actually gained, which is the only number worth promising.
     var reclaimed: Int64 { max(0, freeAfter - freeBefore) }
     var failureCount: Int { steps.reduce(0) { $0 + $1.failures.count } }
     var cleanedItemIDs: Set<String> { Set(steps.flatMap(\.cleanedItemIDs)) }
+    var trashed: [TrashedItem] { steps.flatMap(\.trashed) }
+    var skippedSize: Int64 { steps.filter { $0.skippedReason != nil }.reduce(0) { $0 + $1.size } }
 }
 
 nonisolated enum CleanLog {
@@ -77,11 +171,13 @@ nonisolated enum CleanLog {
 
 nonisolated enum Cleaner {
     /// Carries out the plan. `skipping` maps step ids to the reason they must be left alone.
+    /// `scannedAt` is when the findings were measured: anything changed since is left alone too.
     @concurrent
     static func run(
         plan: CleanPlan,
         safety: SafetyGuard,
         skipping: [String: String] = [:],
+        scannedAt: Date? = nil,
         progress: @escaping @Sendable (CleanProgress) -> Void
     ) async -> CleanOutcome {
         let started = Date()
@@ -103,31 +199,41 @@ nonisolated enum Cleaner {
             }
             progress(CleanProgress(fraction: Double(finished) / Double(operationCount), status: step.title))
 
-            var failures: [String] = []
+            var outcome = StepOutcome(id: step.id, title: step.title, method: step.method, size: step.size,
+                                      cleanedItemIDs: [], failures: [], skippedReason: nil)
             var failedItems = Set<String>()
             for operation in step.operations {
                 if Task.isCancelled {
-                    failures.append("Stopped before finishing")
+                    outcome.failures.append("Stopped before finishing")
                     failedItems.formUnion(step.operations.map(\.itemID))
                     break
                 }
-                if let failure = perform(operation, safety: safety) {
-                    failures.append(failure)
+                if let scannedAt, let change = changedSinceScan(operation, scannedAt: scannedAt) {
+                    outcome.skippedItems[operation.itemID] = change
                     failedItems.insert(operation.itemID)
-                    log.append("FAILED  \(failure)")
+                    log.append("skipped \(change)")
                 } else {
-                    log.append("ok      \(describe(operation))")
+                    switch perform(operation, safety: safety) {
+                    case .failed(let failure):
+                        outcome.failures.append(failure)
+                        failedItems.insert(operation.itemID)
+                        log.append("FAILED  \(failure)")
+                    case .trashed(let item):
+                        outcome.trashed.append(item)
+                        log.append("ok      trashed \(item.original.path) -> \(item.inTrash.path)")
+                    case .done:
+                        log.append("ok      \(describe(operation))")
+                    }
                 }
                 finished += 1
                 progress(CleanProgress(fraction: Double(finished) / Double(operationCount), status: step.title))
             }
 
-            var cleaned: [String] = []
-            for operation in step.operations where !failedItems.contains(operation.itemID) && !cleaned.contains(operation.itemID) {
-                cleaned.append(operation.itemID)
+            for operation in step.operations
+            where !failedItems.contains(operation.itemID) && !outcome.cleanedItemIDs.contains(operation.itemID) {
+                outcome.cleanedItemIDs.append(operation.itemID)
             }
-            outcomes.append(StepOutcome(id: step.id, title: step.title, method: step.method, size: step.size,
-                                        cleanedItemIDs: cleaned, failures: failures, skippedReason: nil))
+            outcomes.append(outcome)
         }
 
         let freeAfter = DiskInfo.current(for: safety.root).free
@@ -137,56 +243,110 @@ nonisolated enum Cleaner {
             steps: outcomes,
             freeBefore: freeBefore,
             freeAfter: freeAfter,
-            trashedSize: outcomes.filter { $0.method == .trash && $0.skippedReason == nil }.reduce(0) { $0 + $1.size },
+            trashedSize: outcomes.flatMap(\.trashed).reduce(0) { $0 + $1.size },
             duration: Date().timeIntervalSince(started),
-            logURL: CleanLog.write(log, home: safety.root, date: started)
+            logURL: CleanLog.write(log, home: safety.root, date: started),
+            started: started
         )
     }
 
-    /// Returns `nil` on success, or a sentence describing what went wrong.
-    static func perform(_ operation: CleanOperation, safety: SafetyGuard) -> String? {
+    /// The freshness check: a sentence when the item, or anything directly inside it, changed after the scan.
+    static func changedSinceScan(_ operation: CleanOperation, scannedAt: Date) -> String? {
+        let url: URL
+        switch operation.kind {
+        case .delete(let target), .trash(let target): url = target
+        case .run, .runAsAdmin: return nil
+        }
+        guard let newest = newestChange(in: url), newest > scannedAt.addingTimeInterval(1) else { return nil }
+        return "\(url.path): changed since the scan, so it was left alone"
+    }
+
+    /// The item's own modification date, or the newest among it and its direct children for a folder.
+    static func newestChange(in url: URL) -> Date? {
+        let keys: Set<URLResourceKey> = [.contentModificationDateKey, .isDirectoryKey]
+        guard let values = try? url.resourceValues(forKeys: keys), var newest = values.contentModificationDate else {
+            return nil
+        }
+        if values.isDirectory == true,
+           let children = try? FileManager.default.contentsOfDirectory(at: url, includingPropertiesForKeys: [.contentModificationDateKey], options: []) {
+            for child in children {
+                if let date = (try? child.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate, date > newest {
+                    newest = date
+                }
+            }
+        }
+        return newest
+    }
+
+    enum Result: Sendable {
+        case done
+        case trashed(TrashedItem)
+        case failed(String)
+
+        /// The sentence describing what went wrong, or nil when the operation went through.
+        var failure: String? {
+            if case .failed(let reason) = self { return reason }
+            return nil
+        }
+    }
+
+    /// Carries out one operation and says what happened.
+    static func perform(_ operation: CleanOperation, safety: SafetyGuard) -> Result {
         let fileManager = FileManager.default
         switch operation.kind {
         case .delete(let url):
-            guard safety.allows(url) else { return "Refused to delete \(url.path): outside the allowed area" }
+            if let reason = safety.refusal(for: url) { return .failed("Refused to delete \(url.path): \(reason)") }
             // attributesOfItem does not follow a final symlink, so a dangling link still counts as present.
-            guard (try? fileManager.attributesOfItem(atPath: url.path)) != nil else { return nil }
+            guard (try? fileManager.attributesOfItem(atPath: url.path)) != nil else { return .done }
             do {
                 try fileManager.removeItem(at: url)
-                return nil
+                return .done
             } catch {
                 // Some caches are written read-only; open them up and try once more.
                 makeWritable(url)
                 do {
                     try fileManager.removeItem(at: url)
-                    return nil
+                    return .done
                 } catch {
-                    return "Could not delete \(url.path): \(error.localizedDescription)"
+                    return .failed("Could not delete \(url.path): \(error.localizedDescription)")
                 }
             }
         case .trash(let url):
-            guard safety.allows(url) else { return "Refused to move \(url.path): outside the allowed area" }
-            guard (try? fileManager.attributesOfItem(atPath: url.path)) != nil else { return nil }
+            if let reason = safety.refusal(for: url) { return .failed("Refused to move \(url.path): \(reason)") }
+            guard (try? fileManager.attributesOfItem(atPath: url.path)) != nil else { return .done }
             do {
-                try fileManager.trashItem(at: url, resultingItemURL: nil)
-                return nil
+                var destination: NSURL?
+                try fileManager.trashItem(at: url, resultingItemURL: &destination)
+                guard let destination else { return .done }
+                return .trashed(TrashedItem(original: url, inTrash: destination as URL, size: operation.size))
             } catch {
-                return "Could not move \(url.path) to the Trash: \(error.localizedDescription)"
+                return .failed("Could not move \(url.path) to the Trash: \(error.localizedDescription)")
             }
         case .run(let command):
-            guard let executable = command.first else { return "Empty command" }
-            let text = command.map { ($0 as NSString).lastPathComponent == $0 ? $0 : URL(fileURLWithPath: $0).lastPathComponent }
-                .joined(separator: " ")
-            guard let output = Shell.run(executable, Array(command.dropFirst()), timeout: 600) else {
-                return "Could not start \(text)"
-            }
-            if output.timedOut { return "\(text) did not finish in time" }
-            if output.status != 0 {
-                let reason = output.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
-                return "\(text) failed" + (reason.isEmpty ? "" : ": \(reason)")
-            }
-            return nil
+            return runCommand(command, asAdmin: false)
+        case .runAsAdmin(let command):
+            return runCommand(command, asAdmin: true)
         }
+    }
+
+    private static func runCommand(_ command: [String], asAdmin: Bool) -> Result {
+        guard let executable = command.first else { return .failed("Empty command") }
+        let text = command.map { URL(fileURLWithPath: $0).lastPathComponent == $0 ? $0 : URL(fileURLWithPath: $0).lastPathComponent }
+            .joined(separator: " ")
+        let output: Shell.Output?
+        if asAdmin {
+            output = Shell.runAsAdministrator(command, timeout: 600)
+        } else {
+            output = Shell.run(executable, Array(command.dropFirst()), timeout: 600)
+        }
+        guard let output else { return .failed("Could not start \(text)") }
+        if output.timedOut { return .failed("\(text) did not finish in time") }
+        if output.status != 0 {
+            let reason = output.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+            if asAdmin, reason.contains("-128") { return .failed("\(text) was skipped: the password prompt was cancelled") }
+            return .failed("\(text) failed" + (reason.isEmpty ? "" : ": \(reason)"))
+        }
+        return .done
     }
 
     private static func describe(_ operation: CleanOperation) -> String {
@@ -194,6 +354,7 @@ nonisolated enum Cleaner {
         case .delete(let url): "deleted \(url.path)"
         case .trash(let url): "trashed \(url.path)"
         case .run(let command): "ran \(command.joined(separator: " "))"
+        case .runAsAdmin(let command): "ran as administrator \(command.joined(separator: " "))"
         }
     }
 
@@ -205,5 +366,67 @@ nonisolated enum Cleaner {
         for case let child as URL in enumerator where (try? child.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
             try? fileManager.setAttributes([.posixPermissions: owner], ofItemAtPath: child.path)
         }
+    }
+}
+
+/// Puts back what the last clean moved to the Trash, as long as the Trash has not been emptied.
+nonisolated enum PutBack {
+    static let manifestName = "last-clean.json"
+
+    nonisolated struct Manifest: Codable, Sendable {
+        var date: Date
+        var items: [TrashedItem]
+    }
+
+    static func manifestURL(home: URL) -> URL {
+        home.appending(path: "Library/Application Support").appending(path: CleanLog.folderName).appending(path: manifestName)
+    }
+
+    static func save(_ outcome: CleanOutcome, home: URL) {
+        let url = manifestURL(home: home)
+        let manifest = Manifest(date: outcome.started, items: outcome.trashed)
+        guard !manifest.items.isEmpty else {
+            try? FileManager.default.removeItem(at: url)
+            return
+        }
+        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? JSONEncoder().encode(manifest).write(to: url)
+    }
+
+    /// The items from the last clean that are still waiting in the Trash.
+    static func pending(home: URL) -> Manifest? {
+        guard let data = try? Data(contentsOf: manifestURL(home: home)),
+              var manifest = try? JSONDecoder().decode(Manifest.self, from: data) else { return nil }
+        manifest.items.removeAll { !Files.exists($0.inTrash) }
+        return manifest.items.isEmpty ? nil : manifest
+    }
+
+    /// Moves every item back where it was. Returns the ones it could not restore, with the reason.
+    static func restore(_ manifest: Manifest, home: URL) -> [String] {
+        var failures: [String] = []
+        var remaining: [TrashedItem] = []
+        let fileManager = FileManager.default
+        for item in manifest.items {
+            guard Files.exists(item.inTrash) else { continue }
+            if Files.exists(item.original) {
+                failures.append("\(item.original.path) already exists, so the copy in the Trash was left there")
+                remaining.append(item)
+                continue
+            }
+            do {
+                try fileManager.createDirectory(at: item.original.deletingLastPathComponent(), withIntermediateDirectories: true)
+                try fileManager.moveItem(at: item.inTrash, to: item.original)
+            } catch {
+                failures.append("Could not put back \(item.original.path): \(error.localizedDescription)")
+                remaining.append(item)
+            }
+        }
+        let url = manifestURL(home: home)
+        if remaining.isEmpty {
+            try? fileManager.removeItem(at: url)
+        } else {
+            try? JSONEncoder().encode(Manifest(date: manifest.date, items: remaining)).write(to: url)
+        }
+        return failures
     }
 }
