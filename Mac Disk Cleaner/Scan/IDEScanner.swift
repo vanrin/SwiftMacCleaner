@@ -55,17 +55,31 @@ nonisolated enum IDEScanner {
         }
 
         if !old.isEmpty {
-            let sizes = await Sizing.sizes(of: old.flatMap(\.folders))
+            // An older version that still writes logs is the one actually in use, newer install or not.
+            let (stillUsed, unused) = old.partitioned { install in
+                guard let used = lastUsed(install) else { return false }
+                return used > context.staleCutoff
+            }
+            for install in stillUsed {
+                result.protected.append(ProtectedItem(
+                    id: "ides.recent/\(install.product)\(install.version)", area: .ides,
+                    title: "\(friendlyName(install.product)) \(install.version)",
+                    why: "Used \(context.relative(lastUsed(install) ?? context.now)), even though a newer version is installed",
+                    rule: .recentlyUsed, size: nil
+                ))
+            }
+            let sizes = await Sizing.sizes(of: unused.flatMap(\.folders))
             var items: [FindingItem] = []
-            for install in old {
+            for install in unused {
                 let size = install.folders.reduce(Int64(0)) { $0 + (sizes[$1] ?? 0) }
                 guard size >= 1_000_000 else { continue }
                 let kinds = [install.support.map { _ in "settings" }, install.caches.map { _ in "caches" }, install.logs.map { _ in "logs" }]
                     .compactMap { $0 }.joined(separator: ", ")
+                let used = lastUsed(install).map { "last used \(context.relative($0))" } ?? "not used in \(context.staleDays)+ days"
                 items.append(FindingItem(
                     id: "ides.oldVersions/\(install.product)\(install.version)",
                     title: "\(friendlyName(install.product)) \(install.version)",
-                    detail: "\(kinds.prefix(1).uppercased() + kinds.dropFirst()) of a version you no longer run",
+                    detail: "\(kinds.prefix(1).uppercased() + kinds.dropFirst()) of a version you no longer run, \(used)",
                     size: size,
                     paths: install.folders
                 ))
@@ -113,6 +127,11 @@ nonisolated enum IDEScanner {
             }
         }
         return byKey.values.sorted { ($0.product, $0.version) < ($1.product, $1.version) }
+    }
+
+    /// When the IDE last wrote to this version's folders: its logs change on every launch.
+    static func lastUsed(_ install: Install) -> Date? {
+        install.folders.compactMap { Cleaner.newestChange(in: $0) }.max()
     }
 
     /// The newest version of each product, and everything older.

@@ -65,26 +65,38 @@ struct IDEScannerTests {
     @Test func keepsTheNewestVersionOfEachProductAndOffersTheRest() async throws {
         let sandbox = try Sandbox()
         defer { sandbox.remove() }
-        try sandbox.file("Library/Caches/JetBrains/IntelliJIdea2025.2/index/a.bin", bytes: 11_000_000)
-        try sandbox.file("Library/Application Support/JetBrains/IntelliJIdea2025.2/options/ide.xml", bytes: 2_000_000)
+        // 2025.2 has not been opened for months; 2025.3 and Android Studio run daily.
+        for path in ["Library/Caches/JetBrains/IntelliJIdea2025.2/index/a.bin", "Library/Caches/JetBrains/IntelliJIdea2025.2/index",
+                     "Library/Caches/JetBrains/IntelliJIdea2025.2"] {
+            if path.hasSuffix(".bin") { try sandbox.file(path, bytes: 11_000_000, age: 200) } else { try sandbox.setAge(200, of: sandbox.root.appending(path: path)) }
+        }
+        try sandbox.file("Library/Application Support/JetBrains/IntelliJIdea2025.2/options/ide.xml", bytes: 2_000_000, age: 200)
+        try sandbox.setAge(200, of: sandbox.root.appending(path: "Library/Application Support/JetBrains/IntelliJIdea2025.2/options"))
+        try sandbox.setAge(200, of: sandbox.root.appending(path: "Library/Application Support/JetBrains/IntelliJIdea2025.2"))
         try sandbox.file("Library/Caches/JetBrains/IntelliJIdea2025.3/index/a.bin", bytes: 11_000_000)
         try sandbox.file("Library/Logs/JetBrains/IntelliJIdea2025.3/idea.log", bytes: 11_000_000)
         try sandbox.file("Library/Caches/Google/AndroidStudio2024.3/index/a.bin", bytes: 11_000_000)
         try sandbox.file("Library/Caches/Google/Chrome/Default/Cache/a.bin", bytes: 11_000_000)
+        // An older PyCharm that was opened yesterday is in use, newer install or not.
+        try sandbox.file("Library/Logs/JetBrains/PyCharm2025.1/idea.log", bytes: 11_000_000)
+        try sandbox.file("Library/Caches/JetBrains/PyCharm2025.2/index/a.bin", bytes: 11_000_000)
 
         let installs = IDEScanner.installs(home: sandbox.root)
-        #expect(installs.map { $0.product + $0.version } == ["AndroidStudio2024.3", "IntelliJIdea2025.2", "IntelliJIdea2025.3"])
+        #expect(installs.map { $0.product + $0.version } == ["AndroidStudio2024.3", "IntelliJIdea2025.2", "IntelliJIdea2025.3", "PyCharm2025.1", "PyCharm2025.2"])
         let (current, old) = IDEScanner.split(installs)
-        #expect(current.map(\.version).sorted() == ["2024.3", "2025.3"])
-        #expect(old.map(\.version) == ["2025.2"])
+        #expect(current.map(\.version).sorted() == ["2024.3", "2025.2", "2025.3"])
+        #expect(old.map(\.version) == ["2025.2", "2025.1"])
 
         let result = await IDEScanner.scan(ScanContext(home: sandbox.root))
         let caches = try #require(result.findings.first { $0.id == "ides.jetbrains" })
-        #expect(caches.items.allSatisfy { $0.paths.first?.path.contains("2025.3") == true || $0.paths.first?.path.contains("2024.3") == true })
+        #expect(!caches.items.contains { $0.paths.first?.path.contains("IntelliJIdea2025.2") == true })
+        #expect(caches.items.contains { $0.paths.first?.path.contains("IntelliJIdea2025.3") == true })
         let oldVersions = try #require(result.findings.first { $0.id == "ides.oldVersions" })
         #expect(oldVersions.items.map(\.title) == ["IntelliJ IDEA 2025.2"])
         #expect(oldVersions.items.first?.paths.count == 2)
         #expect(oldVersions.method == .trash)
+        #expect(result.protected.map(\.title) == ["PyCharm 2025.1"])
+        #expect(result.protected.first?.rule == .recentlyUsed)
     }
 }
 
