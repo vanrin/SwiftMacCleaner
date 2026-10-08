@@ -377,6 +377,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSAppleEventsUsageDescription = "Mac Disk Cleaner asks Finder to move an app to the Trash when macOS will not let it move the app itself.";
 				INFOPLIST_KEY_NSDesktopFolderUsageDescription = "Mac Disk Cleaner looks for build folders in the project folders you chose.";
 				INFOPLIST_KEY_NSDocumentsFolderUsageDescription = "Mac Disk Cleaner looks for build folders in the project folders you chose.";
 				INFOPLIST_KEY_NSDownloadsFolderUsageDescription = "Mac Disk Cleaner looks for old installers in your Downloads folder.";
@@ -412,6 +413,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSAppleEventsUsageDescription = "Mac Disk Cleaner asks Finder to move an app to the Trash when macOS will not let it move the app itself.";
 				INFOPLIST_KEY_NSDesktopFolderUsageDescription = "Mac Disk Cleaner looks for build folders in the project folders you chose.";
 				INFOPLIST_KEY_NSDocumentsFolderUsageDescription = "Mac Disk Cleaner looks for build folders in the project folders you chose.";
 				INFOPLIST_KEY_NSDownloadsFolderUsageDescription = "Mac Disk Cleaner looks for old installers in your Downloads folder.";

@@ -41,6 +41,7 @@ extension AppModel {
     var theme: Theme {
         switch sidebarSelection {
         case .space: .ocean
+        case .apps: apps.phase == .done ? .green : .blue
         case .area(let area) where phase == .results: area.theme
         case .overview, .area: phase == .done ? .green : .violet
         }

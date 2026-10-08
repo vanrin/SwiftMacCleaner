@@ -30,6 +30,8 @@ nonisolated struct CleanStep: Identifiable, Sendable {
     var size: Int64
     var operations: [CleanOperation]
     var waitsFor: InUseCheck?
+    /// The rest of the step depends on its first operation. When moving an app fails, its files stay.
+    var requiresFirst = false
 }
 
 nonisolated struct CleanPlan: Sendable {

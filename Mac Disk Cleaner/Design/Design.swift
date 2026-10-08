@@ -44,6 +44,13 @@ enum Design {
         static let featureIcon: Double = 34
         static let rowIcon: Double = 30
         static let tileIcon: Double = 44
+        /// An app's own icon in a list of apps.
+        static let appIcon: Double = 36
+        /// The column beside a list of apps that holds the parts of the manager and the filters.
+        static let filterColumn: Double = 228
+        /// A search field above a list, and how far it may be squeezed in a narrow window.
+        static let searchField: Double = 220
+        static let searchFieldMinimum: Double = 120
         /// The thin bar that compares one row's size with the largest.
         static let sizeBarWidth: Double = 96
         static let sizeBarHeight: Double = 4

@@ -56,6 +56,11 @@ private struct GeneralSettings: View {
             } footer: {
                 Text("The weekly check scans on its own while the app is open and idle, then tells you what it found. It never removes anything.")
             }
+            Section {
+                Toggle("Look for app updates", isOn: $settings.checksAppUpdates)
+            } footer: {
+                Text("When Applications scans, it asks the App Store and each app's own update feed which version is current. Only app identifiers and your region are sent. Nothing is installed for you.")
+            }
         }
         .formStyle(.grouped)
         .fixedSize(horizontal: false, vertical: true)

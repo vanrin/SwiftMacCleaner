@@ -204,6 +204,24 @@ nonisolated enum InstallersTrashScanner {
         return result
     }
 
+    /// The installers in Downloads alone, for the Applications screen, which has no use for the Trash.
+    @concurrent
+    static func installers(_ context: ScanContext) async -> AreaScanResult {
+        var result = AreaScanResult()
+        let downloads = context.home.appending(path: "Downloads")
+        do {
+            let files = try FileManager.default.contentsOfDirectory(
+                at: downloads, includingPropertiesForKeys: [.isRegularFileKey, .contentModificationDateKey], options: [.skipsHiddenFiles]
+            )
+            if let finding = await installers(in: files, downloads: downloads, context: context) {
+                result.findings.append(finding)
+            }
+        } catch where isPermissionError(error) {
+            result.unreadable.append("Downloads")
+        } catch {}
+        return ScanEngine.applyingExclusions(to: result, context: context)
+    }
+
     private static func installers(in files: [URL], downloads: URL, context: ScanContext) async -> Finding? {
         let candidates = files
             .filter { installerExtensions.contains($0.pathExtension.lowercased()) }

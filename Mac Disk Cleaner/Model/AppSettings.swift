@@ -50,6 +50,11 @@ final class AppSettings {
         didSet { defaults.set(offersSnapshots, forKey: "offersSnapshots") }
     }
 
+    /// Whether a look at the installed apps also asks their update feeds which version is current.
+    var checksAppUpdates: Bool {
+        didSet { defaults.set(checksAppUpdates, forKey: "checksAppUpdates") }
+    }
+
     /// Whether the disk status item sits in the menu bar.
     var showsMenuBarItem: Bool {
         didSet { defaults.set(showsMenuBarItem, forKey: "showsMenuBarItem") }
@@ -80,6 +85,7 @@ final class AppSettings {
         neverSuggest = defaults.data(forKey: "neverSuggest").flatMap { try? JSONDecoder().decode([NeverSuggestEntry].self, from: $0) } ?? []
         offersOldXcodes = defaults.object(forKey: "offersOldXcodes") as? Bool ?? true
         offersSnapshots = defaults.object(forKey: "offersSnapshots") as? Bool ?? true
+        checksAppUpdates = defaults.object(forKey: "checksAppUpdates") as? Bool ?? true
     }
 
     /// Common places people keep code. Documents and Desktop are left for the user to add,

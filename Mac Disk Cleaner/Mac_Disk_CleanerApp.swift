@@ -27,6 +27,20 @@ enum Launcher {
             ScanReportPrinter.printStack()
             return
         }
+        // `Mac Disk Cleaner --print-apps [name] [--updates]` prints the installed apps and the files each one
+        // keeps, for the apps whose name contains `name`. With `--updates` the update feeds are asked too.
+        if let flag = CommandLine.arguments.firstIndex(of: "--print-apps") {
+            let rest = Array(CommandLine.arguments.dropFirst(flag + 1))
+            ScanReportPrinter.printApps(matching: rest.first { !$0.hasPrefix("--") }, updates: rest.contains("--updates"))
+            return
+        }
+        // `Mac Disk Cleaner --uninstall <path to an app>` does what the Uninstall button does for that one app,
+        // from the terminal: the same plan, the same guard, the same log. It really moves the app to the Trash.
+        if let flag = CommandLine.arguments.firstIndex(of: "--uninstall"),
+           let path = CommandLine.arguments.dropFirst(flag + 1).first {
+            ScanReportPrinter.uninstall(appAt: path)
+            return
+        }
         // `Mac Disk Cleaner --print-space <folder>` prints the largest folders inside it and exits.
         if let flag = CommandLine.arguments.firstIndex(of: "--print-space"),
            let folder = CommandLine.arguments.dropFirst(flag + 1).first {
@@ -211,6 +225,97 @@ nonisolated enum ScanReportPrinter {
             if let log = outcome.logURL { print("Log: \(log.path)") }
             fflush(stdout)
             finished.signal()
+        }
+        finished.wait()
+    }
+
+    /// Prints what the Applications scan finds. Nothing is removed.
+    static func printApps(matching name: String?, updates: Bool) {
+        let settings = AppSettings()
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let safety = SafetyGuard(root: home, neverSuggest: settings.neverSuggest.map(\.path))
+        let region = Locale.current.region?.identifier ?? AppUpdateChecker.fallbackRegion
+        let finished = DispatchSemaphore(value: 0)
+        Task.detached {
+            let started = Date()
+            let apps = await AppScanner.scan(home: home, safety: safety) { _ in }
+            let seconds = String(format: "%.1f", Date().timeIntervalSince(started))
+            let unused = apps.count { $0.isUnused() }
+            let store = apps.count { $0.source == .appStore }
+            print("\(apps.count) apps in \(seconds) s: \(ByteFormat.string(apps.reduce(0) { $0 + $1.size })), "
+                  + "\(unused) unused, \(store) from the App Store, \(apps.count { $0.needsPassword }) that only Finder can move")
+            let shown = apps.filter { app in name.map { app.name.localizedStandardContains($0) } ?? true }
+                .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+            for app in shown {
+                let opened = app.lastOpened.map { $0.formatted(date: .abbreviated, time: .omitted) } ?? "never"
+                let flags = [app.source == .appStore ? "App Store" : nil, app.needsPassword ? "Finder only" : nil,
+                             app.isUnused() ? "unused" : nil, app.feed.map { _ in "has a feed" }].compactMap { $0 }
+                print("\n\(app.name)  \(app.version)  \(app.bundleID)  \(ByteFormat.string(app.size))  opened \(opened)"
+                      + (flags.isEmpty ? "" : "  [\(flags.joined(separator: ", "))]"))
+                guard name != nil else { continue }
+                for kind in app.kinds {
+                    print("   \(kind.title)")
+                    for file in app.files(of: kind) {
+                        let size = file.sizeUnknown ? "unknown" : ByteFormat.string(file.size)
+                        print("      \(size.padding(toLength: 9, withPad: " ", startingAt: 0)) \(file.url.path)")
+                    }
+                }
+            }
+            if updates {
+                let newer = await AppUpdateChecker.updates(for: apps, region: region)
+                print("\n\(newer.count) updates")
+                for update in newer {
+                    let app = apps.first { $0.id == update.id }?.name ?? update.id
+                    let released = update.released.map { $0.formatted(date: .abbreviated, time: .omitted) } ?? "unknown date"
+                    print("   \(app): \(update.installedVersion) -> \(update.newVersion)  (\(update.feed.title), \(released)"
+                          + (update.size.map { ", \(ByteFormat.string($0))" } ?? "") + ")")
+                }
+            }
+            fflush(stdout)
+            finished.signal()
+        }
+        finished.wait()
+    }
+
+    /// The Uninstall button's path for one app, without the window. Only the confirmation click is missing,
+    /// which is why this exists for the terminal alone.
+    static func uninstall(appAt path: String) {
+        let settings = AppSettings()
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let neverSuggest = settings.neverSuggest.map(\.path)
+        let scanSafety = SafetyGuard(root: home, neverSuggest: neverSuggest)
+        let target = URL(fileURLWithPath: path).standardizedFileURL.path
+        let finished = DispatchSemaphore(value: 0)
+        Task.detached {
+            defer {
+                fflush(stdout)
+                finished.signal()
+            }
+            let apps = await AppScanner.scan(home: home, safety: scanSafety) { _ in }
+            guard let app = apps.first(where: { $0.url.standardizedFileURL.path == target }) else {
+                print("No app at \(path) in the Applications folders.")
+                return
+            }
+            if RunningApps.isRunning(bundleID: app.bundleID) {
+                print("\(app.name) is open, so it was left alone.")
+                return
+            }
+            let selection = Set(app.files.map(\.id))
+            let plan = Uninstaller.plan(for: [app], selection: selection)
+            for step in plan.steps {
+                print("\(step.title): \(step.summary), \(ByteFormat.string(step.size))")
+                for operation in step.operations {
+                    if case .trash(let url) = operation.kind { print("   \(url.path)") }
+                }
+            }
+            let safety = SafetyGuard(root: home, allowedApplications: Uninstaller.bundles(in: [app], selection: selection),
+                                     neverSuggest: neverSuggest)
+            let outcome = await Cleaner.run(plan: plan, safety: safety) { _ in }
+            PutBack.save(outcome, home: home)
+            for step in outcome.steps {
+                print(step.failures.isEmpty ? "ok   \(step.cleanedItemIDs.count) items moved to the Trash" : "!    \(step.failures.joined(separator: "; "))")
+            }
+            if let log = outcome.logURL { print("Log: \(log.path)") }
         }
         finished.wait()
     }

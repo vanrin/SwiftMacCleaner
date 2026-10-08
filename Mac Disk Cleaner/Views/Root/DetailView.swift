@@ -10,11 +10,14 @@ struct DetailView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        let inCleanUp = model.sidebarSelection != .space
+        let inCleanUp = model.sidebarSelection != .space && model.sidebarSelection != .apps
         Group {
-            if !inCleanUp {
+            if model.sidebarSelection == .space {
                 // Largest Folders stands apart from the clean-up flow and is reachable in any phase.
                 SpaceView()
+            } else if model.sidebarSelection == .apps {
+                // So does Applications, which has a scan and a removal of its own.
+                AppsView()
             } else {
                 switch model.phase {
                 case .home:
@@ -55,7 +58,8 @@ struct DetailView: View {
                 }
             }
             if model.phase == .home || !inCleanUp {
-                NoticeToolbar(model: model, showsPutBack: inCleanUp)
+                // The result of an uninstall carries the offer to put things back itself.
+                NoticeToolbar(model: model, showsPutBack: inCleanUp || (model.sidebarSelection == .apps && model.apps.phase != .done))
             }
             if inCleanUp, model.phase == .results || model.phase == .done {
                 ToolbarItem {
@@ -71,6 +75,9 @@ struct DetailView: View {
     private var title: String? {
         if model.sidebarSelection == .space {
             return model.space.phase == .idle ? nil : "Largest Folders"
+        }
+        if model.sidebarSelection == .apps {
+            return model.apps.phase == .idle ? nil : "Applications"
         }
         switch model.phase {
         case .home: return nil

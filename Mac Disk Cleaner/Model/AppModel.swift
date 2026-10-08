@@ -13,6 +13,8 @@ enum SidebarItem: Hashable {
     case area(Area)
     /// Largest Folders, which is independent of the clean-up scan.
     case space
+    /// Applications: uninstalling, updates and leftovers, which has a scan of its own.
+    case apps
 }
 
 /// Which apps are running, asked of the workspace. Kept apart so a non-UI caller can ask too.
@@ -37,6 +39,7 @@ final class AppModel {
     /// The folder everything is cleaned inside. Tests pass a temporary folder.
     let home: URL
     let space: SpaceModel
+    let apps: AppsModel
 
     private(set) var phase: Phase = .home
     private(set) var disk = DiskInfo.current()
@@ -80,10 +83,12 @@ final class AppModel {
         self.home = home
         self.settings = settings
         space = SpaceModel(home: home)
+        apps = AppsModel(home: home, settings: settings)
         disabledAreas = Set((UserDefaults.standard.stringArray(forKey: "disabledAreas") ?? []).compactMap(Area.init(rawValue:)))
         forcedAreas = Set((UserDefaults.standard.stringArray(forKey: "forcedAreas") ?? []).compactMap(Area.init(rawValue:)))
         putBackPending = PutBack.pending(home: home)
         updateStack()
+        apps.didRemove = { [weak self] outcome in self?.absorb(outcome) }
         #if DEBUG
         if let flag = CommandLine.arguments.firstIndex(of: "--demo") {
             let arguments = Array(CommandLine.arguments.dropFirst(flag + 1))
@@ -162,6 +167,13 @@ final class AppModel {
                         if let largest = space.current?.children.first { space.open(largest) }
                     }
                 }
+            }
+        case "apps":
+            // `--demo apps [intro|scanning|summary|manager|updater|leftovers|review|removing|done]`
+            sidebarSelection = .apps
+            apps.showDemo(arguments.first ?? "manager")
+            if let trashed = apps.outcome?.trashed, !trashed.isEmpty {
+                putBackPending = PutBack.Manifest(date: Date(), items: trashed)
             }
         case "scanning":
             let done: Set<Area> = [.xcode, .projects, .android]
@@ -454,8 +466,8 @@ final class AppModel {
 
     func select(_ item: SidebarItem) {
         switch (phase, item) {
-        case (_, .space):
-            sidebarSelection = .space
+        case (_, .space), (_, .apps):
+            sidebarSelection = item
         case (.results, _):
             sidebarSelection = item
         case (.done, .area):
@@ -553,6 +565,14 @@ final class AppModel {
     }
 
     // MARK: Put Back
+
+    /// Takes in what Applications removed: its Trash items join the offer to put things back.
+    private func absorb(_ outcome: CleanOutcome) {
+        PutBack.save(outcome, home: home)
+        putBackPending = PutBack.pending(home: home)
+        putBackMessage = nil
+        disk = DiskInfo.current()
+    }
 
     /// Returns everything the last clean moved to the Trash to where it was.
     func putBack() {

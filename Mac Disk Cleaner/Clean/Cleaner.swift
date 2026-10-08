@@ -212,7 +212,7 @@ nonisolated enum Cleaner {
                     }
                 }
             }
-            for operation in step.operations {
+            for (index, operation) in step.operations.enumerated() {
                 if Task.isCancelled {
                     outcome.failures.append("Stopped before finishing")
                     failedItems.formUnion(step.operations.map(\.itemID))
@@ -222,12 +222,14 @@ nonisolated enum Cleaner {
                     finished += 1
                     continue
                 }
+                var failed = false
                 do {
                     switch perform(operation, safety: safety) {
                     case .failed(let failure):
                         outcome.failures.append(failure)
                         failedItems.insert(operation.itemID)
                         log.append("FAILED  \(failure)")
+                        failed = true
                     case .trashed(let item):
                         outcome.trashed.append(item)
                         log.append("ok      trashed \(item.original.path) -> \(item.inTrash.path)")
@@ -237,6 +239,13 @@ nonisolated enum Cleaner {
                 }
                 finished += 1
                 progress(CleanProgress(fraction: Double(finished) / Double(operationCount), status: step.title))
+                if failed, index == 0, step.requiresFirst {
+                    let rest = step.operations.dropFirst()
+                    failedItems.formUnion(rest.map(\.itemID))
+                    finished += rest.count
+                    log.append("left    \(rest.count) related items where they are")
+                    break
+                }
             }
 
             for operation in step.operations
@@ -319,12 +328,34 @@ nonisolated enum Cleaner {
                 guard let destination else { return .done }
                 return .trashed(TrashedItem(original: url, inTrash: destination as URL, size: operation.size))
             } catch {
-                return .failed("Could not move \(url.path) to the Trash: \(error.localizedDescription)")
+                // An app that belongs to root, or that macOS guards, is one Finder can still move.
+                guard url.pathExtension == "app", isPermissionFailure(error) else {
+                    return .failed("Could not move \(url.path) to the Trash: \(error.localizedDescription)")
+                }
+                switch FinderTrash.move(url) {
+                case .trashed(let destination?):
+                    return .trashed(TrashedItem(original: url, inTrash: destination, size: operation.size))
+                case .trashed(nil):
+                    return .done
+                case .failed(let reason):
+                    return .failed(reason)
+                }
             }
         case .run(let command):
             return runCommand(command, asAdmin: false)
         case .runAsAdmin(let command):
             return runCommand(command, asAdmin: true)
+        }
+    }
+
+    /// True when macOS refused to let this user or this app move the item, as opposed to any other failure.
+    static func isPermissionFailure(_ error: Error) -> Bool {
+        let error = error as NSError
+        if error.domain == NSCocoaErrorDomain,
+           error.code == NSFileWriteNoPermissionError || error.code == NSFileReadNoPermissionError { return true }
+        let underlying = error.userInfo[NSUnderlyingErrorKey] as? NSError
+        return [error, underlying].compactMap { $0 }.contains {
+            $0.domain == NSPOSIXErrorDomain && ($0.code == Int(EPERM) || $0.code == Int(EACCES))
         }
     }
 
