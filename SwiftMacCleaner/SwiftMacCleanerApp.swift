@@ -69,7 +69,7 @@ struct SwiftMacCleanerApp: App {
                 .environment(model)
         }
 
-        MenuBarExtra("SwiftMacCleaner", systemImage: "internaldrive", isInserted: $settings.showsMenuBarItem) {
+        MenuBarExtra("SwiftMacCleaner", image: "MenuBarGlyph", isInserted: $settings.showsMenuBarItem) {
             MenuBarView()
                 .environment(model)
         }

@@ -16,12 +16,17 @@ struct HomeView: View {
         let nothingTicked = model.enabledAreas.isEmpty
         IntroLayout {
             VStack(spacing: Design.Spacing.xLarge) {
-                HeroOrb(segments: segments, total: disk.capacity) {
-                    OrbFigure(value: ByteFormat.string(disk.free), caption: "free")
+                HeroMac {
+                    VStack(spacing: Design.Spacing.medium) {
+                        OrbFigure(value: ByteFormat.string(disk.free), caption: "free")
+                        UsageBar(segments: segments, total: disk.capacity, height: Design.Size.usageBarHeight)
+                    }
                 }
                 UsageLegend(segments: segments)
                     .help("Purgeable space holds files macOS frees on its own schedule.")
             }
+            // The Mac fills the room it is given, so it is held clear of the text beside it.
+            .padding(.trailing, Design.Spacing.xLarge)
         } details: {
             VStack(alignment: .leading, spacing: Design.Spacing.medium) {
                 if disk.isLow {

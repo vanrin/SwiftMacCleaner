@@ -27,6 +27,9 @@ enum Design {
     }
 
     enum Size {
+        /// The Mac on the opening screen: as wide as the room beside the text allows, between these two.
+        static let heroMac: Double = 400
+        static let heroMacMinimum: Double = 288
         /// The glass disc on an intro screen.
         static let heroOrb: Double = 300
         /// The disc on the panel that reports a finished clean.
@@ -54,6 +57,8 @@ enum Design {
         /// The thin bar that compares one row's size with the largest.
         static let sizeBarWidth: Double = 96
         static let sizeBarHeight: Double = 4
+        /// The bar on the Mac's display that splits the disk into used, purgeable and free.
+        static let usageBarHeight: Double = 8
         /// Wide enough for "999.9 GB", so a column of sizes lines up.
         static let sizeColumn: Double = 92
         /// Wide enough for "100%".
@@ -129,6 +134,23 @@ enum Design {
         static let hover = Color.white.opacity(0.06)
         /// The part of a ring or bar that is in use and staying.
         static let keeping = Color.white.opacity(0.3)
+    }
+
+    /// The colours of the picture the app shares with its icon: the swift, the Mac and its display.
+    enum Brand {
+        /// The swift, from the wing in the light to the wing in the shade.
+        static let swift = Gradient(colors: [
+            Color(hue: 0.10, saturation: 0.72, brightness: 1),
+            Color(hue: 0.06, saturation: 0.82, brightness: 1),
+            Color(hue: 0.016, saturation: 0.84, brightness: 0.93),
+        ])
+        static let aluminium = Color(hue: 0.707, saturation: 0.12, brightness: 0.85)
+        static let aluminiumShade = Color(hue: 0.702, saturation: 0.18, brightness: 0.71)
+        static let bezel = Color(hue: 0.708, saturation: 0.73, brightness: 0.09)
+        static let screenLight = Color(hue: 0.708, saturation: 0.74, brightness: 0.54)
+        static let screenDeep = Color(hue: 0.703, saturation: 0.83, brightness: 0.26)
+        /// The trail the swift leaves across the display.
+        static let bloom = Color(hue: 0.85, saturation: 0.45, brightness: 1)
     }
 
     /// Colours with a fixed meaning, the same on every backdrop.
