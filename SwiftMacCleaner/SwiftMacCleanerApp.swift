@@ -185,9 +185,7 @@ nonisolated enum ScanReportPrinter {
             }
             let scannedAt = Date()
             findings.sort { ($0.tier, -$0.size) < ($1.tier, -$1.size) }
-            let selection = Set(findings.filter { $0.tier == .safe }.flatMap { finding in
-                finding.items.filter { $0.preselected ?? true }.map(\.id)
-            })
+            let selection = Set(findings.safeDefaults.map(\.id))
             let plan = CleanPlan.make(findings: findings, selection: selection)
             var skipping: [String: String] = [:]
             for step in plan.steps {

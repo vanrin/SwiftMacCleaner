@@ -271,6 +271,15 @@ nonisolated struct Finding: Identifiable, Sendable {
     var hasUnknownSize: Bool { items.contains(where: \.sizeUnknown) }
 }
 
+nonisolated extension Sequence<Finding> {
+    /// The Safe tier's items that are ticked without being asked: what Quick Clean and the menu bar
+    /// remove, and so the only thing either may promise. An item its scanner keeps by default, such
+    /// as the newest device support, is in the Safe tier but not among these.
+    var safeDefaults: [FindingItem] {
+        filter { $0.tier == .safe }.flatMap { finding in finding.items.filter { $0.preselected ?? true } }
+    }
+}
+
 /// Why something that could have been offered was left alone.
 nonisolated enum ProtectionRule: String, Sendable, CaseIterable {
     case recentlyUsed = "Recently used"

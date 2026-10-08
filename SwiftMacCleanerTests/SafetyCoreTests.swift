@@ -378,6 +378,28 @@ struct MenuBarTests {
         #expect(model.safeSize == 10)
         #expect(model.largestAreas(1).first?.size == 30)
     }
+
+    /// The menu bar once offered the whole Safe tier, 25.8 GB, while its button and the overview
+    /// agreed on 8.4 GB: the newest device support is Safe, and kept unless the user ticks it.
+    @Test func theMenuBarOffersOnlyWhatItsButtonRemoves() throws {
+        let sandbox = try Sandbox()
+        defer { sandbox.remove() }
+        let model = AppModel(home: sandbox.root)
+        let caches = sandbox.root.appending(path: "Library/Caches")
+        let safe = finding(items: [
+            FindingItem(id: "s/old", title: "", detail: "", size: 10, paths: [caches.appending(path: "old")]),
+            FindingItem(id: "s/newest", title: "", detail: "", size: 40, paths: [caches.appending(path: "newest")], preselected: false),
+        ])
+        model.show(findings: [safe])
+        #expect(model.foundSize == 50)
+        #expect(model.selectedSize == 10)
+        #expect(model.safeSize == 10)
+
+        model.binding(for: safe.items[1]).wrappedValue = true
+        model.cleanSafe()
+        #expect(model.selection == ["s/old"])
+        #expect(model.selectedSize == model.safeSize)
+    }
 }
 
 @MainActor

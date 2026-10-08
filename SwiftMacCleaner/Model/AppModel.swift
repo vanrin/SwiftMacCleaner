@@ -287,8 +287,9 @@ final class AppModel {
         return Date().timeIntervalSince(last) >= Self.weeklyInterval
     }
 
-    /// What the Safe tier adds up to in the last scan, which is what the menu bar offers.
-    var safeSize: Int64 { findings.filter { $0.tier == .safe }.reduce(0) { $0 + $1.size } }
+    /// What the menu bar offers: the part of the Safe tier its button removes. Less than the tier
+    /// adds up to whenever something in it is kept by default.
+    var safeSize: Int64 { findings.safeDefaults.reduce(0) { $0 + $1.size } }
 
     /// The areas with the most found, largest first.
     func largestAreas(_ count: Int) -> [(area: Area, size: Int64)] {
@@ -300,9 +301,7 @@ final class AppModel {
         switch phase {
         case .results, .done:
             phase = .results
-            selection = Set(findings.filter { $0.tier == .safe }.flatMap { finding in
-                finding.items.filter { $0.preselected ?? true }.map(\.id)
-            })
+            selection = Set(findings.safeDefaults.map(\.id))
             sidebarSelection = .overview
             showingReview = selectedSize > 0
         default:
@@ -402,9 +401,7 @@ final class AppModel {
         }
         if reviewWhenScanned {
             reviewWhenScanned = false
-            selection = Set(findings.filter { $0.tier == .safe }.flatMap { finding in
-                finding.items.filter { $0.preselected ?? true }.map(\.id)
-            })
+            selection = Set(findings.safeDefaults.map(\.id))
             showingReview = selectedSize > 0
         }
     }
