@@ -8,6 +8,7 @@ import SwiftUI
 /// The last look before anything is removed: what happens to each group, and what was checked.
 struct ReviewSheet: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.theme) private var theme
     @Environment(\.dismiss) private var dismiss
     @State private var copied = false
 
@@ -17,117 +18,94 @@ struct ReviewSheet: View {
         let blocked = model.blockedSteps(in: plan)
         let total = plan.steps.filter { blocked[$0.id] == nil }.reduce(Int64(0)) { $0 + $1.size }
         let atLeast = model.selectionHasUnknownSize ? "at least " : ""
-        VStack(alignment: .leading, spacing: 20) {
-            VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: Design.Spacing.xLarge) {
+            VStack(alignment: .leading, spacing: Design.Spacing.tight) {
                 Text("Clean \(atLeast)\(ByteFormat.string(total)) from \(model.disk.name)?")
-                    .font(.title2.bold())
+                    .font(.title)
+                    .bold()
                 Text(subtitle(for: plan, blockedCount: blocked.count))
-                    .font(.callout)
                     .foregroundStyle(.secondary)
             }
 
-            HStack(spacing: 20) {
-                figure("Free now", ByteFormat.string(model.disk.free))
-                Image(systemName: "arrow.right")
-                    .foregroundStyle(.secondary)
-                figure("Free after", ByteFormat.string(model.disk.free + total - plan.trashedSize), bold: true)
-                Spacer()
-                if plan.trashedSize > 0 {
-                    figure("In the Trash, can be put back", ByteFormat.string(plan.trashedSize), trailing: true)
-                }
-            }
-            .padding(14)
-            .background(.quaternary.opacity(0.6), in: .rect(cornerRadius: 10))
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("What will happen")
-                    .font(.callout.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                ScrollView {
-                    VStack(spacing: 0) {
-                        ForEach(plan.steps) { step in
-                            Divider()
-                            stepRow(step, blocked: blocked[step.id] != nil)
-                        }
+            GlassPanel {
+                HStack(spacing: Design.Spacing.xLarge) {
+                    ReviewFigure(caption: "Free now", value: ByteFormat.string(model.disk.free))
+                    Image(systemName: "arrow.right")
+                        .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
+                    ReviewFigure(caption: "Free after", value: ByteFormat.string(model.disk.free + total - plan.trashedSize),
+                                 isEmphasized: true)
+                    Spacer()
+                    if plan.trashedSize > 0 {
+                        ReviewFigure(caption: "In the Trash, can be put back", value: ByteFormat.string(plan.trashedSize),
+                                     alignment: .trailing)
                     }
                 }
-                .frame(maxHeight: 344)
-                .scrollBounceBehavior(.basedOnSize)
+                .padding(Design.Spacing.large)
             }
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: Design.Spacing.small) {
+                Text("What will happen")
+                    .font(.headline)
+                    .foregroundStyle(.secondary)
+                GlassPanel {
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            ForEach(plan.steps) { step in
+                                ReviewStepRow(step: step, isBlocked: blocked[step.id] != nil,
+                                              showsDivider: step.id != plan.steps.first?.id)
+                            }
+                        }
+                    }
+                    // Tall enough to show a few steps even when the checks below run long.
+                    .frame(minHeight: 150, maxHeight: 300)
+                    .scrollBounceBehavior(.basedOnSize)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: Design.Spacing.small) {
                 Text("Before you clean")
-                    .font(.callout.weight(.semibold))
+                    .font(.headline)
                     .foregroundStyle(.secondary)
                 ForEach(checks(for: plan, blocked: blocked), id: \.text) { check in
                     Label {
                         Text(check.text)
                             .fixedSize(horizontal: false, vertical: true)
                     } icon: {
-                        Image(systemName: check.isWarning ? "exclamationmark.triangle" : "checkmark")
-                            .foregroundStyle(check.isWarning ? AnyShapeStyle(.orange) : AnyShapeStyle(.tint))
+                        Image(systemName: check.isWarning ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+                            .foregroundStyle(check.isWarning ? AnyShapeStyle(Design.Signal.warning) : AnyShapeStyle(.tint))
                     }
                     .font(.callout)
                 }
             }
 
-            HStack(spacing: 10) {
-                Button(copied ? "Copied" : "Copy as Shell Script") {
-                    model.copyShellScript()
-                    copied = true
-                }
-                .controlSize(.large)
+            HStack(spacing: Design.Spacing.medium) {
+                Button(copied ? "Copied" : "Copy as Shell Script", action: copyScript)
+                    .buttonStyle(.pill)
                 Spacer()
-                Button("Cancel", role: .cancel) { dismiss() }
-                    .controlSize(.large)
+                Button("Cancel", role: .cancel, action: cancel)
+                    .buttonStyle(.pill)
                     .keyboardShortcut(.cancelAction)
-                Button("Clean \(atLeast)\(ByteFormat.string(total))") { model.clean() }
-                    .buttonStyle(.glassProminent)
-                    .controlSize(.large)
+                Button("Clean \(atLeast)\(ByteFormat.string(total))", action: model.clean)
+                    .buttonStyle(.primaryPill)
                     .disabled(total == 0 && !model.selectionHasUnknownSize)
             }
         }
-        .padding(24)
-        .frame(width: 640)
+        .padding(Design.Spacing.xLarge)
+        .frame(width: Design.Size.sheetWidth)
+        .presentationBackground {
+            ThemeBackdrop(theme: theme)
+        }
+        .preferredColorScheme(.dark)
     }
 
-    private func stepRow(_ step: CleanStep, blocked: Bool) -> some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 1) {
-                HStack(spacing: 8) {
-                    Text(step.title)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(blocked ? .secondary : .primary)
-                    if step.tier != .safe { TierBadge(tier: step.tier) }
-                    if blocked {
-                        Badge(text: step.waitsFor?.badge ?? "Waits", style: .waits)
-                    }
-                    if step.method == .adminCommand {
-                        Badge(text: "Asks for your password", style: .password)
-                    }
-                }
-                Text(blocked ? "Left alone while \(step.waitsFor?.name ?? "it") is open" : step.summary)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-            }
-            Spacer(minLength: 12)
-            SizeLabel(bytes: step.size, weight: blocked ? .regular : .semibold)
-                .strikethrough(blocked)
-                .foregroundStyle(blocked ? .secondary : .primary)
-        }
-        .padding(.vertical, 9)
+    private func copyScript() {
+        model.copyShellScript()
+        copied = true
     }
 
-    private func figure(_ caption: String, _ value: String, bold: Bool = false, trailing: Bool = false) -> some View {
-        VStack(alignment: trailing ? .trailing : .leading, spacing: 1) {
-            Text(caption)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.system(.title3, design: .monospaced).weight(bold ? .bold : .regular))
-        }
+    private func cancel() {
+        dismiss()
     }
 
     private func subtitle(for plan: CleanPlan, blockedCount: Int) -> String {

@@ -122,14 +122,11 @@ final class AppModel {
                 areaStates[area] = area == .containers || area == .packageCaches ? .scanning : .queued
             }
             phase = .scanning
-        case "xcode":
-            sidebarSelection = .area(.xcode)
-        case "projects":
-            sidebarSelection = .area(.projects)
-        case "leftovers":
-            sidebarSelection = .area(.leftovers)
         case "review":
             showingReview = true
+        case "cleaning":
+            cleanProgress = CleanProgress(fraction: 0.62, status: "Deleting ~/Library/Developer/Xcode/DerivedData")
+            phase = .cleaning
         case "done":
             let result = DemoData.outcome(for: findings, freeBefore: disk.free)
             disk.free = result.freeAfter
@@ -137,7 +134,8 @@ final class AppModel {
             disk.free = result.freeAfter
             putBackPending = PutBack.Manifest(date: result.started, items: result.trashed)
         default:
-            break
+            // Any area by its raw name, such as `xcode`, `projects` or `packageCaches`.
+            if let area = Area(rawValue: screen) { sidebarSelection = .area(area) }
         }
     }
     #endif

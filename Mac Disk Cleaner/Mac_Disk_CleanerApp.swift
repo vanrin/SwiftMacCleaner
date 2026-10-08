@@ -43,7 +43,7 @@ struct Mac_Disk_CleanerApp: App {
                 .environment(model)
                 .task { model.startBackgroundChecks() }
         }
-        .defaultSize(width: 1100, height: 760)
+        .defaultSize(width: 1200, height: 760)
 
         Settings {
             SettingsView()
