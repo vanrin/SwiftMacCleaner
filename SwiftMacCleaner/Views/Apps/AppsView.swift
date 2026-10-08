@@ -6,7 +6,7 @@
 import SwiftUI
 
 /// Applications: the installed apps, with a way to uninstall them whole, see which have an update, and
-/// clear out what removed apps left behind. It has a scan of its own, apart from the clean-up.
+/// clear out the installers and files they left behind. It has a scan of its own, apart from the clean-up.
 struct AppsView: View {
     @Environment(AppModel.self) private var model
 

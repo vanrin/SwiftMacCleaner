@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// What the scan found in one area, or in every developer area together, as a tile: how much, how much
+/// What the scan found in one area, or in every area of a group together, as a tile: how much, how much
 /// of it is ticked, and a way in.
 struct ResultTile: View {
     @Environment(AppModel.self) private var model

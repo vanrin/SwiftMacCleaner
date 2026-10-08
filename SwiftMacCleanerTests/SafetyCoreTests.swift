@@ -381,12 +381,12 @@ struct MenuBarTests {
 }
 
 @MainActor
-struct DeveloperCleanUpTests {
+struct AreaGroupTests {
     private func item(_ id: String, _ size: Int64) -> FindingItem {
         FindingItem(id: id, title: "", detail: "", size: size)
     }
 
-    @Test func theDeveloperAreasShareOneTileOnTheOverview() throws {
+    @Test func theAreasOfAGroupShareOneTileOnTheOverview() throws {
         let sandbox = try Sandbox()
         defer { sandbox.remove() }
         let model = AppModel(home: sandbox.root)
@@ -394,36 +394,73 @@ struct DeveloperCleanUpTests {
             finding(id: "derived", area: .xcode, items: [item("x/1", 30)]),
             finding(id: "caches", area: .packageCaches, tier: .review, method: .trash, items: [item("p/1", 10)]),
             finding(id: "logs", area: .cachesLogs, items: [item("c/1", 50)]),
-            finding(id: "dmg", area: .installersTrash, tier: .review, method: .trash, items: [item("i/1", 5)]),
+            finding(id: "bin", area: .trash, tier: .review, items: [item("t/1", 20)]),
+            finding(id: "zip", area: .largeFiles, tier: .review, method: .trash, items: [item("l/1", 5)]),
         ])
-        #expect(model.overviewTiles == [.area(.cachesLogs), .developer, .area(.installersTrash)])
-        #expect(model.findings(under: .developer).map(\.id) == ["derived", "caches"])
-        #expect(model.foundSize(under: .developer) == 40)
-        #expect(model.selectedSize(under: .developer) == 30)
-        #expect(model.developerAreas == Area.developer)
+        #expect(model.overviewTiles == [.group(.system), .group(.developer), .area(.largeFiles)])
+        #expect(model.findings(under: .group(.developer)).map(\.id) == ["derived", "caches"])
+        #expect(model.foundSize(under: .group(.developer)) == 40)
+        #expect(model.selectedSize(under: .group(.developer)) == 30)
+        #expect(model.foundSize(under: .group(.system)) == 70)
+        #expect(model.selectedSize(under: .group(.system)) == 50)
+        #expect(model.areas(in: .developer) == AreaGroup.developer.areas)
+        #expect(model.areas(in: .system) == [.cachesLogs, .trash, .snapshots])
     }
 
-    @Test func aDeveloperAreaIsReachedThroughDeveloperCleanUp() throws {
+    @Test func anAreaOfAGroupIsReachedThroughTheGroup() throws {
         let sandbox = try Sandbox()
         defer { sandbox.remove() }
         let model = AppModel(home: sandbox.root)
-        #expect(SidebarItem.area(.xcode).entry == .developer)
-        #expect(SidebarItem.area(.snapshots).entry == .area(.snapshots))
+        #expect(SidebarItem.area(.xcode).entry == .group(.developer))
+        #expect(SidebarItem.area(.snapshots).entry == .group(.system))
+        #expect(SidebarItem.area(.largeFiles).entry == .area(.largeFiles))
 
         // Before there are results it leads nowhere, like any area.
-        model.select(.developer)
+        model.select(.group(.developer))
         #expect(model.sidebarSelection == .overview)
 
         model.show(findings: [finding(id: "derived", area: .xcode, items: [item("x/1", 30)])])
-        model.select(.developer)
-        #expect(model.sidebarSelection == .developer)
-        #expect(model.theme == SidebarItem.developer.theme)
+        model.select(.group(.developer))
+        #expect(model.sidebarSelection == .group(.developer))
+        #expect(model.theme == AreaGroup.developer.theme)
         model.select(.area(.xcode))
-        #expect(model.sidebarSelection.entry == .developer)
+        #expect(model.sidebarSelection.entry == .group(.developer))
         #expect(model.theme == Area.xcode.theme)
     }
 
-    @Test func theDeveloperEntryIsBusyUntilItsLastAreaIsDone() {
+    @Test func everyAreaOfTheCleanUpHasOnePlaceInTheSidebar() {
+        let filed = AreaGroup.allCases.flatMap(\.areas)
+        let alone = SidebarItem.cleanUp.compactMap { item -> Area? in
+            if case .area(let area) = item { area } else { nil }
+        }
+        #expect(Set(filed + alone) == Set(Area.cleanUp))
+        #expect(filed.count + alone.count == Area.cleanUp.count)
+    }
+
+    @Test func leftoversAndInstallersBelongToApplicationsNotTheCleanUp() throws {
+        let sandbox = try Sandbox()
+        defer { sandbox.remove() }
+        let model = AppModel(home: sandbox.root)
+        #expect(!Area.cleanUp.contains(.leftovers))
+        #expect(!Area.cleanUp.contains(.installers))
+        #expect(!model.listedAreas.contains(.leftovers))
+        #expect(!model.enabledAreas.contains(.installers))
+        // Switching one on by hand does not bring it back into the scan.
+        model.forcedAreas = [.leftovers]
+        #expect(!model.enabledAreas.contains(.leftovers))
+        #expect(!model.cleanUpEntries.contains(.area(.leftovers)))
+    }
+
+    @Test func anAreaThatWasSplitStaysSwitchedOff() throws {
+        let name = "AreaGroupTests-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        defaults.set(["installersTrash", "xcode", "no-such-area"], forKey: "disabledAreas")
+        #expect(Area.stored(forKey: "disabledAreas", in: defaults) == [.trash, .largeFiles, .xcode])
+        #expect(Area.stored(forKey: "forcedAreas", in: defaults).isEmpty)
+    }
+
+    @Test func aGroupEntryIsBusyUntilItsLastAreaIsDone() {
         #expect(AppModel.combined([.idle, .idle]) == .idle)
         #expect(AppModel.combined([.queued, .idle, .queued]) == .queued)
         #expect(AppModel.combined([.finished, .queued]) == .scanning)

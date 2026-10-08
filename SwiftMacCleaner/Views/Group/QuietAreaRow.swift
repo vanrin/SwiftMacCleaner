@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// One developer area the scan offered nothing in: whether it was clean, skipped or not looked at, and why.
+/// One area of a group the scan offered nothing in: whether it was clean, skipped or not looked at, and why.
 struct QuietAreaRow: View {
     @Environment(AppModel.self) private var model
     let area: Area

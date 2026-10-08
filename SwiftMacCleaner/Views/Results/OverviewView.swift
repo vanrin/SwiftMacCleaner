@@ -5,8 +5,8 @@
 
 import SwiftUI
 
-/// The scan results: what was found in Developer Clean Up and in each other area, then every finding
-/// grouped by how safe it is to remove.
+/// The scan results: what was found under each entry of the clean-up, then every finding grouped by
+/// how safe it is to remove.
 struct OverviewView: View {
     @Environment(AppModel.self) private var model
 

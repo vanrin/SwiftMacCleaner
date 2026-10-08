@@ -88,7 +88,7 @@ final class AppsModel {
     private(set) var updates: [AppUpdate] = []
     /// False when the update feeds were not asked, because the setting is off.
     private(set) var checkedUpdates = false
-    /// Installers and leftover files, as the clean-up scanners report them.
+    /// Installers and leftover files, the two areas that are Applications' own.
     private(set) var leftovers: [Finding] = []
     /// Folders macOS would not let the scan read.
     private(set) var unreadable: [String] = []
@@ -140,7 +140,7 @@ final class AppsModel {
         let region = Locale.current.region?.identifier ?? AppUpdateChecker.fallbackRegion
         task = Task { [home] in
             async let leftoverFiles = ScanEngine.scan(.leftovers, context: context)
-            async let installers = InstallersTrashScanner.installers(context)
+            async let installers = ScanEngine.scan(.installers, context: context)
             let found = await AppScanner.scan(home: home, safety: safety) { progress in
                 Task { @MainActor in
                     if self.phase == .scanning { self.progress = progress }

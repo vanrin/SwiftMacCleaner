@@ -10,18 +10,18 @@ import UserNotifications
 
 enum SidebarItem: Hashable {
     case overview
-    /// Developer Clean Up: the developer areas together. Each of them is a page underneath it.
-    case developer
+    /// Several areas of the clean-up together, such as Developer Clean Up. Each of them is a page underneath it.
+    case group(AreaGroup)
     case area(Area)
     /// Largest Folders, which is independent of the clean-up scan.
     case space
-    /// Applications: uninstalling, updates and leftovers, which has a scan of its own.
+    /// Applications: uninstalling, updates, leftovers and installers, which has a scan of its own.
     case apps
 
     var title: String {
         switch self {
         case .overview: "Overview"
-        case .developer: "Developer Clean Up"
+        case .group(let group): group.title
         case .area(let area): area.title
         case .space: "Largest Folders"
         case .apps: "Applications"
@@ -31,18 +31,23 @@ enum SidebarItem: Hashable {
     var symbol: String {
         switch self {
         case .overview: "sparkles"
-        case .developer: "wrench.and.screwdriver"
+        case .group(let group): group.symbol
         case .area(let area): area.symbol
         case .space: "chart.bar.doc.horizontal"
         case .apps: "square.grid.2x2"
         }
     }
 
-    /// The sidebar entry that is lit while this is on screen. A developer area has none of its own:
-    /// it is reached through Developer Clean Up.
+    /// The sidebar entry that is lit while this is on screen. An area filed under a group has none
+    /// of its own: it is reached through the group's entry.
     var entry: SidebarItem {
-        if case .area(let area) = self, area.isDeveloper { .developer } else { self }
+        if case .area(let area) = self, let group = area.group { .group(group) } else { self }
     }
+
+    /// The entries of the clean-up below the overview, in the order the sidebar lists them: each
+    /// group, then the areas that stand by themselves.
+    static let cleanUp = AreaGroup.allCases.map(SidebarItem.group)
+        + Area.cleanUp.filter { $0.group == nil }.map(SidebarItem.area)
 }
 
 /// Which apps are running, asked of the workspace. Kept apart so a non-UI caller can ask too.
@@ -112,8 +117,8 @@ final class AppModel {
         self.settings = settings
         space = SpaceModel(home: home)
         apps = AppsModel(home: home, settings: settings)
-        disabledAreas = Set((UserDefaults.standard.stringArray(forKey: "disabledAreas") ?? []).compactMap(Area.init(rawValue:)))
-        forcedAreas = Set((UserDefaults.standard.stringArray(forKey: "forcedAreas") ?? []).compactMap(Area.init(rawValue:)))
+        disabledAreas = Area.stored(forKey: "disabledAreas")
+        forcedAreas = Area.stored(forKey: "forcedAreas")
         putBackPending = PutBack.pending(home: home)
         updateStack()
         apps.didRemove = { [weak self] outcome in self?.absorb(outcome) }
@@ -126,7 +131,7 @@ final class AppModel {
     }
 
     /// The areas a scan looks at.
-    var enabledAreas: Set<Area> { Set(Area.allCases.filter(isScanned)) }
+    var enabledAreas: Set<Area> { Set(Area.cleanUp.filter(isScanned)) }
 
     // MARK: Stack
 
@@ -139,7 +144,7 @@ final class AppModel {
     /// Whether the area is worth listing: it applies to this Mac, or was switched on regardless.
     func isListed(_ area: Area) -> Bool { stack.applies(area) || forcedAreas.contains(area) }
 
-    var listedAreas: [Area] { Area.allCases.filter(isListed) }
+    var listedAreas: [Area] { Area.cleanUp.filter(isListed) }
 
     /// Whether the area has a place in the window: any that is listed, and any the last scan looked at.
     func isShown(_ area: Area) -> Bool { isListed(area) || areaState(for: area) != .idle }
@@ -169,7 +174,7 @@ final class AppModel {
     func show(findings newFindings: [Finding], protected newProtected: [ProtectedItem] = []) {
         findings = newFindings
         protected = newProtected
-        areaStates = Dictionary(uniqueKeysWithValues: Area.allCases.map { ($0, .finished) })
+        areaStates = Dictionary(uniqueKeysWithValues: Area.cleanUp.map { ($0, .finished) })
         finishScan()
         phase = .results
     }
@@ -206,7 +211,7 @@ final class AppModel {
         case "scanning":
             let done: Set<Area> = [.xcode, .projects, .android]
             findings.removeAll { !done.contains($0.area) }
-            for area in Area.allCases where !done.contains(area) {
+            for area in Area.cleanUp where !done.contains(area) {
                 areaStates[area] = area == .containers || area == .packageCaches ? .scanning : .queued
             }
             phase = .scanning
@@ -221,9 +226,11 @@ final class AppModel {
             finishClean(result)
             disk.free = result.freeAfter
             putBackPending = PutBack.Manifest(date: result.started, items: result.trashed)
+        case "system":
+            sidebarSelection = .group(.system)
         case "developer":
             // `--demo developer [quiet]`: with `quiet`, three of the areas have nothing to offer.
-            sidebarSelection = .developer
+            sidebarSelection = .group(.developer)
             if arguments.first == "quiet" {
                 let quiet: Set<Area> = [.containers, .toolchains, .models]
                 findings.removeAll { quiet.contains($0.area) }
@@ -231,8 +238,8 @@ final class AppModel {
                 areaStates[.containers] = .skipped("Docker did not answer, so its images and build cache were not measured.")
             }
         default:
-            // Any area by its raw name, such as `xcode`, `projects` or `packageCaches`.
-            if let area = Area(rawValue: screen) { sidebarSelection = .area(area) }
+            // Any area of the clean-up by its raw name, such as `xcode`, `projects` or `packageCaches`.
+            if let area = Area(rawValue: screen), area.isCleanUp { sidebarSelection = .area(area) }
         }
     }
     #endif
@@ -285,7 +292,7 @@ final class AppModel {
 
     /// The areas with the most found, largest first.
     func largestAreas(_ count: Int) -> [(area: Area, size: Int64)] {
-        Area.allCases.map { ($0, foundSize(in: $0)) }.filter { $0.1 > 0 }.sorted { $0.1 > $1.1 }.prefix(count).map { $0 }
+        Area.cleanUp.map { ($0, foundSize(in: $0)) }.filter { $0.1 > 0 }.sorted { $0.1 > $1.1 }.prefix(count).map { $0 }
     }
 
     /// The menu bar's one-click path: tick the Safe tier from the last scan and confirm, or scan first.
@@ -326,7 +333,7 @@ final class AppModel {
     private func beginScan() {
         scanTask?.cancel()
         refreshStack()
-        let areas = Area.allCases.filter(isScanned)
+        let areas = Area.cleanUp.filter(isScanned)
         guard !areas.isEmpty else { return }
 
         findings = []
@@ -335,7 +342,7 @@ final class AppModel {
         outcome = nil
         putBackMessage = nil
         unreadableFolders = []
-        areaStates = Dictionary(uniqueKeysWithValues: Area.allCases.map { ($0, areas.contains($0) ? .queued : .idle) })
+        areaStates = Dictionary(uniqueKeysWithValues: Area.cleanUp.map { ($0, areas.contains($0) ? .queued : .idle) })
         sidebarSelection = .overview
         showingReview = false
         phase = .scanning
@@ -402,7 +409,7 @@ final class AppModel {
         }
     }
 
-    var scannedAreas: [Area] { Area.allCases.filter { areaStates[$0] != nil && areaStates[$0] != .idle } }
+    var scannedAreas: [Area] { Area.cleanUp.filter { areaStates[$0] != nil && areaStates[$0] != .idle } }
 
     var finishedAreaCount: Int {
         scannedAreas.count { area in
@@ -420,14 +427,31 @@ final class AppModel {
         return nil
     }
 
-    // MARK: Developer Clean Up
+    // MARK: Groups
 
-    /// The developer areas with a place under Developer Clean Up: those this Mac has tools for,
-    /// and any the last scan looked at.
-    var developerAreas: [Area] { Area.developer.filter(isShown) }
+    /// The areas with a place under a group's entry: those that apply to this Mac, and any the last
+    /// scan looked at. For Developer Clean Up that is the areas this Mac has tools for.
+    func areas(in group: AreaGroup) -> [Area] { group.areas.filter(isShown) }
 
-    /// How the developer areas are doing, for the one entry that stands for all of them.
-    var developerState: AreaState { Self.combined(Area.developer.map(areaState)) }
+    /// How a group's areas are doing, for the one entry that stands for all of them.
+    func state(of group: AreaGroup) -> AreaState { Self.combined(group.areas.map(areaState)) }
+
+    /// How an entry of the clean-up is doing: a group as one, or a single area.
+    func state(of item: SidebarItem) -> AreaState {
+        switch item {
+        case .group(let group): state(of: group)
+        case .area(let area): areaState(for: area)
+        case .overview, .space, .apps: .idle
+        }
+    }
+
+    /// The entries of the clean-up worth a place in the sidebar. A group none of whose areas apply to
+    /// this Mac is left out, which is Developer Clean Up on a Mac without developer tools.
+    var cleanUpEntries: [SidebarItem] {
+        SidebarItem.cleanUp.filter { item in
+            if case .group(let group) = item { !areas(in: group).isEmpty } else { true }
+        }
+    }
 
     /// Several areas' states as one: scanning until the last of them is done, and skipped only when
     /// every one that was looked at was. Areas the scan left out do not count.
@@ -489,11 +513,11 @@ final class AppModel {
         findings(in: area).reduce(0) { $0 + $1.size }
     }
 
-    /// The findings a sidebar entry or a tile stands for: one area's, or those of every developer area.
+    /// The findings a sidebar entry or a tile stands for: one area's, or those of every area in a group.
     func findings(under item: SidebarItem) -> [Finding] {
         switch item {
         case .overview: findings
-        case .developer: findings.filter(\.area.isDeveloper)
+        case .group(let group): findings.filter { $0.area.group == group }
         case .area(let area): findings(in: area)
         case .space, .apps: []
         }
@@ -507,11 +531,10 @@ final class AppModel {
         findings(under: item).reduce(0) { $0 + selectedSize(in: $1) }
     }
 
-    /// What the overview's tiles stand for, largest first: Developer Clean Up as one, then every
-    /// other area by itself. Those with nothing found are left out.
+    /// What the overview's tiles stand for, largest first: each group as one, then every area that
+    /// stands by itself. Those with nothing found are left out.
     var overviewTiles: [SidebarItem] {
-        let items = [.developer] + Area.allCases.filter { !$0.isDeveloper }.map(SidebarItem.area)
-        return items.map { (item: $0, size: foundSize(under: $0)) }
+        SidebarItem.cleanUp.map { (item: $0, size: foundSize(under: $0)) }
             .filter { $0.size > 0 }
             .sorted { $0.size > $1.size }
             .map(\.item)
@@ -555,7 +578,7 @@ final class AppModel {
             sidebarSelection = item
         case (.results, _):
             sidebarSelection = item
-        case (.done, .area), (.done, .developer):
+        case (.done, .area), (.done, .group):
             phase = .results
             sidebarSelection = item
         default:

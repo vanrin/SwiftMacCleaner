@@ -43,9 +43,11 @@ nonisolated enum ScanEngine {
         case .ides: await IDEScanner.scan(context)
         case .models: await ModelsScanner.scan(context)
         case .cachesLogs: await CachesLogsScanner.scan(context)
-        case .installersTrash: await InstallersTrashScanner.scan(context)
-        case .leftovers: await LeftoverScanner.scan(context)
+        case .trash: await TrashScanner.scan(context)
         case .snapshots: await SnapshotScanner.scan(context)
+        case .largeFiles: await LargeFileScanner.scan(context)
+        case .leftovers: await LeftoverScanner.scan(context)
+        case .installers: await InstallerScanner.scan(context)
         }
         return applyingExclusions(to: result, context: context)
     }

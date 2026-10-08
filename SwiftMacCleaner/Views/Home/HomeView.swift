@@ -40,7 +40,7 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: Design.Spacing.large) {
                 FeatureBullet(symbol: "hammer", text: "Build output and caches")
                 FeatureBullet(symbol: "shippingbox", text: "Old toolchains, images and models")
-                FeatureBullet(symbol: "trash", text: "Installers, leftovers and snapshots")
+                FeatureBullet(symbol: "trash", text: "Trash, snapshots and old downloads")
             }
             HomeOptions()
         }

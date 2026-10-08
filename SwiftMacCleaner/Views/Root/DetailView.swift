@@ -27,7 +27,7 @@ struct DetailView: View {
                 case .results:
                     switch model.sidebarSelection {
                     case .area(let area): AreaDetailView(area: area)
-                    case .developer: DeveloperView()
+                    case .group(let group): GroupView(group: group)
                     default: OverviewView()
                     }
                 case .cleaning:
@@ -54,7 +54,7 @@ struct DetailView: View {
                 ToolbarItem(placement: .navigation) {
                     Button(parent.title, systemImage: "chevron.left", action: showParent)
                         .labelStyle(.titleBar)
-                        .help(parent == .overview ? "Back to everything the scan found" : "Back to the developer areas")
+                        .help(parent == .overview ? "Back to everything the scan found" : "Back to \(parent.title)")
                 }
             }
             if model.phase == .home || !inCleanUp {
@@ -89,8 +89,8 @@ struct DetailView: View {
         }
     }
 
-    /// Where the back button leads: a developer area sits under Developer Clean Up, everything else
-    /// under the overview.
+    /// Where the back button leads: an area filed under a group sits under that group's page,
+    /// everything else under the overview.
     private var parent: SidebarItem {
         let entry = model.sidebarSelection.entry
         return entry == model.sidebarSelection ? .overview : entry

@@ -113,7 +113,7 @@ nonisolated enum AppsDemoData {
         }
         return [
             Finding(
-                id: AppsModel.installersFindingID, area: .installersTrash, tier: .review, title: "Installers in Downloads",
+                id: AppsModel.installersFindingID, area: .installers, tier: .review, title: "Installers in Downloads",
                 summary: "4 disk images and installers",
                 explanation: "Disk images and installer packages. Once the app is installed these are rarely needed, and they can be downloaded again.",
                 method: .trash, actionTarget: "~/Downloads",

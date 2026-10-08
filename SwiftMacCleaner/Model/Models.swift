@@ -8,7 +8,9 @@ import Foundation
 /// A part of the disk the app knows how to look at.
 nonisolated enum Area: String, CaseIterable, Identifiable, Sendable {
     case xcode, projects, android, containers, packageCaches, toolchains, ides, models
-    case cachesLogs, installersTrash, leftovers, snapshots
+    case cachesLogs, trash, snapshots
+    case largeFiles
+    case leftovers, installers
 
     var id: String { rawValue }
 
@@ -23,9 +25,11 @@ nonisolated enum Area: String, CaseIterable, Identifiable, Sendable {
         case .ides: "IDEs and editors"
         case .models: "AI models and datasets"
         case .cachesLogs: "Caches and logs"
-        case .installersTrash: "Installers and Trash"
-        case .leftovers: "App leftovers"
+        case .trash: "Trash"
         case .snapshots: "Snapshots and backups"
+        case .largeFiles: "Large old downloads"
+        case .leftovers: "App leftovers"
+        case .installers: "Installers"
         }
     }
 
@@ -40,9 +44,11 @@ nonisolated enum Area: String, CaseIterable, Identifiable, Sendable {
         case .ides: "VS Code, Cursor, JetBrains and Android Studio caches, logs and old versions"
         case .models: "Hugging Face, Ollama, PyTorch and LM Studio downloads"
         case .cachesLogs: "~/Library/Caches, app containers, your temp folder, logs and crash reports"
-        case .installersTrash: "Disk images, large old files in Downloads, items in the Trash"
-        case .leftovers: "Support files of apps that are no longer installed"
+        case .trash: "Items in the Trash that are waiting to be emptied"
         case .snapshots: "Time Machine local snapshots, iPhone backups"
+        case .largeFiles: "Big files in Downloads that have sat untouched for months"
+        case .leftovers: "Support files of apps that are no longer installed"
+        case .installers: "Disk images and installer packages in Downloads"
         }
     }
 
@@ -57,29 +63,84 @@ nonisolated enum Area: String, CaseIterable, Identifiable, Sendable {
         case .ides: "chevron.left.forwardslash.chevron.right"
         case .models: "brain"
         case .cachesLogs: "doc.text"
-        case .installersTrash: "trash"
-        case .leftovers: "app.dashed"
+        case .trash: "trash"
         case .snapshots: "clock.arrow.circlepath"
+        case .largeFiles: "arrow.down.doc"
+        case .leftovers: "puzzlepiece.extension"
+        case .installers: "externaldrive"
         }
     }
 
-    var isDeveloper: Bool {
+    /// The sidebar entry the area is filed under together with others. An area of the clean-up without
+    /// one stands in the sidebar by itself.
+    var group: AreaGroup? {
         switch self {
-        case .cachesLogs, .installersTrash, .leftovers, .snapshots: false
+        case .xcode, .projects, .android, .containers, .packageCaches, .toolchains, .ides, .models: .developer
+        case .cachesLogs, .trash, .snapshots: .system
+        case .largeFiles, .leftovers, .installers: nil
+        }
+    }
+
+    var isDeveloper: Bool { group == .developer }
+
+    /// Whether the clean-up scan looks at the area. The others belong to Applications, which finds
+    /// them with a scan of its own and lists them beside the apps they came from.
+    var isCleanUp: Bool {
+        switch self {
+        case .leftovers, .installers: false
         default: true
         }
     }
 
-    /// The areas a developer's tools fill, which the app files under Developer Clean Up.
-    static let developer = allCases.filter(\.isDeveloper)
+    /// The areas of the clean-up, in the order they are listed.
+    static let cleanUp = allCases.filter(\.isCleanUp)
 
     /// Areas added in version 2, called out on the home screen.
     var isNew: Bool {
         switch self {
-        case .ides, .models, .leftovers, .snapshots: true
+        case .ides, .models, .snapshots: true
         default: false
         }
     }
+
+    /// The areas stored under a key in the defaults. "Installers and Trash" was one area before it was
+    /// split, so a Mac that had it switched off keeps both halves that are still part of the clean-up off.
+    static func stored(forKey key: String, in defaults: UserDefaults = .standard) -> Set<Area> {
+        Set((defaults.stringArray(forKey: key) ?? []).flatMap { name -> [Area] in
+            name == "installersTrash" ? [.trash, .largeFiles] : [Area(rawValue: name)].compactMap { $0 }
+        })
+    }
+}
+
+/// Areas of the clean-up that share one sidebar entry, with a page of tiles that leads to each of them.
+nonisolated enum AreaGroup: String, CaseIterable, Identifiable, Sendable {
+    case system, developer
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .system: "System Clean Up"
+        case .developer: "Developer Clean Up"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .system: "internaldrive"
+        case .developer: "wrench.and.screwdriver"
+        }
+    }
+
+    /// What the areas are called in a sentence: "the developer areas".
+    var noun: String {
+        switch self {
+        case .system: "system"
+        case .developer: "developer"
+        }
+    }
+
+    var areas: [Area] { Area.allCases.filter { $0.group == self } }
 }
 
 /// How much thought removing something deserves.

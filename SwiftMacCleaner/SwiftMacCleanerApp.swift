@@ -83,7 +83,7 @@ nonisolated enum ScanReportPrinter {
     static func run(areaNames: [String]) {
         let requested = areaNames.compactMap(Area.init(rawValue:))
         // Downloads, the Trash and device backups raise permission prompts, so those areas are only scanned when asked for.
-        let prompting: Set<Area> = [.installersTrash, .leftovers, .snapshots]
+        let prompting: Set<Area> = [.trash, .largeFiles, .installers, .leftovers, .snapshots]
         let areas = requested.isEmpty ? Area.allCases.filter { !prompting.contains($0) } : requested
         var context = AppSettings().scanContext()
         context.shell = ShellEnvironment.loading()
@@ -120,10 +120,6 @@ nonisolated enum ScanReportPrinter {
             finished.signal()
         }
         finished.wait()
-    }
-
-    private static func storedAreas(_ key: String) -> Set<Area> {
-        Set((UserDefaults.standard.stringArray(forKey: key) ?? []).compactMap(Area.init(rawValue:)))
     }
 
     /// Prints what decides the developer areas: the tools found, the kinds of project in the project
@@ -169,15 +165,15 @@ nonisolated enum ScanReportPrinter {
             neverSuggest: settings.neverSuggest.map(\.path),
             backupsAllowed: true
         )
-        let disabled = storedAreas("disabledAreas")
-        let forced = storedAreas("forcedAreas")
+        let disabled = Area.stored(forKey: "disabledAreas")
+        let forced = Area.stored(forKey: "forcedAreas")
         let roots = context.projectRoots
 
         let finished = DispatchSemaphore(value: 0)
         Task.detached {
             let stack = StackDetector.detect(home: home)
                 .adding(await StackDetector.projectKinds(in: roots, home: home), hasProjectFolders: !roots.isEmpty)
-            let areas = Area.allCases.filter { stack.scans($0, disabled: disabled, forced: forced) }
+            let areas = Area.cleanUp.filter { stack.scans($0, disabled: disabled, forced: forced) }
             print("Scanning \(areas.count) areas")
             var findings: [Finding] = []
             for await event in ScanEngine.events(areas: areas, context: context) {

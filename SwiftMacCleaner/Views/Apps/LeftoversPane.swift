@@ -6,7 +6,7 @@
 import SwiftUI
 
 /// Leftovers: installers that are no longer needed, and files of apps that are already gone.
-/// These are the clean-up scan's own findings, shown here beside the apps they relate to.
+/// Both are Applications' own to find and remove; the clean-up scan leaves them to it.
 struct LeftoversPane: View {
     @Environment(AppModel.self) private var model
 

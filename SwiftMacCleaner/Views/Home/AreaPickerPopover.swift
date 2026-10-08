@@ -12,7 +12,7 @@ struct AreaPickerPopover: View {
     var body: some View {
         let stack = model.stack
         // Developer areas whose tools are not on this Mac go last, unticked until asked for.
-        let missing = Area.allCases.filter { !stack.applies($0) }
+        let missing = Area.cleanUp.filter { !stack.applies($0) }
         VStack(alignment: .leading, spacing: 0) {
             SectionHeading(
                 title: "What the scan looks at",
@@ -22,7 +22,7 @@ struct AreaPickerPopover: View {
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    ForEach(Area.allCases.filter(stack.applies)) { area in
+                    ForEach(Area.cleanUp.filter(stack.applies)) { area in
                         AreaToggleRow(area: area)
                     }
                     if !missing.isEmpty {

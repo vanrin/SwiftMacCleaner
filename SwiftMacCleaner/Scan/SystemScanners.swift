@@ -144,158 +144,50 @@ nonisolated enum CachesLogsScanner {
     }
 }
 
-/// Installers and large old files left in Downloads, and whatever is sitting in the Trash.
-nonisolated enum InstallersTrashScanner {
-    static let installerExtensions: Set<String> = ["dmg", "pkg", "iso", "xip", "ipsw"]
-    static let largeFileMinimum: Int64 = 100_000_000
+/// Whatever is sitting in the Trash.
+nonisolated enum TrashScanner {
+    static let minimumSize: Int64 = 5_000_000
 
     static func scan(_ context: ScanContext) async -> AreaScanResult {
-        var result = AreaScanResult()
-        let fileManager = FileManager.default
-
-        let downloads = context.home.appending(path: "Downloads")
-        do {
-            let files = try fileManager.contentsOfDirectory(
-                at: downloads, includingPropertiesForKeys: [.isRegularFileKey, .contentModificationDateKey], options: [.skipsHiddenFiles]
-            )
-            if let finding = await installers(in: files, downloads: downloads, context: context) {
-                result.findings.append(finding)
-            }
-            if let finding = await largeFiles(in: files, downloads: downloads, context: context) {
-                result.findings.append(finding)
-            }
-        } catch where isPermissionError(error) {
-            result.unreadable.append("Downloads")
-        } catch {}
-
         let trash = context.home.appending(path: ".Trash")
+        let entries: [URL]
         do {
-            let entries = try fileManager.contentsOfDirectory(at: trash, includingPropertiesForKeys: nil, options: [])
+            entries = try FileManager.default.contentsOfDirectory(at: trash, includingPropertiesForKeys: nil, options: [])
                 .filter { $0.lastPathComponent != ".DS_Store" }
-            let sizes = await Sizing.sizes(of: entries)
-            let size = sizes.values.reduce(0, +)
-            if size >= 5_000_000 {
-                result.findings.append(Finding(
-                    id: "installers.trash",
-                    area: .installersTrash,
-                    tier: .review,
-                    title: "Items in the Trash",
-                    summary: "\(entries.count) \(entries.count == 1 ? "item" : "items") waiting to be emptied",
-                    explanation: "Things you already threw away. Emptying the Trash removes them for good.",
-                    method: .delete,
-                    actionTarget: context.tilde(trash),
-                    items: [FindingItem(
-                        id: "installers.trash/all",
-                        title: "Everything in the Trash",
-                        detail: "\(entries.count) \(entries.count == 1 ? "item" : "items")",
-                        size: size,
-                        paths: entries
-                    )]
-                ))
-            }
-        } catch where isPermissionError(error) {
-            result.unreadable.append("the Trash")
-        } catch {}
-
-        if result.findings.isEmpty, !result.unreadable.isEmpty {
-            result.skipReason = "macOS did not let the app read \(result.unreadable.joined(separator: " or ")). "
-                + "Grant Full Disk Access in Privacy & Security, then scan again."
+        } catch where Files.isPermissionError(error) {
+            return .unreadable("the Trash")
+        } catch {
+            return AreaScanResult()
         }
-        return result
-    }
-
-    /// The installers in Downloads alone, for the Applications screen, which has no use for the Trash.
-    @concurrent
-    static func installers(_ context: ScanContext) async -> AreaScanResult {
-        var result = AreaScanResult()
-        let downloads = context.home.appending(path: "Downloads")
-        do {
-            let files = try FileManager.default.contentsOfDirectory(
-                at: downloads, includingPropertiesForKeys: [.isRegularFileKey, .contentModificationDateKey], options: [.skipsHiddenFiles]
-            )
-            if let finding = await installers(in: files, downloads: downloads, context: context) {
-                result.findings.append(finding)
-            }
-        } catch where isPermissionError(error) {
-            result.unreadable.append("Downloads")
-        } catch {}
-        return ScanEngine.applyingExclusions(to: result, context: context)
-    }
-
-    private static func installers(in files: [URL], downloads: URL, context: ScanContext) async -> Finding? {
-        let candidates = files
-            .filter { installerExtensions.contains($0.pathExtension.lowercased()) }
-            .map { file in
-                PathCandidate(
-                    title: file.lastPathComponent,
-                    detail: Files.modificationDate(file).map { "Downloaded \(context.relative($0))" } ?? "Installer",
-                    url: file
-                )
-            }
-        let items = await Sizing.items(prefix: "installers.downloads", from: candidates, minimumSize: 5_000_000)
-        guard !items.isEmpty else { return nil }
-        return Finding(
-            id: "installers.downloads",
-            area: .installersTrash,
+        let sizes = await Sizing.sizes(of: entries)
+        let size = sizes.values.reduce(0, +)
+        guard size >= minimumSize else { return AreaScanResult() }
+        return AreaScanResult(findings: [Finding(
+            id: "trash.items",
+            area: .trash,
             tier: .review,
-            title: "Installers in Downloads",
-            summary: "\(items.count) disk \(items.count == 1 ? "image or installer" : "images and installers")",
-            explanation: "Disk images and installer packages. Once the app is installed these are rarely needed, and they can be downloaded again.",
-            method: .trash,
-            actionTarget: context.tilde(downloads),
-            items: items
+            title: "Items in the Trash",
+            summary: "\(entries.count) \(entries.count == 1 ? "item" : "items") waiting to be emptied",
+            explanation: "Things you already threw away. Emptying the Trash removes them for good.",
+            method: .delete,
+            actionTarget: context.tilde(trash),
+            items: [FindingItem(
+                id: "trash.items/all",
+                title: "Everything in the Trash",
+                detail: "\(entries.count) \(entries.count == 1 ? "item" : "items")",
+                size: size,
+                paths: entries
+            )]
+        )])
+    }
+}
+
+nonisolated extension AreaScanResult {
+    /// What an area reports when macOS kept its one folder private.
+    static func unreadable(_ folder: String) -> AreaScanResult {
+        AreaScanResult(
+            skipReason: "macOS did not let the app read \(folder). Grant Full Disk Access in Privacy & Security, then scan again.",
+            unreadable: [folder]
         )
-    }
-
-    /// Big files that have sat in Downloads untouched for longer than the user's limit.
-    private static func largeFiles(in files: [URL], downloads: URL, context: ScanContext) async -> Finding? {
-        var candidates: [PathCandidate] = []
-        for file in files where !installerExtensions.contains(file.pathExtension.lowercased()) {
-            guard let values = try? file.resourceValues(forKeys: [.isRegularFileKey, .contentModificationDateKey]),
-                  values.isRegularFile == true,
-                  let modified = values.contentModificationDate, modified < context.largeFileCutoff else { continue }
-            candidates.append(PathCandidate(
-                title: file.lastPathComponent,
-                detail: "\(kind(of: file)), last changed \(context.relative(modified))",
-                url: file
-            ))
-        }
-        let items = await Sizing.items(prefix: "installers.large", from: candidates, minimumSize: largeFileMinimum)
-        guard !items.isEmpty else { return nil }
-        return Finding(
-            id: "installers.large",
-            area: .installersTrash,
-            tier: .review,
-            title: "Large files in Downloads",
-            summary: "\(items.count) \(items.count == 1 ? "file" : "files") of \(ByteFormat.string(largeFileMinimum)) or more untouched for \(context.largeFileDays)+ days",
-            explanation: "Big downloads you have not opened in a while. They go to the Trash, so they can be put back if one turns out to matter.",
-            method: .trash,
-            actionTarget: context.tilde(downloads),
-            items: items
-        )
-    }
-
-    /// A plain word for what a file is, from its extension.
-    static func kind(of file: URL) -> String {
-        switch file.pathExtension.lowercased() {
-        case "zip", "tar", "gz", "tgz", "bz2", "xz", "7z", "rar": "Archive"
-        case "mov", "mp4", "m4v", "mkv", "avi", "webm": "Video"
-        case "mp3", "m4a", "wav", "aac", "flac": "Audio"
-        case "pdf": "PDF"
-        case "jpg", "jpeg", "png", "heic", "gif", "tiff", "psd", "raw": "Image"
-        case "app": "App"
-        case "": "File"
-        default: file.pathExtension.uppercased() + " file"
-        }
-    }
-
-    /// True when macOS refused access, as opposed to the folder simply not being there.
-    static func isPermissionError(_ error: Error) -> Bool {
-        let error = error as NSError
-        if error.domain == NSCocoaErrorDomain, error.code == NSFileReadNoPermissionError { return true }
-        let underlying = error.userInfo[NSUnderlyingErrorKey] as? NSError
-        return [error, underlying].compactMap { $0 }.contains {
-            $0.domain == NSPOSIXErrorDomain && ($0.code == Int(EPERM) || $0.code == Int(EACCES))
-        }
     }
 }

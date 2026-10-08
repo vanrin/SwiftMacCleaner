@@ -5,12 +5,10 @@
 
 import SwiftUI
 
-/// The column on the left: the overview, Developer Clean Up, the areas every Mac has, and at the bottom
-/// the parts of the app that stand apart from the clean-up.
+/// The column on the left: the overview and what the clean-up is filed under, and at the bottom the
+/// parts of the app that stand apart from the clean-up.
 struct SidebarView: View {
     @Environment(AppModel.self) private var model
-
-    private static let systemAreas = Area.allCases.filter { !$0.isDeveloper }
 
     var body: some View {
         // Areas lead somewhere only once there are results to show.
@@ -22,12 +20,9 @@ struct SidebarView: View {
                 VStack(spacing: Design.Spacing.medium) {
                     SidebarButton(item: .overview, badge: overviewBadge)
                     VStack(spacing: Design.Spacing.tight / 2) {
-                        // One entry for every developer area, and none on a Mac without developer tools.
-                        if !model.developerAreas.isEmpty {
-                            SidebarButton(item: .developer, badge: developerBadge, isAvailable: areasAvailable)
-                        }
-                        ForEach(Self.systemAreas) { area in
-                            SidebarButton(item: .area(area), badge: badge(for: area), isAvailable: areasAvailable)
+                        // One entry for each group, however many areas it holds.
+                        ForEach(model.cleanUpEntries, id: \.self) { item in
+                            SidebarButton(item: item, badge: badge(for: item), isAvailable: areasAvailable)
                         }
                     }
                 }
@@ -74,16 +69,9 @@ struct SidebarView: View {
         }
     }
 
-    private var developerBadge: String? {
-        badge(for: model.developerState, found: model.foundSize(under: .developer))
-    }
-
-    private func badge(for area: Area) -> String? {
-        badge(for: model.areaState(for: area), found: model.foundSize(in: area))
-    }
-
-    private func badge(for state: AppModel.AreaState, found: Int64) -> String? {
-        switch state {
+    private func badge(for item: SidebarItem) -> String? {
+        let found = model.foundSize(under: item)
+        return switch model.state(of: item) {
         case .idle: nil
         case .queued: "Queued"
         case .scanning: "Scanning"

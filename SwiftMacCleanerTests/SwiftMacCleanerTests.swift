@@ -573,7 +573,7 @@ struct ShellTests {
     }
 }
 
-struct InstallersTrashScannerTests {
+struct DownloadsAndTrashScannerTests {
     @Test func namesTheFolderItCouldNotReadAndStillScansTheOther() async throws {
         let sandbox = try Sandbox()
         let downloads = sandbox.root.appending(path: "Downloads")
@@ -587,18 +587,28 @@ struct InstallersTrashScannerTests {
         try sandbox.file(".Trash/old-video.mov", bytes: 6_000_000)
         try FileManager.default.setAttributes([.posixPermissions: locked], ofItemAtPath: downloads.path)
 
-        let result = await InstallersTrashScanner.scan(ScanContext(home: sandbox.root))
-        #expect(result.unreadable == ["Downloads"])
-        #expect(result.findings.map(\.id) == ["installers.trash"])
-        #expect(result.skipReason == nil)
+        let context = ScanContext(home: sandbox.root)
+        for result in [await InstallerScanner.scan(context), await LargeFileScanner.scan(context)] {
+            #expect(result.unreadable == ["Downloads"])
+            #expect(result.findings.isEmpty)
+            #expect(result.skipReason?.contains("Downloads") == true)
+        }
+        let trash = await TrashScanner.scan(context)
+        #expect(trash.unreadable.isEmpty)
+        #expect(trash.findings.map(\.id) == ["trash.items"])
+        #expect(trash.findings.first?.area == .trash)
+        #expect(trash.skipReason == nil)
     }
 
     @Test func aMissingFolderIsNotAPermissionProblem() async throws {
         let sandbox = try Sandbox()
         defer { sandbox.remove() }
-        let result = await InstallersTrashScanner.scan(ScanContext(home: sandbox.root))
-        #expect(result.unreadable.isEmpty)
-        #expect(result.findings.isEmpty)
+        let context = ScanContext(home: sandbox.root)
+        for result in [await InstallerScanner.scan(context), await LargeFileScanner.scan(context), await TrashScanner.scan(context)] {
+            #expect(result.unreadable.isEmpty)
+            #expect(result.findings.isEmpty)
+            #expect(result.skipReason == nil)
+        }
     }
 }
 

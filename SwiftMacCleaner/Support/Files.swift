@@ -36,6 +36,16 @@ nonisolated enum Files {
         guard let data = try? Data(contentsOf: url) else { return nil }
         return (try? PropertyListSerialization.propertyList(from: data, format: nil)) as? [String: Any]
     }
+
+    /// True when macOS refused access, as opposed to the folder simply not being there.
+    static func isPermissionError(_ error: Error) -> Bool {
+        let error = error as NSError
+        if error.domain == NSCocoaErrorDomain, error.code == NSFileReadNoPermissionError { return true }
+        let underlying = error.userInfo[NSUnderlyingErrorKey] as? NSError
+        return [error, underlying].compactMap { $0 }.contains {
+            $0.domain == NSPOSIXErrorDomain && ($0.code == Int(EPERM) || $0.code == Int(EACCES))
+        }
+    }
 }
 
 nonisolated extension Files {

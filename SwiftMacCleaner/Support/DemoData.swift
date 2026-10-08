@@ -7,8 +7,8 @@
 import Foundation
 
 /// Made-up scan results for looking at the screens without scanning a real disk.
-/// Launch with `--demo results`, `home`, `scanning`, `review`, `cleaning` or `done`, with `developer` for
-/// Developer Clean Up, or with an area's raw name, such as `xcode`, `projects` or `leftovers`, to open that area's page.
+/// Launch with `--demo results`, `home`, `scanning`, `review`, `cleaning` or `done`, with `system` or `developer`
+/// for a group's page, or with an area's raw name, such as `xcode`, `projects` or `trash`, to open that area's page.
 nonisolated enum DemoData {
     private static func item(_ prefix: String, _ title: String, _ detail: String, _ gigabytes: Double,
                              hint: String? = nil, command: [String]? = nil, preselected: Bool? = nil,
@@ -210,27 +210,23 @@ nonisolated enum DemoData {
                 ]
             ),
             Finding(
-                id: "leftovers.apps", area: .leftovers, tier: .review, title: "Support files of apps that are no longer installed",
-                summary: "Support files of 4 apps that are no longer installed",
-                explanation: "Folders in your Library that belong to a bundle identifier no installed app claims. An app is counted as gone only when Launch Services knows nothing with that identifier, the folder is 10 MB or more, and nothing in it changed for 30 days. Reinstalling the app recreates what it needs; settings and documents kept in these folders would be gone.",
-                method: .trash, actionTarget: "~/Library/Application Support, Containers, Caches, Preferences, Saved Application State",
+                id: "largeFiles.downloads", area: .largeFiles, tier: .review, title: "Large files in Downloads",
+                summary: "3 files of 100 MB or more untouched for 90+ days",
+                explanation: "Big downloads you have not opened in a while. They go to the Trash, so they can be put back if one turns out to matter.",
+                method: .trash, actionTarget: "~/Downloads",
                 items: [
-                    item("leftovers.apps", "Sketch", "Application Support, Caches and Preferences. Last changed 1 year ago. No installed app has this identifier", 1.12, hint: "com.bohemiancoding.sketch3"),
-                    item("leftovers.apps", "Figma Agent", "Application Support. Last changed 7 months ago", 0.41, hint: "com.figma.agent"),
-                    item("leftovers.apps", "Postman", "Application Support and Caches. Last changed 5 months ago", 0.39, hint: "com.postmanlabs.mac"),
-                    item("leftovers.apps", "Zoom", "Container and Preferences. Last changed 9 months ago", 0.24, hint: "us.zoom.xos"),
+                    item("largeFiles.downloads", "conference-recording.mov", "Video, last changed 7 months ago", 1.3),
+                    item("largeFiles.downloads", "survey-export.zip", "Archive, last changed 5 months ago", 0.9),
+                    item("largeFiles.downloads", "design-handoff.zip", "Archive, last changed 1 year ago", 0.6),
                 ]
             ),
             Finding(
-                id: "installers.downloads", area: .installersTrash, tier: .review, title: "Installers and large old downloads",
-                summary: "3 disk images, 1 file over 100 MB untouched for 90+ days",
-                explanation: "Disk images and installer packages, and large files that have sat untouched. Once the app is installed these are rarely needed, and they can be downloaded again.",
-                method: .trash, actionTarget: "~/Downloads",
+                id: "trash.items", area: .trash, tier: .review, title: "Items in the Trash",
+                summary: "14 items waiting to be emptied",
+                explanation: "Things you already threw away. Emptying the Trash removes them for good.",
+                method: .delete, actionTarget: "~/.Trash",
                 items: [
-                    item("installers.downloads", "android-studio-mac_arm.dmg", "Downloaded 5 months ago", 1.4),
-                    item("installers.downloads", "Docker.dmg", "Downloaded 3 months ago", 0.8),
-                    item("installers.downloads", "Figma.dmg", "Downloaded 8 months ago", 0.6),
-                    item("installers.downloads", "conference-recording.mov", "Untouched for 7 months", 1.3),
+                    item("trash.items", "Everything in the Trash", "14 items", 2.1),
                 ]
             ),
             Finding(
@@ -301,13 +297,13 @@ nonisolated enum DemoData {
             }
             return step
         }
-        if let installers = findings.first(where: { $0.id == "installers.downloads" }) {
-            let trashed = installers.items.map {
+        if let downloads = findings.first(where: { $0.id == "largeFiles.downloads" }) {
+            let trashed = downloads.items.map {
                 TrashedItem(original: URL(fileURLWithPath: "/Users/demo/Downloads/\($0.title)"),
                             inTrash: URL(fileURLWithPath: "/Users/demo/.Trash/\($0.title)"), size: $0.size)
             }
-            steps.append(StepOutcome(id: installers.id, title: installers.title, method: .trash, size: installers.size,
-                                     cleanedItemIDs: installers.items.map(\.id), failures: [], skippedReason: nil,
+            steps.append(StepOutcome(id: downloads.id, title: downloads.title, method: .trash, size: downloads.size,
+                                     cleanedItemIDs: downloads.items.map(\.id), failures: [], skippedReason: nil,
                                      trashed: trashed))
         }
         let freed = steps.filter { $0.skippedReason == nil && $0.method != .trash }.reduce(Int64(0)) { $0 + $1.size }

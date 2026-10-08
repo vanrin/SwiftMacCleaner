@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// The developer areas with nothing to tick, each with the reason, so none of them simply goes missing.
+/// A group's areas with nothing to tick, each with the reason, so none of them simply goes missing.
 struct QuietAreasPanel: View {
     let areas: [Area]
 

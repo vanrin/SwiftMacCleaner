@@ -150,7 +150,7 @@ struct StackDetectorTests {
         #expect(!stack.scans(.packageCaches, disabled: [.packageCaches], forced: []))
         #expect(!stack.scans(.android, disabled: [], forced: []))
         #expect(stack.scans(.android, disabled: [], forced: [.android]))
-        #expect(stack.scans(.installersTrash, disabled: [], forced: []))
+        #expect(stack.scans(.trash, disabled: [], forced: []))
 
         #expect(stack.summary(of: .packageCaches) == "npm, pnpm, Yarn, Bun, Deno and 2 more")
         #expect(stack.summary(of: .android) == nil)

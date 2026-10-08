@@ -74,7 +74,7 @@ nonisolated enum SnapshotScanner {
         do {
             folders = try FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: [.isDirectoryKey], options: [.skipsHiddenFiles])
                 .filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true }
-        } catch where InstallersTrashScanner.isPermissionError(error) {
+        } catch where Files.isPermissionError(error) {
             result.unreadable.append("iPhone backups")
             return
         } catch {

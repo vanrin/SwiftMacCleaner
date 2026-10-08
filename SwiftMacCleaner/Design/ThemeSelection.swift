@@ -18,9 +18,11 @@ extension Area {
         case .ides: .magenta
         case .models: .rose
         case .cachesLogs: .green
-        case .installersTrash: .amber
-        case .leftovers: .blue
+        case .trash: .rose
         case .snapshots: .teal
+        case .largeFiles: .amber
+        case .leftovers: .blue
+        case .installers: .ocean
         }
     }
 }
@@ -36,12 +38,22 @@ extension SafetyTier {
     }
 }
 
+extension AreaGroup {
+    /// The palette of this group's icon and of its page.
+    var theme: Theme {
+        switch self {
+        case .system: .teal
+        case .developer: .indigo
+        }
+    }
+}
+
 extension SidebarItem {
     /// The palette of this entry's icon and of its own screens.
     var theme: Theme {
         switch self {
         case .overview: .violet
-        case .developer: .indigo
+        case .group(let group): group.theme
         case .area(let area): area.theme
         case .space: .ocean
         case .apps: .blue
@@ -56,8 +68,8 @@ extension AppModel {
         return switch item {
         case .space: item.theme
         case .apps: apps.phase == .done ? .green : item.theme
-        case .developer where phase == .results, .area where phase == .results: item.theme
-        case .overview, .developer, .area: phase == .done ? .green : SidebarItem.overview.theme
+        case .group where phase == .results, .area where phase == .results: item.theme
+        case .overview, .group, .area: phase == .done ? .green : SidebarItem.overview.theme
         }
     }
 }

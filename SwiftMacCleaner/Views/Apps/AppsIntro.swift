@@ -26,12 +26,12 @@ struct AppsIntro: View {
         } details: {
             IntroHeading(
                 title: "Applications",
-                detail: "Take control of your apps. Uninstall them completely, see which have an update, and clear what removed apps left behind."
+                detail: "Take control of your apps. Uninstall them completely, see which have an update, and clear the installers and files they left behind."
             )
             VStack(alignment: .leading, spacing: Design.Spacing.large) {
                 FeatureBullet(symbol: "xmark.app", text: "App Uninstaller")
                 FeatureBullet(symbol: "arrow.up.circle", text: "App Updater")
-                FeatureBullet(symbol: "puzzlepiece.extension", text: "File Leftovers")
+                FeatureBullet(symbol: "puzzlepiece.extension", text: "Leftovers and Installers")
             }
             Text("Scanning only reads. Nothing is removed until you confirm, and what is removed goes to the Trash, where it can be put back.")
                 .foregroundStyle(.secondary)

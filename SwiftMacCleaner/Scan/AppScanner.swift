@@ -133,7 +133,7 @@ nonisolated enum AppScanner {
             _ = try FileManager.default.contentsOfDirectory(atPath: url.path)
             return false
         } catch {
-            return InstallersTrashScanner.isPermissionError(error)
+            return Files.isPermissionError(error)
         }
     }
 
