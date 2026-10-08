@@ -10,11 +10,39 @@ import UserNotifications
 
 enum SidebarItem: Hashable {
     case overview
+    /// Developer Clean Up: the developer areas together. Each of them is a page underneath it.
+    case developer
     case area(Area)
     /// Largest Folders, which is independent of the clean-up scan.
     case space
     /// Applications: uninstalling, updates and leftovers, which has a scan of its own.
     case apps
+
+    var title: String {
+        switch self {
+        case .overview: "Overview"
+        case .developer: "Developer Clean Up"
+        case .area(let area): area.title
+        case .space: "Largest Folders"
+        case .apps: "Applications"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .overview: "sparkles"
+        case .developer: "wrench.and.screwdriver"
+        case .area(let area): area.symbol
+        case .space: "chart.bar.doc.horizontal"
+        case .apps: "square.grid.2x2"
+        }
+    }
+
+    /// The sidebar entry that is lit while this is on screen. A developer area has none of its own:
+    /// it is reached through Developer Clean Up.
+    var entry: SidebarItem {
+        if case .area(let area) = self, area.isDeveloper { .developer } else { self }
+    }
 }
 
 /// Which apps are running, asked of the workspace. Kept apart so a non-UI caller can ask too.
@@ -113,8 +141,8 @@ final class AppModel {
 
     var listedAreas: [Area] { Area.allCases.filter(isListed) }
 
-    /// Whether the sidebar shows the area: any that is listed, and any the last scan looked at.
-    func showsInSidebar(_ area: Area) -> Bool { isListed(area) || areaState(for: area) != .idle }
+    /// Whether the area has a place in the window: any that is listed, and any the last scan looked at.
+    func isShown(_ area: Area) -> Bool { isListed(area) || areaState(for: area) != .idle }
 
     /// Looks again at which tools this Mac has. The home folder is checked on the spot; the project
     /// folders take a moment longer and are read in the background.
@@ -193,6 +221,15 @@ final class AppModel {
             finishClean(result)
             disk.free = result.freeAfter
             putBackPending = PutBack.Manifest(date: result.started, items: result.trashed)
+        case "developer":
+            // `--demo developer [quiet]`: with `quiet`, three of the areas have nothing to offer.
+            sidebarSelection = .developer
+            if arguments.first == "quiet" {
+                let quiet: Set<Area> = [.containers, .toolchains, .models]
+                findings.removeAll { quiet.contains($0.area) }
+                selection = selection.filter { id in findings.contains { $0.items.contains { $0.id == id } } }
+                areaStates[.containers] = .skipped("Docker did not answer, so its images and build cache were not measured.")
+            }
         default:
             // Any area by its raw name, such as `xcode`, `projects` or `packageCaches`.
             if let area = Area(rawValue: screen) { sidebarSelection = .area(area) }
@@ -383,6 +420,26 @@ final class AppModel {
         return nil
     }
 
+    // MARK: Developer Clean Up
+
+    /// The developer areas with a place under Developer Clean Up: those this Mac has tools for,
+    /// and any the last scan looked at.
+    var developerAreas: [Area] { Area.developer.filter(isShown) }
+
+    /// How the developer areas are doing, for the one entry that stands for all of them.
+    var developerState: AreaState { Self.combined(Area.developer.map(areaState)) }
+
+    /// Several areas' states as one: scanning until the last of them is done, and skipped only when
+    /// every one that was looked at was. Areas the scan left out do not count.
+    static func combined(_ states: [AreaState]) -> AreaState {
+        let states = states.filter { $0 != .idle }
+        guard let first = states.first else { return .idle }
+        if states.allSatisfy({ $0 == .queued }) { return .queued }
+        if states.contains(where: { $0 == .queued || $0 == .scanning }) { return .scanning }
+        // Only finished and skipped areas are left.
+        return states.contains(.finished) ? .finished : first
+    }
+
     // MARK: Selection
 
     func isSelected(_ item: FindingItem) -> Bool { selection.contains(item.id) }
@@ -432,6 +489,34 @@ final class AppModel {
         findings(in: area).reduce(0) { $0 + $1.size }
     }
 
+    /// The findings a sidebar entry or a tile stands for: one area's, or those of every developer area.
+    func findings(under item: SidebarItem) -> [Finding] {
+        switch item {
+        case .overview: findings
+        case .developer: findings.filter(\.area.isDeveloper)
+        case .area(let area): findings(in: area)
+        case .space, .apps: []
+        }
+    }
+
+    func foundSize(under item: SidebarItem) -> Int64 {
+        findings(under: item).reduce(0) { $0 + $1.size }
+    }
+
+    func selectedSize(under item: SidebarItem) -> Int64 {
+        findings(under: item).reduce(0) { $0 + selectedSize(in: $1) }
+    }
+
+    /// What the overview's tiles stand for, largest first: Developer Clean Up as one, then every
+    /// other area by itself. Those with nothing found are left out.
+    var overviewTiles: [SidebarItem] {
+        let items = [.developer] + Area.allCases.filter { !$0.isDeveloper }.map(SidebarItem.area)
+        return items.map { (item: $0, size: foundSize(under: $0)) }
+            .filter { $0.size > 0 }
+            .sorted { $0.size > $1.size }
+            .map(\.item)
+    }
+
     var foundSize: Int64 { findings.reduce(0) { $0 + $1.size } }
     var protectedSize: Int64 { protected.reduce(0) { $0 + ($1.size ?? 0) } }
     var selectedSize: Int64 { findings.reduce(0) { $0 + selectedSize(in: $1) } }
@@ -470,7 +555,7 @@ final class AppModel {
             sidebarSelection = item
         case (.results, _):
             sidebarSelection = item
-        case (.done, .area):
+        case (.done, .area), (.done, .developer):
             phase = .results
             sidebarSelection = item
         default:

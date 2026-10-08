@@ -380,6 +380,59 @@ struct MenuBarTests {
     }
 }
 
+@MainActor
+struct DeveloperCleanUpTests {
+    private func item(_ id: String, _ size: Int64) -> FindingItem {
+        FindingItem(id: id, title: "", detail: "", size: size)
+    }
+
+    @Test func theDeveloperAreasShareOneTileOnTheOverview() throws {
+        let sandbox = try Sandbox()
+        defer { sandbox.remove() }
+        let model = AppModel(home: sandbox.root)
+        model.show(findings: [
+            finding(id: "derived", area: .xcode, items: [item("x/1", 30)]),
+            finding(id: "caches", area: .packageCaches, tier: .review, method: .trash, items: [item("p/1", 10)]),
+            finding(id: "logs", area: .cachesLogs, items: [item("c/1", 50)]),
+            finding(id: "dmg", area: .installersTrash, tier: .review, method: .trash, items: [item("i/1", 5)]),
+        ])
+        #expect(model.overviewTiles == [.area(.cachesLogs), .developer, .area(.installersTrash)])
+        #expect(model.findings(under: .developer).map(\.id) == ["derived", "caches"])
+        #expect(model.foundSize(under: .developer) == 40)
+        #expect(model.selectedSize(under: .developer) == 30)
+        #expect(model.developerAreas == Area.developer)
+    }
+
+    @Test func aDeveloperAreaIsReachedThroughDeveloperCleanUp() throws {
+        let sandbox = try Sandbox()
+        defer { sandbox.remove() }
+        let model = AppModel(home: sandbox.root)
+        #expect(SidebarItem.area(.xcode).entry == .developer)
+        #expect(SidebarItem.area(.snapshots).entry == .area(.snapshots))
+
+        // Before there are results it leads nowhere, like any area.
+        model.select(.developer)
+        #expect(model.sidebarSelection == .overview)
+
+        model.show(findings: [finding(id: "derived", area: .xcode, items: [item("x/1", 30)])])
+        model.select(.developer)
+        #expect(model.sidebarSelection == .developer)
+        #expect(model.theme == SidebarItem.developer.theme)
+        model.select(.area(.xcode))
+        #expect(model.sidebarSelection.entry == .developer)
+        #expect(model.theme == Area.xcode.theme)
+    }
+
+    @Test func theDeveloperEntryIsBusyUntilItsLastAreaIsDone() {
+        #expect(AppModel.combined([.idle, .idle]) == .idle)
+        #expect(AppModel.combined([.queued, .idle, .queued]) == .queued)
+        #expect(AppModel.combined([.finished, .queued]) == .scanning)
+        #expect(AppModel.combined([.finished, .scanning, .skipped("stopped")]) == .scanning)
+        #expect(AppModel.combined([.finished, .skipped("stopped")]) == .finished)
+        #expect(AppModel.combined([.skipped("stopped"), .idle, .skipped("stopped")]) == .skipped("stopped"))
+    }
+}
+
 struct DiskInfoTests {
     @Test func usedSpaceLeavesOutWhatIsPurgeable() {
         let disk = DiskInfo(name: "Macintosh HD", capacity: 1000, free: 100, purgeable: 50)

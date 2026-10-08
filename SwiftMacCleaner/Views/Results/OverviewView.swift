@@ -5,7 +5,8 @@
 
 import SwiftUI
 
-/// The scan results: what was found in each area, then every finding grouped by how safe it is to remove.
+/// The scan results: what was found in Developer Clean Up and in each other area, then every finding
+/// grouped by how safe it is to remove.
 struct OverviewView: View {
     @Environment(AppModel.self) private var model
 
@@ -26,8 +27,8 @@ struct OverviewView: View {
                 } else {
                     ResultsHeadline()
                     LazyVGrid(columns: columns, spacing: Design.Spacing.large) {
-                        ForEach(model.largestAreas(Area.allCases.count), id: \.area) { entry in
-                            ResultTile(area: entry.area, size: entry.size)
+                        ForEach(model.overviewTiles, id: \.self) { item in
+                            ResultTile(item: item)
                         }
                     }
                     SectionHeading(

@@ -70,6 +70,9 @@ nonisolated enum Area: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    /// The areas a developer's tools fill, which the app files under Developer Clean Up.
+    static let developer = allCases.filter(\.isDeveloper)
+
     /// Areas added in version 2, called out on the home screen.
     var isNew: Bool {
         switch self {

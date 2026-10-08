@@ -7,8 +7,8 @@
 import Foundation
 
 /// Made-up scan results for looking at the screens without scanning a real disk.
-/// Launch with `--demo results`, `home`, `scanning`, `review`, `cleaning` or `done`, or with an area's raw name,
-/// such as `xcode`, `projects` or `leftovers`, to open that area's page.
+/// Launch with `--demo results`, `home`, `scanning`, `review`, `cleaning` or `done`, with `developer` for
+/// Developer Clean Up, or with an area's raw name, such as `xcode`, `projects` or `leftovers`, to open that area's page.
 nonisolated enum DemoData {
     private static func item(_ prefix: String, _ title: String, _ detail: String, _ gigabytes: Double,
                              hint: String? = nil, command: [String]? = nil, preselected: Bool? = nil,

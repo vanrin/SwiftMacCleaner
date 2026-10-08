@@ -9,18 +9,15 @@ import SwiftUI
 struct SidebarButton: View {
     @Environment(AppModel.self) private var model
     let item: SidebarItem
-    let title: String
-    let symbol: String
-    let theme: Theme
     var badge: String?
     /// Dimmed while the entry leads nowhere, which is the case for areas before a scan.
     var isAvailable = true
     @State private var isHovered = false
 
     var body: some View {
-        let isSelected = model.sidebarSelection == item
+        let isSelected = model.sidebarSelection.entry == item
         Button(action: select) {
-            SidebarLabel(title: title, symbol: symbol, theme: theme, badge: badge,
+            SidebarLabel(title: item.title, symbol: item.symbol, theme: item.theme, badge: badge,
                          isSelected: isSelected, isHovered: isHovered && isAvailable)
         }
         .buttonStyle(.plain)

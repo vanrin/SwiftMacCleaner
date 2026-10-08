@@ -25,10 +25,10 @@ struct DetailView: View {
                 case .scanning:
                     ScanningView()
                 case .results:
-                    if case .area(let area) = model.sidebarSelection {
-                        AreaDetailView(area: area)
-                    } else {
-                        OverviewView()
+                    switch model.sidebarSelection {
+                    case .area(let area): AreaDetailView(area: area)
+                    case .developer: DeveloperView()
+                    default: OverviewView()
                     }
                 case .cleaning:
                     CleaningView()
@@ -52,9 +52,9 @@ struct DetailView: View {
             }
             if inCleanUp, model.phase == .results, model.sidebarSelection != .overview {
                 ToolbarItem(placement: .navigation) {
-                    Button("Overview", systemImage: "chevron.left", action: showOverview)
+                    Button(parent.title, systemImage: "chevron.left", action: showParent)
                         .labelStyle(.titleBar)
-                        .help("Back to everything the scan found")
+                        .help(parent == .overview ? "Back to everything the scan found" : "Back to the developer areas")
                 }
             }
             if model.phase == .home || !inCleanUp {
@@ -73,24 +73,30 @@ struct DetailView: View {
 
     /// The small title in the middle of the title bar. The opening screens carry their own large one instead.
     private var title: String? {
-        if model.sidebarSelection == .space {
-            return model.space.phase == .idle ? nil : "Largest Folders"
+        let item = model.sidebarSelection
+        if item == .space {
+            return model.space.phase == .idle ? nil : item.title
         }
-        if model.sidebarSelection == .apps {
-            return model.apps.phase == .idle ? nil : "Applications"
+        if item == .apps {
+            return model.apps.phase == .idle ? nil : item.title
         }
         switch model.phase {
         case .home: return nil
         case .scanning: return "Scanning"
         case .cleaning: return "Cleaning"
-        case .done: return "Overview"
-        case .results:
-            if case .area(let area) = model.sidebarSelection { return area.title }
-            return "Overview"
+        case .done: return SidebarItem.overview.title
+        case .results: return item.title
         }
     }
 
-    private func showOverview() {
-        model.select(.overview)
+    /// Where the back button leads: a developer area sits under Developer Clean Up, everything else
+    /// under the overview.
+    private var parent: SidebarItem {
+        let entry = model.sidebarSelection.entry
+        return entry == model.sidebarSelection ? .overview : entry
+    }
+
+    private func showParent() {
+        model.select(parent)
     }
 }

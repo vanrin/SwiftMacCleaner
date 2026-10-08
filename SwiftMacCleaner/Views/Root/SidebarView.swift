@@ -5,12 +5,11 @@
 
 import SwiftUI
 
-/// The column on the left: the overview, the areas that apply to this Mac, and at the bottom the parts
-/// of the app that stand apart from the clean-up.
+/// The column on the left: the overview, Developer Clean Up, the areas every Mac has, and at the bottom
+/// the parts of the app that stand apart from the clean-up.
 struct SidebarView: View {
     @Environment(AppModel.self) private var model
 
-    private static let developerAreas = Area.allCases.filter(\.isDeveloper)
     private static let systemAreas = Area.allCases.filter { !$0.isDeveloper }
 
     var body: some View {
@@ -21,21 +20,14 @@ struct SidebarView: View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(spacing: Design.Spacing.medium) {
-                    SidebarButton(item: .overview, title: "Overview", symbol: "sparkles", theme: .violet, badge: overviewBadge)
-                    // Only the developer areas this Mac has tools for, so the list reads as its owner's stack.
-                    let developerAreas = Self.developerAreas.filter(model.showsInSidebar)
-                    if !developerAreas.isEmpty {
-                        VStack(spacing: Design.Spacing.tight / 2) {
-                            ForEach(developerAreas) { area in
-                                SidebarButton(item: .area(area), title: area.title, symbol: area.symbol, theme: area.theme,
-                                              badge: badge(for: area), isAvailable: areasAvailable)
-                            }
-                        }
-                    }
+                    SidebarButton(item: .overview, badge: overviewBadge)
                     VStack(spacing: Design.Spacing.tight / 2) {
+                        // One entry for every developer area, and none on a Mac without developer tools.
+                        if !model.developerAreas.isEmpty {
+                            SidebarButton(item: .developer, badge: developerBadge, isAvailable: areasAvailable)
+                        }
                         ForEach(Self.systemAreas) { area in
-                            SidebarButton(item: .area(area), title: area.title, symbol: area.symbol, theme: area.theme,
-                                          badge: badge(for: area), isAvailable: areasAvailable)
+                            SidebarButton(item: .area(area), badge: badge(for: area), isAvailable: areasAvailable)
                         }
                     }
                 }
@@ -52,8 +44,8 @@ struct SidebarView: View {
                 }
             }
             VStack(spacing: Design.Spacing.tight / 2) {
-                SidebarButton(item: .apps, title: "Applications", symbol: "square.grid.2x2", theme: .blue, badge: appsBadge)
-                SidebarButton(item: .space, title: "Largest Folders", symbol: "chart.bar.doc.horizontal", theme: .ocean)
+                SidebarButton(item: .apps, badge: appsBadge)
+                SidebarButton(item: .space)
                 SettingsLink {
                     SidebarLabel(title: "Settings", symbol: "gearshape", theme: .violet)
                 }
@@ -82,14 +74,21 @@ struct SidebarView: View {
         }
     }
 
+    private var developerBadge: String? {
+        badge(for: model.developerState, found: model.foundSize(under: .developer))
+    }
+
     private func badge(for area: Area) -> String? {
-        switch model.areaState(for: area) {
+        badge(for: model.areaState(for: area), found: model.foundSize(in: area))
+    }
+
+    private func badge(for state: AppModel.AreaState, found: Int64) -> String? {
+        switch state {
         case .idle: nil
         case .queued: "Queued"
         case .scanning: "Scanning"
         case .skipped: "Skipped"
-        case .finished:
-            model.foundSize(in: area) > 0 ? ByteFormat.string(model.foundSize(in: area)) : "Clean"
+        case .finished: found > 0 ? ByteFormat.string(found) : "Clean"
         }
     }
 }
