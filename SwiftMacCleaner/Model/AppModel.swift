@@ -715,12 +715,16 @@ final class AppModel {
     }
 
     /// Whether macOS lets the app read protected folders. There is no API to ask, so the check
-    /// tries to open a file that only Full Disk Access can reach.
+    /// tries to open something that only Full Disk Access can reach. Several places are named
+    /// because they move: macOS 27 no longer keeps a privacy database in the home folder, and
+    /// probing that one alone said "off" whatever the setting was. None of these makes macOS ask.
     var hasFullDiskAccess: Bool {
-        let probe = home.appending(path: "Library/Application Support/com.apple.TCC/TCC.db")
-        guard let handle = try? FileHandle(forReadingFrom: probe) else { return false }
-        try? handle.close()
-        return true
+        Files.firstPresentOpens([
+            home.appending(path: "Library/Safari"),
+            home.appending(path: "Library/Mail"),
+            home.appending(path: ".Trash"),
+            URL(filePath: "/Library/Application Support/com.apple.TCC/TCC.db"),
+        ])
     }
 
     func openFullDiskAccessSettings() {

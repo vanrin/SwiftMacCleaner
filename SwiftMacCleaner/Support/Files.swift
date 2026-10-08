@@ -46,6 +46,21 @@ nonisolated enum Files {
             $0.domain == NSPOSIXErrorDomain && ($0.code == Int(EPERM) || $0.code == Int(EACCES))
         }
     }
+
+    /// Whether the first of `urls` that is there can be opened for reading, file or folder.
+    /// Ones that are missing are passed over, because a missing item says nothing about permission.
+    /// False when none of them is there.
+    static func firstPresentOpens(_ urls: [URL]) -> Bool {
+        for url in urls {
+            let descriptor = open(url.path, O_RDONLY)
+            if descriptor >= 0 {
+                close(descriptor)
+                return true
+            }
+            if errno != ENOENT { return false }
+        }
+        return false
+    }
 }
 
 nonisolated extension Files {

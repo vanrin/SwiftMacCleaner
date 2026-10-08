@@ -164,3 +164,25 @@ struct ContainerCachesTests {
         #expect(finding.items.first?.paths.first?.path.hasSuffix("com.example.notes/Data/Library/Caches") == true)
     }
 }
+
+struct AccessProbeTests {
+    @Test func aMissingProbeIsPassedOverRatherThanReadAsRefused() throws {
+        let sandbox = try Sandbox()
+        defer { sandbox.remove() }
+        let folder = try sandbox.file("Library/Safari/Bookmarks.plist").deletingLastPathComponent()
+        let gone = sandbox.root.appending(path: "Library/Application Support/com.apple.TCC/TCC.db")
+
+        #expect(Files.firstPresentOpens([gone, folder]))
+        #expect(!Files.firstPresentOpens([gone]))
+    }
+
+    @Test func aProbeThatIsThereButRefusedSettlesIt() throws {
+        let sandbox = try Sandbox()
+        defer { sandbox.remove() }
+        let locked = try sandbox.file("Library/Mail/Envelope Index")
+        let open = try sandbox.file("Library/Safari/Bookmarks.plist")
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: locked.path)
+
+        #expect(!Files.firstPresentOpens([locked, open]))
+    }
+}
