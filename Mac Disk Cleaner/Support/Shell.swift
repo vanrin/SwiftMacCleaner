@@ -41,7 +41,9 @@ nonisolated enum Shell {
     ///
     /// Output goes to temporary files rather than pipes: a tool such as `docker` can leave helper
     /// processes holding a pipe open, which would keep a reader waiting long after the tool is gone.
-    static func run(_ executable: String, _ arguments: [String], timeout: TimeInterval = 30) -> Output? {
+    /// `environment` replaces the app's own, PATH included; `directory` is where the tool starts.
+    static func run(_ executable: String, _ arguments: [String], timeout: TimeInterval = 30,
+                    environment: [String: String]? = nil, directory: URL? = nil) -> Output? {
         let fileManager = FileManager.default
         let scratch = fileManager.temporaryDirectory.appending(path: "mdc-\(UUID().uuidString)")
         let outURL = scratch.appendingPathExtension("out")
@@ -65,9 +67,14 @@ nonisolated enum Shell {
         process.standardInput = FileHandle.nullDevice
         process.standardOutput = outHandle
         process.standardError = errHandle
-        var environment = ProcessInfo.processInfo.environment
-        environment["PATH"] = searchDirectories.joined(separator: ":")
-        process.environment = environment
+        if let environment {
+            process.environment = environment
+        } else {
+            var inherited = ProcessInfo.processInfo.environment
+            inherited["PATH"] = searchDirectories.joined(separator: ":")
+            process.environment = inherited
+        }
+        if let directory { process.currentDirectoryURL = directory }
 
         let exited = DispatchSemaphore(value: 0)
         process.terminationHandler = { _ in exited.signal() }

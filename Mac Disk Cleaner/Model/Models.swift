@@ -249,6 +249,9 @@ nonisolated struct ScanContext: Sendable {
     var projectRoots: [URL] = []
     /// Paths the user never wants to see again, as the Never Suggest list stores them.
     var excluded: [String] = []
+    /// The login shell's PATH and variables, read once for the whole scan. Without it, as in tests,
+    /// no tool is asked where it keeps things and only the usual folders are looked at.
+    var shell: Task<ShellEnvironment, Never>? = nil
 
     var staleCutoff: Date { now.addingTimeInterval(-Double(staleDays) * 86_400) }
     var recentBuildCutoff: Date { now.addingTimeInterval(-Double(recentBuildDays) * 86_400) }

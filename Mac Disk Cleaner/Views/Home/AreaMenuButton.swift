@@ -12,7 +12,7 @@ struct AreaMenuButton: View {
 
     var body: some View {
         Button(action: toggle) {
-            Label("\(model.enabledAreas.count) of \(Area.allCases.count) areas", systemImage: "checklist")
+            Label("\(model.enabledAreas.count) of \(model.listedAreas.count) areas", systemImage: "checklist")
         }
         .buttonStyle(.dropdown)
         .help("Choose what the scan looks at")

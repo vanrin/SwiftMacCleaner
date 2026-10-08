@@ -20,6 +20,7 @@ nonisolated enum ModelsScanner {
         let ollamaAnswered = ollamaList?.succeeded == true
 
         var candidates: [PathCandidate] = []
+        var hubs = [context.home.appending(path: huggingFaceHub)]
         for location in group.locations {
             if location.path == huggingFaceHub { continue }
             if location.path == ollamaFolder, ollamaAnswered { continue }
@@ -27,7 +28,19 @@ nonisolated enum ModelsScanner {
                                             url: context.home.appending(path: location.path),
                                             preselected: location.preselected, hint: location.hint))
         }
-        candidates += huggingFaceCandidates(context: context, protected: &result.protected)
+        // The same downloads where HF_HOME, TORCH_HOME and the like say they are kept.
+        let moved = await CatalogScanner.moved(in: group, context: context)
+        result.protected += moved.protected
+        for folder in moved.folders {
+            if folder.location.path == huggingFaceHub {
+                hubs.append(folder.url)
+            } else if folder.location.path != ollamaFolder || !ollamaAnswered {
+                candidates.append(CatalogScanner.candidate(for: folder, context: context))
+            }
+        }
+        for hub in hubs {
+            candidates += huggingFaceCandidates(in: hub, context: context, protected: &result.protected)
+        }
 
         let items = await Sizing.items(prefix: group.id, from: candidates, minimumSize: group.minimumSize)
         if !items.isEmpty {
@@ -39,7 +52,7 @@ nonisolated enum ModelsScanner {
                 summary: group.summary(of: items),
                 explanation: group.explanation,
                 method: group.method,
-                actionTarget: group.actionTarget,
+                actionTarget: moved.folders.isEmpty ? group.actionTarget : CatalogScanner.eachRowTarget,
                 items: items
             ))
         }
@@ -67,9 +80,8 @@ nonisolated enum ModelsScanner {
         return result
     }
 
-    /// One candidate per repository in the Hugging Face hub cache, leaving recently used ones alone.
-    private static func huggingFaceCandidates(context: ScanContext, protected: inout [ProtectedItem]) -> [PathCandidate] {
-        let hub = context.home.appending(path: huggingFaceHub)
+    /// One candidate per repository in a Hugging Face hub cache, leaving recently used ones alone.
+    private static func huggingFaceCandidates(in hub: URL, context: ScanContext, protected: inout [ProtectedItem]) -> [PathCandidate] {
         var candidates: [PathCandidate] = []
         for folder in Files.subdirectories(of: hub) {
             guard let repo = huggingFaceName(folderName: folder.lastPathComponent) else { continue }
@@ -77,7 +89,7 @@ nonisolated enum ModelsScanner {
             let kind = folder.lastPathComponent.hasPrefix("datasets--") ? "dataset" : "model"
             if let changed, changed > context.staleCutoff {
                 protected.append(ProtectedItem(
-                    id: "models.huggingface/\(folder.lastPathComponent)", area: .models,
+                    id: "models.huggingface/\(folder.path)", area: .models,
                     title: "\(repo) (Hugging Face \(kind))",
                     why: "Used \(context.relative(changed))", rule: .recentlyUsed, size: nil
                 ))

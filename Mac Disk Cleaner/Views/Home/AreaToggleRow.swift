@@ -23,7 +23,7 @@ struct AreaToggleRow: View {
                             Badge(text: "New", style: .new)
                         }
                     }
-                    Text(area.summary)
+                    Text(detail)
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.leading)
@@ -35,5 +35,10 @@ struct AreaToggleRow: View {
         .toggleStyle(.check)
         .padding(.horizontal, Design.Spacing.large)
         .padding(.vertical, Design.Spacing.small)
+    }
+
+    /// What was found on this Mac for the area, or what the area covers when nothing has a name.
+    private var detail: String {
+        model.stack.summary(of: area).map { "On this Mac: \($0)" } ?? area.summary
     }
 }

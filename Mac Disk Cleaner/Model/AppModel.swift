@@ -61,18 +61,29 @@ final class AppModel {
     var disabledAreas: Set<Area> {
         didSet { UserDefaults.standard.set(disabledAreas.map(\.rawValue), forKey: "disabledAreas") }
     }
+    /// Developer areas switched on although nothing of theirs was found on this Mac.
+    var forcedAreas: Set<Area> {
+        didSet { UserDefaults.standard.set(forcedAreas.map(\.rawValue), forKey: "forcedAreas") }
+    }
+    /// The tools and kinds of project found on this Mac, which decide the developer areas worth showing.
+    private(set) var stack = DetectedStack()
 
     @ObservationIgnored private var scanTask: Task<Void, Never>?
     @ObservationIgnored private var scanStarted = Date()
     /// Set by Quick Clean: open the confirmation as soon as the scan ends, with only Safe items ticked.
     @ObservationIgnored private var reviewWhenScanned = false
+    /// What the project folders were last seen to hold. Reading them takes longer than the rest of the stack.
+    @ObservationIgnored private var projectKinds: [ProjectKind] = []
+    @ObservationIgnored private var stackTask: Task<Void, Never>?
 
     init(home: URL = FileManager.default.homeDirectoryForCurrentUser, settings: AppSettings = AppSettings()) {
         self.home = home
         self.settings = settings
         space = SpaceModel(home: home)
         disabledAreas = Set((UserDefaults.standard.stringArray(forKey: "disabledAreas") ?? []).compactMap(Area.init(rawValue:)))
+        forcedAreas = Set((UserDefaults.standard.stringArray(forKey: "forcedAreas") ?? []).compactMap(Area.init(rawValue:)))
         putBackPending = PutBack.pending(home: home)
+        updateStack()
         #if DEBUG
         if let flag = CommandLine.arguments.firstIndex(of: "--demo") {
             let arguments = Array(CommandLine.arguments.dropFirst(flag + 1))
@@ -81,7 +92,44 @@ final class AppModel {
         #endif
     }
 
-    var enabledAreas: Set<Area> { Set(Area.allCases).subtracting(disabledAreas) }
+    /// The areas a scan looks at.
+    var enabledAreas: Set<Area> { Set(Area.allCases.filter(isScanned)) }
+
+    // MARK: Stack
+
+    /// Whether a scan looks at the area: one that applies to this Mac unless it was switched off,
+    /// any other only when it was switched on regardless.
+    func isScanned(_ area: Area) -> Bool {
+        stack.scans(area, disabled: disabledAreas, forced: forcedAreas)
+    }
+
+    /// Whether the area is worth listing: it applies to this Mac, or was switched on regardless.
+    func isListed(_ area: Area) -> Bool { stack.applies(area) || forcedAreas.contains(area) }
+
+    var listedAreas: [Area] { Area.allCases.filter(isListed) }
+
+    /// Whether the sidebar shows the area: any that is listed, and any the last scan looked at.
+    func showsInSidebar(_ area: Area) -> Bool { isListed(area) || areaState(for: area) != .idle }
+
+    /// Looks again at which tools this Mac has. The home folder is checked on the spot; the project
+    /// folders take a moment longer and are read in the background.
+    func refreshStack() {
+        updateStack()
+        let roots = settings.projectRoots.map { URL(fileURLWithPath: $0, isDirectory: true) }
+        stackTask?.cancel()
+        stackTask = Task { [home] in
+            let kinds = await StackDetector.projectKinds(in: roots, home: home)
+            guard !Task.isCancelled else { return }
+            projectKinds = kinds
+            updateStack()
+        }
+    }
+
+    private func updateStack() {
+        let detected = StackDetector.detect(home: home)
+            .adding(projectKinds, hasProjectFolders: !settings.projectRoots.isEmpty)
+        if detected != stack { stack = detected }
+    }
 
     #if DEBUG
     /// Shows the given findings as if a scan had just finished. For demo mode and tests.
@@ -170,6 +218,7 @@ final class AppModel {
 
     func backgroundTick() {
         disk = DiskInfo.current()
+        refreshStack()
         if phase == .results { refreshActiveChecks() }
         guard settings.weeklyCheck, phase == .home, scanTask == nil, isWeeklyCheckDue else { return }
         notifyWhenScanned = true
@@ -227,7 +276,8 @@ final class AppModel {
 
     private func beginScan() {
         scanTask?.cancel()
-        let areas = Area.allCases.filter(enabledAreas.contains)
+        refreshStack()
+        let areas = Area.allCases.filter(isScanned)
         guard !areas.isEmpty else { return }
 
         findings = []
@@ -243,6 +293,8 @@ final class AppModel {
         scanStarted = Date()
 
         var context = settings.scanContext(home: home)
+        // Only developer tools are asked where they keep things, so only their areas need the shell.
+        if areas.contains(where: \.isDeveloper) { context.shell = ShellEnvironment.loading() }
         if !settings.offersSnapshots { context.excluded.append(SnapshotScanner.snapshotsItemID) }
         if !settings.offersOldXcodes { context.excluded.append(XcodeScanner.oldXcodesFindingID) }
         scanTask = Task {
@@ -339,9 +391,16 @@ final class AppModel {
 
     func binding(for area: Area) -> Binding<Bool> {
         Binding(
-            get: { !self.disabledAreas.contains(area) },
+            get: { self.isScanned(area) },
             set: { isOn in
-                if isOn { self.disabledAreas.remove(area) } else { self.disabledAreas.insert(area) }
+                // An area this Mac has no use for is remembered when switched on; any other, when switched off.
+                if !self.stack.applies(area) {
+                    if isOn { self.forcedAreas.insert(area) } else { self.forcedAreas.remove(area) }
+                } else if isOn {
+                    self.disabledAreas.remove(area)
+                } else {
+                    self.disabledAreas.insert(area)
+                }
             }
         )
     }

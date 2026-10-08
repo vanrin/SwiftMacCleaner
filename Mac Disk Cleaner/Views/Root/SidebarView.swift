@@ -5,8 +5,8 @@
 
 import SwiftUI
 
-/// The column on the left: the overview, every area the scan knows, and at the bottom the parts of the
-/// app that stand apart from the clean-up.
+/// The column on the left: the overview, the areas that apply to this Mac, and at the bottom the parts
+/// of the app that stand apart from the clean-up.
 struct SidebarView: View {
     @Environment(AppModel.self) private var model
 
@@ -19,10 +19,14 @@ struct SidebarView: View {
         ScrollView {
             VStack(spacing: Design.Spacing.medium) {
                 SidebarButton(item: .overview, title: "Overview", symbol: "sparkles", theme: .violet, badge: overviewBadge)
-                VStack(spacing: Design.Spacing.tight / 2) {
-                    ForEach(Self.developerAreas) { area in
-                        SidebarButton(item: .area(area), title: area.title, symbol: area.symbol, theme: area.theme,
-                                      badge: badge(for: area), isAvailable: areasAvailable)
+                // Only the developer areas this Mac has tools for, so the list reads as its owner's stack.
+                let developerAreas = Self.developerAreas.filter(model.showsInSidebar)
+                if !developerAreas.isEmpty {
+                    VStack(spacing: Design.Spacing.tight / 2) {
+                        ForEach(developerAreas) { area in
+                            SidebarButton(item: .area(area), title: area.title, symbol: area.symbol, theme: area.theme,
+                                          badge: badge(for: area), isAvailable: areasAvailable)
+                        }
                     }
                 }
                 VStack(spacing: Design.Spacing.tight / 2) {

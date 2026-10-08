@@ -10,36 +10,15 @@ nonisolated enum PackageCacheScanner {
     static var claimedCacheFolders: Set<String> { Catalog.claimedCacheFolders }
 
     static func scan(_ context: ScanContext) async -> AreaScanResult {
-        var findings: [Finding] = []
-        if let finding = await CatalogScanner.finding(for: Catalog.packageCaches, context: context) {
-            findings.append(finding)
+        var result = AreaScanResult()
+        // Each package manager is also asked where its cache is, for the Mac where it was moved.
+        for group in [Catalog.packageCaches, Catalog.goModules] {
+            let report = await CatalogScanner.report(for: group, context: context)
+            result.findings += report.findings
+            result.protected += report.protected
         }
-        if let finding = await goModules(context) { findings.append(finding) }
-        if let finding = homebrew(context) { findings.append(finding) }
-        return AreaScanResult(findings: findings)
-    }
-
-    // MARK: Go
-
-    /// The Go module cache lives wherever `go env GOMODCACHE` says, which is ~/go/pkg/mod unless moved.
-    private static func goModules(_ context: ScanContext) async -> Finding? {
-        let group = Catalog.goModules
-        var path = context.home.appending(path: group.locations[0].path)
-        if let go = Shell.which("go"),
-           let output = Shell.run(go, ["env", "GOMODCACHE"], timeout: 15), output.succeeded {
-            let reported = output.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
-            if reported.hasPrefix("/") { path = URL(fileURLWithPath: reported, isDirectory: true) }
-        }
-        let location = group.locations[0]
-        let candidate = PathCandidate(title: location.title, detail: location.detail, url: path,
-                                      preselected: location.preselected, hint: context.tilde(path))
-        let items = await Sizing.items(prefix: group.id, from: [candidate], minimumSize: group.minimumSize)
-        guard !items.isEmpty else { return nil }
-        return Finding(
-            id: group.id, area: group.area, tier: group.tier, title: group.title,
-            summary: context.tilde(path), explanation: group.explanation,
-            method: group.method, actionTarget: context.tilde(path), items: items
-        )
+        if let finding = homebrew(context) { result.findings.append(finding) }
+        return result
     }
 
     // MARK: Homebrew

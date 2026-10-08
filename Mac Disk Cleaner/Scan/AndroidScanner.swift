@@ -7,14 +7,16 @@ import Foundation
 
 nonisolated enum AndroidScanner {
     static func scan(_ context: ScanContext) async -> AreaScanResult {
-        var result = AreaScanResult()
-        if let finding = await CatalogScanner.finding(for: Catalog.gradle, context: context) { result.findings.append(finding) }
+        // Gradle is also asked through GRADLE_USER_HOME, which is how its folder gets moved.
+        let gradle = await CatalogScanner.report(for: Catalog.gradle, context: context)
+        var result = AreaScanResult(findings: gradle.findings, protected: gradle.protected)
         let emulators = await emulators(context)
         if let finding = emulators.finding { result.findings.append(finding) }
         result.protected += emulators.protected
         guard !result.findings.isEmpty else {
             let home = context.home
             let installed = Files.exists(home.appending(path: ".gradle")) || Files.exists(home.appending(path: ".android"))
+                || !result.protected.isEmpty
             result.skipReason = installed ? nil : "Gradle and the Android SDK are not installed."
             return result
         }

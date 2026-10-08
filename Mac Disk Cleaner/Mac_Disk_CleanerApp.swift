@@ -22,6 +22,11 @@ enum Launcher {
             ScanReportPrinter.quickClean()
             return
         }
+        // `Mac Disk Cleaner --print-stack` prints which developer tools were found, and what the login shell says.
+        if CommandLine.arguments.contains("--print-stack") {
+            ScanReportPrinter.printStack()
+            return
+        }
         // `Mac Disk Cleaner --print-space <folder>` prints the largest folders inside it and exits.
         if let flag = CommandLine.arguments.firstIndex(of: "--print-space"),
            let folder = CommandLine.arguments.dropFirst(flag + 1).first {
@@ -66,7 +71,8 @@ nonisolated enum ScanReportPrinter {
         // Downloads, the Trash and device backups raise permission prompts, so those areas are only scanned when asked for.
         let prompting: Set<Area> = [.installersTrash, .leftovers, .snapshots]
         let areas = requested.isEmpty ? Area.allCases.filter { !prompting.contains($0) } : requested
-        let context = AppSettings().scanContext()
+        var context = AppSettings().scanContext()
+        context.shell = ShellEnvironment.loading()
 
         let finished = DispatchSemaphore(value: 0)
         Task.detached {
@@ -102,13 +108,46 @@ nonisolated enum ScanReportPrinter {
         finished.wait()
     }
 
+    private static func storedAreas(_ key: String) -> Set<Area> {
+        Set((UserDefaults.standard.stringArray(forKey: key) ?? []).compactMap(Area.init(rawValue:)))
+    }
+
+    /// Prints what decides the developer areas: the tools found, the kinds of project in the project
+    /// folders, and the variables the login shell sets that say where a tool keeps its folders.
+    static func printStack() {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let roots = AppSettings().scanContext().projectRoots
+        let asked = Set(Catalog.allGroups.flatMap(\.locations).flatMap(\.asks).compactMap { ask -> String? in
+            if case .variable(let name, _) = ask { name } else { nil }
+        }).union(["XDG_CACHE_HOME"])
+
+        let finished = DispatchSemaphore(value: 0)
+        Task.detached {
+            let kinds = await StackDetector.projectKinds(in: roots, home: home)
+            let stack = StackDetector.detect(home: home).adding(kinds, hasProjectFolders: !roots.isEmpty)
+            for area in Area.allCases where area.isDeveloper {
+                let found = stack.applies(area) ? (stack.found[area] ?? []).joined(separator: ", ") : "not found"
+                print("\(area.title.padding(toLength: 24, withPad: " ", startingAt: 0)) \(found)")
+            }
+            let environment = await ShellEnvironment.load()
+            print("\nLogin shell: \(environment.variables.count) variables, \(environment.searchDirectories.count) folders on the PATH")
+            for name in asked.sorted() {
+                if let folder = environment.folder(named: name) { print("   \(name) = \(folder.path)") }
+            }
+            fflush(stdout)
+            finished.signal()
+        }
+        finished.wait()
+    }
+
     /// The Quick Clean path without the window: the same scan, the same Safe-only selection, the same
     /// guard, in-use and freshness checks, the same log. Only the confirmation click is missing,
     /// which is why this exists for the terminal alone.
     static func quickClean() {
         let settings = AppSettings()
         let home = FileManager.default.homeDirectoryForCurrentUser
-        let context = settings.scanContext()
+        var context = settings.scanContext()
+        context.shell = ShellEnvironment.loading()
         let safety = SafetyGuard(
             root: home,
             extraRoots: GuardRoots.userTemporaryFolders(),
@@ -116,10 +155,15 @@ nonisolated enum ScanReportPrinter {
             neverSuggest: settings.neverSuggest.map(\.path),
             backupsAllowed: true
         )
-        let areas = Area.allCases.filter { !Set(UserDefaults.standard.stringArray(forKey: "disabledAreas") ?? []).contains($0.rawValue) }
+        let disabled = storedAreas("disabledAreas")
+        let forced = storedAreas("forcedAreas")
+        let roots = context.projectRoots
 
         let finished = DispatchSemaphore(value: 0)
         Task.detached {
+            let stack = StackDetector.detect(home: home)
+                .adding(await StackDetector.projectKinds(in: roots, home: home), hasProjectFolders: !roots.isEmpty)
+            let areas = Area.allCases.filter { stack.scans($0, disabled: disabled, forced: forced) }
             print("Scanning \(areas.count) areas")
             var findings: [Finding] = []
             for await event in ScanEngine.events(areas: areas, context: context) {
