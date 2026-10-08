@@ -1,0 +1,12 @@
+# Coverage data that test runs write
+*.profraw
+*.profdata
+
+# Xcode: build output and per-user state
+DerivedData/
+build/
+xcuserdata/
+*.xcuserstate
+
+# macOS
+.DS_Store
