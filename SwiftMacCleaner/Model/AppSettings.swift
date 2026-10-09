@@ -60,6 +60,11 @@ final class AppSettings {
         didSet { defaults.set(showsMenuBarItem, forKey: "showsMenuBarItem") }
     }
 
+    /// Whether the sidebar is folded down to a rail of glyphs, with the names left out.
+    var isSidebarCollapsed: Bool {
+        didSet { defaults.set(isSidebarCollapsed, forKey: "sidebarCollapsed") }
+    }
+
     /// Whether the app scans on its own once a week and says what it found. Nothing is ever removed by it.
     var weeklyCheck: Bool {
         didSet { defaults.set(weeklyCheck, forKey: "weeklyCheck") }
@@ -80,6 +85,7 @@ final class AppSettings {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         showsMenuBarItem = defaults.object(forKey: "showsMenuBarItem") as? Bool ?? true
+        isSidebarCollapsed = defaults.bool(forKey: "sidebarCollapsed")
         weeklyCheck = defaults.object(forKey: "weeklyCheck") as? Bool ?? true
         lastScanDate = defaults.object(forKey: "lastScanDate") as? Date
         maintenanceRuns = defaults.dictionary(forKey: "maintenanceRuns") as? [String: Date] ?? [:]
@@ -121,6 +127,11 @@ final class AppSettings {
 
     func removeNeverSuggest(_ entry: NeverSuggestEntry) {
         neverSuggest.removeAll { $0.path == entry.path }
+    }
+
+    /// Folds the sidebar down to its glyphs, or opens it out again.
+    func toggleSidebar() {
+        isSidebarCollapsed.toggle()
     }
 
     func scanContext(home: URL = FileManager.default.homeDirectoryForCurrentUser) -> ScanContext {

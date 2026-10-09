@@ -73,6 +73,9 @@ struct SwiftMacCleanerApp: App {
                 .task { model.startBackgroundChecks() }
         }
         .defaultSize(width: 1200, height: 760)
+        .commands {
+            SidebarToggleCommands(settings: model.settings)
+        }
 
         Settings {
             SettingsView()

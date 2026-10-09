@@ -486,7 +486,7 @@ struct AreaGroupTests {
         // Switching one on by hand does not bring it back into the scan.
         model.forcedAreas = [.leftovers]
         #expect(!model.enabledAreas.contains(.leftovers))
-        #expect(!model.cleanUpEntries.contains(.group(.developer)) || model.areas(in: .developer).isEmpty == false)
+        #expect(!model.overviewParts.contains(.group(.developer)) || model.areas(in: .developer).isEmpty == false)
     }
 
     @Test func anAreaThatWasSplitStaysSwitchedOff() throws {

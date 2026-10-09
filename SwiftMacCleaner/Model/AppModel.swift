@@ -177,13 +177,9 @@ final class AppModel {
     /// scan looked at. For Developer Clean Up that is the areas this Mac has tools for.
     func areas(in group: AreaGroup) -> [Area] { group.areas.filter(isShown) }
 
-    /// The clean-ups worth a place in the sidebar. One none of whose areas apply to this Mac is left
-    /// out, which is Developer Clean Up on a Mac without developer tools.
-    var cleanUpEntries: [SidebarItem] {
-        AreaGroup.allCases.filter { !areas(in: $0).isEmpty }.map(SidebarItem.group)
-    }
-
-    /// The parts the overview shows: every clean-up with a place in the sidebar, Performance and Applications.
+    /// The parts the overview shows, which the sidebar lists under it in the same order: every clean-up
+    /// worth a place, then Performance and Applications. A clean-up none of whose areas apply to this
+    /// Mac is left out, which is Developer Clean Up on a Mac without developer tools.
     var overviewParts: [SidebarItem] {
         SidebarItem.parts.filter { part in
             if case .group(let group) = part { !areas(in: group).isEmpty } else { true }

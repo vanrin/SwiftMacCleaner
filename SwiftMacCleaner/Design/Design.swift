@@ -41,8 +41,12 @@ enum Design {
         /// How far above that strip scrolling content starts to fade out.
         static let orbActionFade: Double = 36
         static let sidebar: Double = 296
+        /// The sidebar folded down to its glyphs.
+        static let sidebarRail: Double = 84
         static let sidebarRow: Double = 40
         static let sidebarGlyph: Double = 24
+        /// The dot on a rail glyph whose part has something to do.
+        static let sidebarDot: Double = 7
         /// The icon in front of a line of an intro's list.
         static let featureIcon: Double = 34
         static let rowIcon: Double = 30
@@ -121,6 +125,11 @@ enum Design {
         /// The backdrop fading from one palette to the next.
         static let theme = Animation.smooth(duration: 0.7)
         static let press = Animation.snappy(duration: 0.15)
+        /// The sidebar folding down to a rail and opening out again, and its names fading with it.
+        static let sidebar = Animation.snappy(duration: 0.3)
+        static let sidebarNames = Animation.easeOut(duration: 0.2)
+        /// The label beside a rail entry coming and going with the pointer.
+        static let sidebarHint = Animation.easeOut(duration: 0.12)
         /// One breath of the orb's glow while work is under way.
         static let pulse = Animation.easeInOut(duration: 1.5)
     }
