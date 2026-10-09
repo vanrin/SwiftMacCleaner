@@ -8,15 +8,17 @@ import SwiftUI
 /// What a sidebar entry looks like: its icon, its name, and what the scan found there.
 struct SidebarLabel: View {
     let title: String
-    let symbol: String
+    let glyph: ImageResource
     let theme: Theme
     var badge: String?
     var isSelected = false
     var isHovered = false
+    /// Its part of the scan is under way.
+    var isBusy = false
 
     var body: some View {
         HStack(spacing: Design.Spacing.medium) {
-            SidebarGlyph(symbol: symbol, theme: theme, isSelected: isSelected)
+            SidebarGlyph(glyph: glyph, theme: theme, isSelected: isSelected, isBusy: isBusy)
             Text(title)
                 .font(Design.Typeface.sidebar)
                 .lineLimit(1)

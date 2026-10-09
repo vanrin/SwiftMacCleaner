@@ -49,7 +49,7 @@ struct MenuBarView: View {
                         .foregroundStyle(.secondary)
                     ForEach(model.largestAreas(3), id: \.area) { entry in
                         HStack(spacing: Design.Spacing.medium) {
-                            GlossyIcon(symbol: entry.area.symbol, theme: entry.area.theme, size: Design.Size.sidebarGlyph)
+                            FeatureIcon(Image(entry.area.glyph), theme: entry.area.theme, size: Design.Size.sidebarGlyph)
                             Text(entry.area.title)
                             Spacer()
                             SizeLabel(bytes: entry.size)

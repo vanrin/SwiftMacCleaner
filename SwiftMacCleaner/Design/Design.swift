@@ -47,6 +47,8 @@ enum Design {
         static let featureIcon: Double = 34
         static let rowIcon: Double = 30
         static let tileIcon: Double = 44
+        /// How much of a lens's width the grid of its glyph takes up.
+        static let lensGlyphShare: Double = 0.6
         /// An app's own icon in a list of apps.
         static let appIcon: Double = 36
         /// The column beside a list of apps that holds the parts of the manager and the filters.
@@ -102,6 +104,8 @@ enum Design {
         /// Body text on a tile or a panel, a size up from the system's.
         static let tileBody = Font.title3
         static let sidebar = Font.body.scaled(by: 1.08).weight(.medium)
+        /// A sidebar glyph. At the small scale its grid is drawn as large as this font, which fills the glyph's frame.
+        static let sidebarGlyph = Font.title.scaled(by: 1.1)
         static let rowTitle = Font.title3.weight(.semibold)
         /// Paths and commands.
         static let code = Font.system(.callout, design: .monospaced)

@@ -5,23 +5,21 @@
 
 import SwiftUI
 
-/// A sidebar icon: pale and glossy until its entry is chosen, then in that entry's own colours.
+/// A sidebar icon: two tones of white until its entry is chosen, then its body takes the entry's accent.
 struct SidebarGlyph: View {
-    let symbol: String
+    let glyph: ImageResource
     let theme: Theme
     var isSelected = false
+    /// Pulses the glyph while its part of the scan is under way.
+    var isBusy = false
 
     var body: some View {
-        Image(systemName: symbol)
-            .resizable()
-            .scaledToFit()
-            .symbolVariant(.fill)
-            .foregroundStyle(
-                LinearGradient(colors: isSelected ? [.white, theme.accent, theme.glow] : [.white, .white.opacity(0.6)],
-                               startPoint: .top, endPoint: .bottom)
-            )
-            .shadow(color: .black.opacity(0.3), radius: 2, y: 2)
-            .padding(3)
+        Image(glyph)
+            .symbolRenderingMode(isSelected ? .palette : .hierarchical)
+            .foregroundStyle(.white, isSelected ? theme.accent : .white)
+            .symbolEffect(.pulse, isActive: isBusy)
+            .imageScale(.small)
+            .font(Design.Typeface.sidebarGlyph)
             .frame(width: Design.Size.sidebarGlyph, height: Design.Size.sidebarGlyph)
             .accessibilityHidden(true)
     }

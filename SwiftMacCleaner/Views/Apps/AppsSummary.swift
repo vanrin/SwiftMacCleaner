@@ -33,7 +33,7 @@ struct AppsSummary: View {
 
                 LazyVGrid(columns: columns, spacing: Design.Spacing.large) {
                     AppsSummaryTile(
-                        title: updatesTitle(apps), detail: updatesDetail(apps), symbol: "arrow.up.circle",
+                        title: updatesTitle(apps), detail: updatesDetail(apps), glyph: .glyphUpdater,
                         icons: apps.updates.prefix(3).compactMap { apps.app(withID: $0.id)?.url },
                         isActionable: !apps.updates.isEmpty, action: reviewUpdates
                     )
@@ -42,7 +42,7 @@ struct AppsSummary: View {
                         detail: unused.isEmpty
                             ? "Every app here was opened in the last 6 months."
                             : "Not opened for 6 months or more. Together they take up \(ByteFormat.string(unused.reduce(0) { $0 + $1.size })).",
-                        symbol: "moon.zzz", icons: unused.prefix(3).map(\.url),
+                        glyph: .glyphUnused, icons: unused.prefix(3).map(\.url),
                         isActionable: !unused.isEmpty, action: reviewUnused
                     )
                     AppsSummaryTile(
@@ -50,11 +50,11 @@ struct AppsSummary: View {
                         detail: apps.leftoverFileSize == 0
                             ? "Nothing sizeable was left behind by apps that are gone."
                             : "Files in your Library that belong to apps that are no longer installed.",
-                        symbol: "puzzlepiece.extension", isActionable: apps.leftoverFileSize > 0, action: reviewLeftovers
+                        glyph: .glyphLeftovers, isActionable: apps.leftoverFileSize > 0, action: reviewLeftovers
                     )
                     AppsSummaryTile(
                         title: apps.installerSize == 0 ? "No installers" : "\(ByteFormat.string(apps.installerSize)) of installers",
-                        detail: installersDetail(apps), symbol: "externaldrive",
+                        detail: installersDetail(apps), glyph: .glyphInstallers,
                         isActionable: apps.installerSize > 0, action: reviewLeftovers
                     )
                 }

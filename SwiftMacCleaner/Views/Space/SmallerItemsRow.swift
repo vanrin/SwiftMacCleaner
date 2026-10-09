@@ -12,8 +12,7 @@ struct SmallerItemsRow: View {
 
     var body: some View {
         HStack(spacing: Design.Spacing.medium) {
-            GlossyIcon(symbol: "ellipsis", theme: theme)
-                .saturation(0.2)
+            FeatureIcon(Image(systemName: "ellipsis"), theme: theme, isTinted: false)
             Text(node.children.isEmpty ? "Files and folders, none over 20 MB" : "Everything smaller than 20 MB")
                 .foregroundStyle(.secondary)
             Spacer(minLength: Design.Spacing.medium)

@@ -52,25 +52,6 @@ nonisolated enum Area: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    var symbol: String {
-        switch self {
-        case .xcode: "hammer"
-        case .projects: "folder"
-        case .android: "iphone"
-        case .containers: "shippingbox"
-        case .packageCaches: "archivebox"
-        case .toolchains: "terminal"
-        case .ides: "chevron.left.forwardslash.chevron.right"
-        case .models: "brain"
-        case .cachesLogs: "doc.text"
-        case .trash: "trash"
-        case .snapshots: "clock.arrow.circlepath"
-        case .largeFiles: "arrow.down.doc"
-        case .leftovers: "puzzlepiece.extension"
-        case .installers: "externaldrive"
-        }
-    }
-
     /// The sidebar entry the area is filed under together with others. An area of the clean-up without
     /// one stands in the sidebar by itself.
     var group: AreaGroup? {
@@ -122,13 +103,6 @@ nonisolated enum AreaGroup: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .system: "System Clean Up"
         case .developer: "Developer Clean Up"
-        }
-    }
-
-    var symbol: String {
-        switch self {
-        case .system: "internaldrive"
-        case .developer: "wrench.and.screwdriver"
         }
     }
 

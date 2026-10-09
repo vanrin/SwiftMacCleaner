@@ -10,8 +10,8 @@ struct AppsSummaryTile: View {
     @Environment(\.theme) private var theme
     let title: String
     let detail: String
-    let symbol: String
-    /// The apps to picture in the corner. Without any, the tile shows its symbol instead.
+    let glyph: ImageResource
+    /// The apps to picture in the corner. Without any, the tile shows its glyph instead.
     var icons: [URL] = []
     /// Whether there is anything behind the tile to review.
     var isActionable = true
@@ -26,7 +26,7 @@ struct AppsSummaryTile: View {
                         .lineLimit(2, reservesSpace: true)
                     Spacer(minLength: 0)
                     if icons.isEmpty {
-                        GlossyIcon(symbol: symbol, theme: theme, size: Design.Size.tileIcon)
+                        FeatureIcon(Image(glyph), theme: theme, size: Design.Size.tileIcon)
                     } else {
                         HStack(spacing: Design.Spacing.tight) {
                             ForEach(icons, id: \.self) { icon in

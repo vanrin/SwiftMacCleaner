@@ -38,9 +38,9 @@ struct HomeView: View {
                 )
             }
             VStack(alignment: .leading, spacing: Design.Spacing.large) {
-                FeatureBullet(symbol: "hammer", text: "Build output and caches")
-                FeatureBullet(symbol: "shippingbox", text: "Old toolchains, images and models")
-                FeatureBullet(symbol: "trash", text: "Trash, snapshots and old downloads")
+                FeatureBullet(glyph: Image(.glyphXcode), text: "Build output and caches")
+                FeatureBullet(glyph: Image(.glyphContainers), text: "Old toolchains, images and models")
+                FeatureBullet(glyph: Image(.glyphTrash), text: "Trash, snapshots and old downloads")
             }
             HomeOptions()
         }

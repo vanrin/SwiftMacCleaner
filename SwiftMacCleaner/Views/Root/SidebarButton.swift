@@ -16,9 +16,10 @@ struct SidebarButton: View {
 
     var body: some View {
         let isSelected = model.sidebarSelection.entry == item
+        let isBusy = item == .apps ? model.apps.phase == .scanning : model.state(of: item) == .scanning
         Button(action: select) {
-            SidebarLabel(title: item.title, symbol: item.symbol, theme: item.theme, badge: badge,
-                         isSelected: isSelected, isHovered: isHovered && isAvailable)
+            SidebarLabel(title: item.title, glyph: item.glyph, theme: item.theme, badge: badge,
+                         isSelected: isSelected, isHovered: isHovered && isAvailable, isBusy: isBusy)
         }
         .buttonStyle(.plain)
         .disabled(!isAvailable)

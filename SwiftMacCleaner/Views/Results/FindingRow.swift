@@ -20,7 +20,7 @@ struct FindingRow: View {
             }
             .toggleStyle(.checkOnly)
 
-            GlossyIcon(symbol: finding.area.symbol, theme: finding.area.theme)
+            FeatureIcon(Image(finding.area.glyph), theme: finding.area.theme)
             VStack(alignment: .leading, spacing: Design.Spacing.tight / 2) {
                 HStack(spacing: Design.Spacing.small) {
                     Text(finding.title)

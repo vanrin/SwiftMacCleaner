@@ -13,7 +13,7 @@ struct AreaToggleRow: View {
     var body: some View {
         Toggle(isOn: model.binding(for: area)) {
             HStack(spacing: Design.Spacing.medium) {
-                GlossyIcon(symbol: area.symbol, theme: area.theme)
+                FeatureIcon(Image(area.glyph), theme: area.theme)
                 VStack(alignment: .leading, spacing: Design.Spacing.tight / 2) {
                     HStack(spacing: Design.Spacing.small) {
                         Text(area.title)

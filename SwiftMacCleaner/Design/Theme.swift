@@ -15,6 +15,8 @@ nonisolated struct Theme: Hashable, Sendable {
     let glow: Color
     /// Rings, icons and anything else that should stand out against the backdrop.
     let accent: Color
+    /// The tint of the lens under a glyph. Deep enough for a white glyph to stand out on it in every palette.
+    let lens: Color
 
     /// The accent held back, for what was found but is not ticked.
     var faintAccent: Color { accent.opacity(0.45) }
@@ -27,6 +29,7 @@ nonisolated struct Theme: Hashable, Sendable {
         mid = Color(hue: hue, saturation: 0.82, brightness: 0.52 + lift)
         glow = Color(hue: glowHue, saturation: 0.78, brightness: 0.84)
         accent = Color(hue: glowHue, saturation: 0.45, brightness: 1)
+        lens = Color(hue: glowHue, saturation: 0.84, brightness: 0.56)
     }
 
     static let violet = Theme(hue: 0.775, glowHue: 0.85, shadeHue: 0.70)

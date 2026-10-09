@@ -42,7 +42,7 @@ struct SidebarView: View {
                 SidebarButton(item: .apps, badge: appsBadge)
                 SidebarButton(item: .space)
                 SettingsLink {
-                    SidebarLabel(title: "Settings", symbol: "gearshape", theme: .violet)
+                    SidebarLabel(title: "Settings", glyph: .glyphSettings, theme: .violet)
                 }
                 .buttonStyle(.plain)
             }

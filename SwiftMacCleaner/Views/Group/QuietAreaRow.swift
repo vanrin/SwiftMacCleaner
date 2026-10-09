@@ -13,7 +13,8 @@ struct QuietAreaRow: View {
     var body: some View {
         let kept = model.protected(in: area)
         HStack(spacing: Design.Spacing.medium) {
-            GlossyIcon(symbol: area.symbol, theme: area.theme)
+            // Nothing to clean here, so the lens stays clear.
+            FeatureIcon(Image(area.glyph), theme: area.theme, isTinted: false)
             TitledDetail(title: area.title, detail: reason(kept: kept.count))
             Spacer(minLength: Design.Spacing.medium)
             Badge(text: state)

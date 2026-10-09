@@ -29,9 +29,9 @@ struct SpaceIntro: View {
                 detail: "See where the space went, and find what the clean-up scan does not know about."
             )
             VStack(alignment: .leading, spacing: Design.Spacing.large) {
-                FeatureBullet(symbol: "ruler", text: "Every folder measured")
-                FeatureBullet(symbol: "chart.bar", text: "The biggest listed first")
-                FeatureBullet(symbol: "eye", text: "Only reads, never removes")
+                FeatureBullet(glyph: Image(systemName: "ruler.fill"), text: "Every folder measured")
+                FeatureBullet(glyph: Image(systemName: "chart.bar.fill"), text: "The biggest listed first")
+                FeatureBullet(glyph: Image(systemName: "eye.fill"), text: "Only reads, never removes")
             }
             VStack(alignment: .leading, spacing: Design.Spacing.small) {
                 Picker("What to measure", selection: $space.scope) {

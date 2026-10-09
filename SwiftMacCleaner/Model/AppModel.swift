@@ -28,16 +28,6 @@ enum SidebarItem: Hashable {
         }
     }
 
-    var symbol: String {
-        switch self {
-        case .overview: "sparkles"
-        case .group(let group): group.symbol
-        case .area(let area): area.symbol
-        case .space: "chart.bar.doc.horizontal"
-        case .apps: "square.grid.2x2"
-        }
-    }
-
     /// The sidebar entry that is lit while this is on screen. An area filed under a group has none
     /// of its own: it is reached through the group's entry.
     var entry: SidebarItem {

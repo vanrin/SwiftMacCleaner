@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="3300" height="2200">
+ <!--Written by Tools/make-glyphs.swift. Change the drawing there, not here.-->
+ <style>.monochrome-0 {fill:#000000}
+.monochrome-1 {fill:#000000}
+
+.multicolor-0:tintColor {fill:#007AFF}
+.multicolor-1:tintColor {fill:#007AFF}
+
+.hierarchical-0:secondary {fill:#8E8E8E}
+.hierarchical-1:primary {fill:#212121}
+</style>
+ <g id="Notes">
+  <rect height="2200" id="artboard" style="fill:white;opacity:1" width="3300" x="0" y="0"/>
+  <text id="template-version" style="stroke:none;fill:black;font-family:sans-serif;font-size:13;text-anchor:end;" transform="matrix(1 0 0 1 3036 1933)">Template v.4.0</text>
+  <text style="stroke:none;fill:black;font-family:sans-serif;font-size:13;text-anchor:end;" transform="matrix(1 0 0 1 3036 1951)">Requires Xcode 14 or greater</text>
+  <text id="descriptive-name" style="stroke:none;fill:black;font-family:sans-serif;font-size:13;text-anchor:end;" transform="matrix(1 0 0 1 3036 1969)">glyph.containers</text>
+  <text style="stroke:none;fill:black;font-family:sans-serif;font-size:13;text-anchor:end;" transform="matrix(1 0 0 1 3036 1987)">Typeset at 100 points</text>
+ </g>
+ <g id="Guides">
+  <line id="Baseline-S" style="fill:none;stroke:#27AAE1;opacity:1;stroke-width:0.5;" x1="263" x2="3036" y1="696.0" y2="696.0"/>
+  <line id="Capline-S" style="fill:none;stroke:#27AAE1;opacity:1;stroke-width:0.5;" x1="263" x2="3036" y1="625.5409999999999" y2="625.5409999999999"/>
+  <line id="Baseline-M" style="fill:none;stroke:#27AAE1;opacity:1;stroke-width:0.5;" x1="263" x2="3036" y1="1126.0" y2="1126.0"/>
+  <line id="Capline-M" style="fill:none;stroke:#27AAE1;opacity:1;stroke-width:0.5;" x1="263" x2="3036" y1="1055.541" y2="1055.541"/>
+  <line id="Baseline-L" style="fill:none;stroke:#27AAE1;opacity:1;stroke-width:0.5;" x1="263" x2="3036" y1="1556.0" y2="1556.0"/>
+  <line id="Capline-L" style="fill:none;stroke:#27AAE1;opacity:1;stroke-width:0.5;" x1="263" x2="3036" y1="1485.541" y2="1485.541"/>
+  <line id="left-margin-Ultralight-S" style="fill:none;stroke:#00AEEF;stroke-width:0.5;opacity:1.0;" x1="510.0" x2="510.0" y1="600.785" y2="720.121"/>
+  <line id="right-margin-Ultralight-S" style="fill:none;stroke:#00AEEF;stroke-width:0.5;opacity:1.0;" x1="610.0" x2="610.0" y1="600.785" y2="720.121"/>
+  <line id="left-margin-Regular-S" style="fill:none;stroke:#00AEEF;stroke-width:0.5;opacity:1.0;" x1="1400.0" x2="1400.0" y1="600.785" y2="720.121"/>
+  <line id="right-margin-Regular-S" style="fill:none;stroke:#00AEEF;stroke-width:0.5;opacity:1.0;" x1="1500.0" x2="1500.0" y1="600.785" y2="720.121"/>
+  <line id="left-margin-Black-S" style="fill:none;stroke:#00AEEF;stroke-width:0.5;opacity:1.0;" x1="2860.0" x2="2860.0" y1="600.785" y2="720.121"/>
+  <line id="right-margin-Black-S" style="fill:none;stroke:#00AEEF;stroke-width:0.5;opacity:1.0;" x1="2960.0" x2="2960.0" y1="600.785" y2="720.121"/>
+ </g>
+ <g id="Symbols">
+  <g id="Black-S" transform="matrix(1 0 0 1 2860.0 696.0)">
+   <path class="monochrome-0 multicolor-0:tintColor hierarchical-0:secondary" d="M47.708 -26.896L47.708 -14.396C47.708 -9.909 44.071 -6.271 39.583 -6.271L20.833 -6.271C16.346 -6.271 12.708 -9.909 12.708 -14.396L12.708 -26.896C12.708 -31.383 16.346 -35.021 20.833 -35.021L39.583 -35.021C44.071 -35.021 47.708 -31.383 47.708 -26.896ZM87.292 -26.896L87.292 -14.396C87.292 -9.909 83.654 -6.271 79.167 -6.271L60.417 -6.271C55.929 -6.271 52.292 -9.909 52.292 -14.396L52.292 -26.896C52.292 -31.383 55.929 -35.021 60.417 -35.021L79.167 -35.021C83.654 -35.021 87.292 -31.383 87.292 -26.896Z"/>
+   <path class="monochrome-1 multicolor-1:tintColor hierarchical-1:primary" d="M67.500 -60.230L67.500 -47.730C67.500 -43.242 63.862 -39.605 59.375 -39.605L40.625 -39.605C36.138 -39.605 32.500 -43.242 32.500 -47.730L32.500 -60.230C32.500 -64.717 36.138 -68.355 40.625 -68.355L59.375 -68.355C63.862 -68.355 67.500 -64.717 67.500 -60.230Z"/>
+  </g>
+  <g id="Regular-S" transform="matrix(1 0 0 1 1400.0 696.0)">
+   <path class="monochrome-0 multicolor-0:tintColor hierarchical-0:secondary" d="M47.708 -26.896L47.708 -14.396C47.708 -9.909 44.071 -6.271 39.583 -6.271L20.833 -6.271C16.346 -6.271 12.708 -9.909 12.708 -14.396L12.708 -26.896C12.708 -31.383 16.346 -35.021 20.833 -35.021L39.583 -35.021C44.071 -35.021 47.708 -31.383 47.708 -26.896ZM87.292 -26.896L87.292 -14.396C87.292 -9.909 83.654 -6.271 79.167 -6.271L60.417 -6.271C55.929 -6.271 52.292 -9.909 52.292 -14.396L52.292 -26.896C52.292 -31.383 55.929 -35.021 60.417 -35.021L79.167 -35.021C83.654 -35.021 87.292 -31.383 87.292 -26.896Z"/>
+   <path class="monochrome-1 multicolor-1:tintColor hierarchical-1:primary" d="M67.500 -60.230L67.500 -47.730C67.500 -43.242 63.862 -39.605 59.375 -39.605L40.625 -39.605C36.138 -39.605 32.500 -43.242 32.500 -47.730L32.500 -60.230C32.500 -64.717 36.138 -68.355 40.625 -68.355L59.375 -68.355C63.862 -68.355 67.500 -64.717 67.500 -60.230Z"/>
+  </g>
+  <g id="Ultralight-S" transform="matrix(1 0 0 1 510.0 696.0)">
+   <path class="monochrome-0 multicolor-0:tintColor hierarchical-0:secondary" d="M47.708 -26.896L47.708 -14.396C47.708 -9.909 44.071 -6.271 39.583 -6.271L20.833 -6.271C16.346 -6.271 12.708 -9.909 12.708 -14.396L12.708 -26.896C12.708 -31.383 16.346 -35.021 20.833 -35.021L39.583 -35.021C44.071 -35.021 47.708 -31.383 47.708 -26.896ZM87.292 -26.896L87.292 -14.396C87.292 -9.909 83.654 -6.271 79.167 -6.271L60.417 -6.271C55.929 -6.271 52.292 -9.909 52.292 -14.396L52.292 -26.896C52.292 -31.383 55.929 -35.021 60.417 -35.021L79.167 -35.021C83.654 -35.021 87.292 -31.383 87.292 -26.896Z"/>
+   <path class="monochrome-1 multicolor-1:tintColor hierarchical-1:primary" d="M67.500 -60.230L67.500 -47.730C67.500 -43.242 63.862 -39.605 59.375 -39.605L40.625 -39.605C36.138 -39.605 32.500 -43.242 32.500 -47.730L32.500 -60.230C32.500 -64.717 36.138 -68.355 40.625 -68.355L59.375 -68.355C63.862 -68.355 67.500 -64.717 67.500 -60.230Z"/>
+  </g>
+ </g>
+</svg>

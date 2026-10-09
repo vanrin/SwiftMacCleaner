@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="3300" height="2200">
+ <!--Written by Tools/make-glyphs.swift. Change the drawing there, not here.-->
+ <style>.monochrome-0 {fill:#000000}
+.monochrome-1 {fill:#000000}
+
+.multicolor-0:tintColor {fill:#007AFF}
+.multicolor-1:tintColor {fill:#007AFF}
+
+.hierarchical-0:secondary {fill:#8E8E8E}
+.hierarchical-1:primary {fill:#212121}
+</style>
+ <g id="Notes">
+  <rect height="2200" id="artboard" style="fill:white;opacity:1" width="3300" x="0" y="0"/>
+  <text id="template-version" style="stroke:none;fill:black;font-family:sans-serif;font-size:13;text-anchor:end;" transform="matrix(1 0 0 1 3036 1933)">Template v.4.0</text>
+  <text style="stroke:none;fill:black;font-family:sans-serif;font-size:13;text-anchor:end;" transform="matrix(1 0 0 1 3036 1951)">Requires Xcode 14 or greater</text>
+  <text id="descriptive-name" style="stroke:none;fill:black;font-family:sans-serif;font-size:13;text-anchor:end;" transform="matrix(1 0 0 1 3036 1969)">glyph.installers</text>
+  <text style="stroke:none;fill:black;font-family:sans-serif;font-size:13;text-anchor:end;" transform="matrix(1 0 0 1 3036 1987)">Typeset at 100 points</text>
+ </g>
+ <g id="Guides">
+  <line id="Baseline-S" style="fill:none;stroke:#27AAE1;opacity:1;stroke-width:0.5;" x1="263" x2="3036" y1="696.0" y2="696.0"/>
+  <line id="Capline-S" style="fill:none;stroke:#27AAE1;opacity:1;stroke-width:0.5;" x1="263" x2="3036" y1="625.5409999999999" y2="625.5409999999999"/>
+  <line id="Baseline-M" style="fill:none;stroke:#27AAE1;opacity:1;stroke-width:0.5;" x1="263" x2="3036" y1="1126.0" y2="1126.0"/>
+  <line id="Capline-M" style="fill:none;stroke:#27AAE1;opacity:1;stroke-width:0.5;" x1="263" x2="3036" y1="1055.541" y2="1055.541"/>
+  <line id="Baseline-L" style="fill:none;stroke:#27AAE1;opacity:1;stroke-width:0.5;" x1="263" x2="3036" y1="1556.0" y2="1556.0"/>
+  <line id="Capline-L" style="fill:none;stroke:#27AAE1;opacity:1;stroke-width:0.5;" x1="263" x2="3036" y1="1485.541" y2="1485.541"/>
+  <line id="left-margin-Ultralight-S" style="fill:none;stroke:#00AEEF;stroke-width:0.5;opacity:1.0;" x1="510.0" x2="510.0" y1="600.785" y2="720.121"/>
+  <line id="right-margin-Ultralight-S" style="fill:none;stroke:#00AEEF;stroke-width:0.5;opacity:1.0;" x1="610.0" x2="610.0" y1="600.785" y2="720.121"/>
+  <line id="left-margin-Regular-S" style="fill:none;stroke:#00AEEF;stroke-width:0.5;opacity:1.0;" x1="1400.0" x2="1400.0" y1="600.785" y2="720.121"/>
+  <line id="right-margin-Regular-S" style="fill:none;stroke:#00AEEF;stroke-width:0.5;opacity:1.0;" x1="1500.0" x2="1500.0" y1="600.785" y2="720.121"/>
+  <line id="left-margin-Black-S" style="fill:none;stroke:#00AEEF;stroke-width:0.5;opacity:1.0;" x1="2860.0" x2="2860.0" y1="600.785" y2="720.121"/>
+  <line id="right-margin-Black-S" style="fill:none;stroke:#00AEEF;stroke-width:0.5;opacity:1.0;" x1="2960.0" x2="2960.0" y1="600.785" y2="720.121"/>
+ </g>
+ <g id="Symbols">
+  <g id="Black-S" transform="matrix(1 0 0 1 2860.0 696.0)">
+   <path class="monochrome-0 multicolor-0:tintColor hierarchical-0:secondary" d="M86.250 -35.230C86.250 -15.209 70.020 1.020 50.000 1.020C29.980 1.020 13.750 -15.209 13.750 -35.230L13.937 -38.936C15.794 -57.215 31.231 -71.480 50.000 -71.480C70.020 -71.480 86.250 -55.250 86.250 -35.230Z"/>
+   <path class="monochrome-1 multicolor-1:tintColor hierarchical-1:primary" d="M61.042 -35.230C61.042 -29.131 56.098 -24.188 50.000 -24.188C43.902 -24.188 38.958 -29.131 38.958 -35.230C38.958 -41.328 43.902 -46.271 50.000 -46.271C56.098 -46.271 61.042 -41.328 61.042 -35.230ZM46.458 -35.230C46.458 -33.273 48.044 -31.688 50.000 -31.688C51.956 -31.688 53.542 -33.273 53.542 -35.230C53.542 -37.186 51.956 -38.771 50.000 -38.771C48.044 -38.771 46.458 -37.186 46.458 -35.230ZM49.736 -58.459C50.092 -56.419 48.728 -54.476 46.688 -54.119C38.732 -52.727 32.502 -46.498 31.111 -38.542C30.754 -36.502 28.811 -35.137 26.770 -35.494C24.730 -35.851 23.366 -37.794 23.723 -39.834C25.659 -50.903 34.326 -59.570 45.395 -61.507C47.436 -61.864 49.379 -60.499 49.736 -58.459Z"/>
+  </g>
+  <g id="Regular-S" transform="matrix(1 0 0 1 1400.0 696.0)">
+   <path class="monochrome-0 multicolor-0:tintColor hierarchical-0:secondary" d="M86.250 -35.230C86.250 -15.209 70.020 1.020 50.000 1.020C29.980 1.020 13.750 -15.209 13.750 -35.230L13.937 -38.936C15.794 -57.215 31.231 -71.480 50.000 -71.480C70.020 -71.480 86.250 -55.250 86.250 -35.230Z"/>
+   <path class="monochrome-1 multicolor-1:tintColor hierarchical-1:primary" d="M61.042 -35.230C61.042 -29.131 56.098 -24.188 50.000 -24.188C43.902 -24.188 38.958 -29.131 38.958 -35.230C38.958 -41.328 43.902 -46.271 50.000 -46.271C56.098 -46.271 61.042 -41.328 61.042 -35.230ZM46.458 -35.230C46.458 -33.273 48.044 -31.688 50.000 -31.688C51.956 -31.688 53.542 -33.273 53.542 -35.230C53.542 -37.186 51.956 -38.771 50.000 -38.771C48.044 -38.771 46.458 -37.186 46.458 -35.230ZM49.736 -58.459C50.092 -56.419 48.728 -54.476 46.688 -54.119C38.732 -52.727 32.502 -46.498 31.111 -38.542C30.754 -36.502 28.811 -35.137 26.770 -35.494C24.730 -35.851 23.366 -37.794 23.723 -39.834C25.659 -50.903 34.326 -59.570 45.395 -61.507C47.436 -61.864 49.379 -60.499 49.736 -58.459Z"/>
+  </g>
+  <g id="Ultralight-S" transform="matrix(1 0 0 1 510.0 696.0)">
+   <path class="monochrome-0 multicolor-0:tintColor hierarchical-0:secondary" d="M86.250 -35.230C86.250 -15.209 70.020 1.020 50.000 1.020C29.980 1.020 13.750 -15.209 13.750 -35.230L13.937 -38.936C15.794 -57.215 31.231 -71.480 50.000 -71.480C70.020 -71.480 86.250 -55.250 86.250 -35.230Z"/>
+   <path class="monochrome-1 multicolor-1:tintColor hierarchical-1:primary" d="M61.042 -35.230C61.042 -29.131 56.098 -24.188 50.000 -24.188C43.902 -24.188 38.958 -29.131 38.958 -35.230C38.958 -41.328 43.902 -46.271 50.000 -46.271C56.098 -46.271 61.042 -41.328 61.042 -35.230ZM46.458 -35.230C46.458 -33.273 48.044 -31.688 50.000 -31.688C51.956 -31.688 53.542 -33.273 53.542 -35.230C53.542 -37.186 51.956 -38.771 50.000 -38.771C48.044 -38.771 46.458 -37.186 46.458 -35.230ZM49.736 -58.459C50.092 -56.419 48.728 -54.476 46.688 -54.119C38.732 -52.727 32.502 -46.498 31.111 -38.542C30.754 -36.502 28.811 -35.137 26.770 -35.494C24.730 -35.851 23.366 -37.794 23.723 -39.834C25.659 -50.903 34.326 -59.570 45.395 -61.507C47.436 -61.864 49.379 -60.499 49.736 -58.459Z"/>
+  </g>
+ </g>
+</svg>

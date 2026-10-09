@@ -19,8 +19,7 @@ struct SpaceRow: View {
         HStack(spacing: Design.Spacing.medium) {
             Button(action: open) {
                 HStack(spacing: Design.Spacing.medium) {
-                    GlossyIcon(symbol: symbol, theme: theme)
-                        .saturation(node.isUnreadable ? 0.2 : 1)
+                    FeatureIcon(Image(systemName: symbol), theme: theme, isTinted: !node.isUnreadable)
                     VStack(alignment: .leading, spacing: Design.Spacing.tight / 2) {
                         Text(node.name)
                             .lineLimit(1)
@@ -70,11 +69,11 @@ struct SpaceRow: View {
 
     private var symbol: String {
         if node.isUnreadable {
-            "lock"
+            "lock.fill"
         } else if node.isDirectory {
-            "folder"
+            "folder.fill"
         } else {
-            "doc"
+            "doc.fill"
         }
     }
 

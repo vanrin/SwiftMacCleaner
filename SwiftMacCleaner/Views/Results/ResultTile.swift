@@ -24,7 +24,7 @@ struct ResultTile: View {
                         // A long name on a narrow tile is set a little smaller rather than cut short.
                         .minimumScaleFactor(0.8)
                     Spacer(minLength: 0)
-                    GlossyIcon(symbol: item.symbol, theme: item.theme, size: Design.Size.tileIcon)
+                    FeatureIcon(Image(item.glyph), theme: item.theme, size: Design.Size.tileIcon)
                 }
                 Text("\(ByteFormat.string(model.selectedSize(under: item))) selected")
                     .font(Design.Typeface.tileBody)
