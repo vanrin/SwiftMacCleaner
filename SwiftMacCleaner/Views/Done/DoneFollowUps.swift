@@ -9,6 +9,10 @@ import SwiftUI
 struct DoneFollowUps: View {
     @Environment(AppModel.self) private var model
     let outcome: CleanOutcome
+    /// What is still on offer and was not removed this time.
+    let remaining: Int64
+    /// Opens the results again, for what is left.
+    let review: () -> Void
 
     var body: some View {
         let estimate = outcome.steps.filter { $0.succeeded && $0.method != .trash }.reduce(Int64(0)) { $0 + $1.size }
@@ -34,13 +38,13 @@ struct DoneFollowUps: View {
                     text: "Files shared with a local snapshot or another copy only free their space once the last reference is gone. macOS usually catches up within a day."
                 )
             }
-            if model.foundSize > 0 {
+            if remaining > 0 {
                 Notice(
                     symbol: "hand.raised.fill",
-                    title: "\(ByteFormat.string(model.foundSize)) more needs your call",
+                    title: "\(ByteFormat.string(remaining)) more needs your call",
                     text: needsYourCallText
                 ) {
-                    Button("Review Them", action: model.showResults)
+                    Button("Review Them", action: review)
                         .buttonStyle(.primaryPill)
                 }
             }

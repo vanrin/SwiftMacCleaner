@@ -44,6 +44,7 @@ extension AreaGroup {
         switch self {
         case .system: .teal
         case .developer: .indigo
+        case .downloads: .amber
         }
     }
 }
@@ -54,7 +55,6 @@ extension SidebarItem {
         switch self {
         case .overview: .violet
         case .group(let group): group.theme
-        case .area(let area): area.theme
         case .space: .ocean
         case .apps: .blue
         case .performance: .orange
@@ -70,8 +70,8 @@ extension AppModel {
         case .space: item.theme
         case .apps: apps.phase == .done ? .green : item.theme
         case .performance: performance.phase == .done ? .green : item.theme
-        case .group where phase == .results, .area where phase == .results: item.theme
-        case .overview, .group, .area: phase == .done ? .green : SidebarItem.overview.theme
+        case .group(let group): cleanUp(group).phase == .done ? .green : item.theme
+        case .overview: overviewPhase == .done ? .green : item.theme
         }
     }
 }

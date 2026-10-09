@@ -13,7 +13,8 @@ struct MenuBarOffer: View {
 
     var body: some View {
         let safe = model.safeSize
-        let isBusy = model.phase == .scanning || model.phase == .cleaning
+        let isBusy = model.overviewPhase == .scanning || model.overviewPhase == .running
+            || model.cleanUps.contains(where: \.isBusy)
         GlassPanel(cornerRadius: Design.Radius.tile) {
             VStack(alignment: .leading, spacing: Design.Spacing.medium) {
                 TitledDetail(title: title(safe: safe), detail: detail(safe: safe), detailLineLimit: nil)
@@ -39,13 +40,13 @@ struct MenuBarOffer: View {
     }
 
     private func title(safe: Int64) -> String {
-        switch model.phase {
+        switch model.overviewPhase {
         case .scanning: "Scanning"
-        case .cleaning: "Cleaning"
+        case .running: "Cleaning"
         default:
             if safe > 0 {
                 "\(ByteFormat.string(safe)) can go safely"
-            } else if model.findings.isEmpty {
+            } else if !model.hasFindings {
                 model.settings.lastScanDate == nil ? "Not scanned yet" : "Nothing safe to remove"
             } else {
                 "Nothing safe left to remove"
@@ -54,13 +55,13 @@ struct MenuBarOffer: View {
     }
 
     private func detail(safe: Int64) -> String {
-        switch model.phase {
-        case .scanning: "\(model.finishedAreaCount) of \(model.scannedAreas.count) areas done"
-        case .cleaning: model.cleanProgress.status
+        switch model.overviewPhase {
+        case .scanning: "\(model.overviewParts.count - model.scanningParts.count) of \(model.overviewParts.count) parts done"
+        case .running: model.runProgress.status
         default:
             if safe > 0 {
                 "Build output and caches that rebuild themselves. You confirm before anything is removed."
-            } else if model.findings.isEmpty {
+            } else if !model.hasFindings {
                 "A scan only measures. Nothing is removed until you confirm."
             } else {
                 "\(ByteFormat.string(model.foundSize)) more needs your call in the app."

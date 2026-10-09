@@ -8,6 +8,8 @@ import SwiftUI
 /// A group's areas with nothing to tick, each with the reason, so none of them simply goes missing.
 struct QuietAreasPanel: View {
     let areas: [Area]
+    /// Opens an area's page, for the few that still have something to show.
+    let open: (Area) -> Void
 
     var body: some View {
         GlassPanel {
@@ -23,7 +25,7 @@ struct QuietAreasPanel: View {
             ForEach(areas) { area in
                 VStack(spacing: 0) {
                     Divider()
-                    QuietAreaRow(area: area)
+                    QuietAreaRow(area: area, open: open)
                 }
             }
         }

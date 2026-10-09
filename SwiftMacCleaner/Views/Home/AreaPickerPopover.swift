@@ -8,11 +8,13 @@ import SwiftUI
 /// Every area the scan can look at, each to tick or untick, and under them what no scan ever touches.
 struct AreaPickerPopover: View {
     @Environment(AppModel.self) private var model
+    /// The areas on offer: every area of the clean-up, or one clean-up's.
+    var areas = Area.cleanUp
 
     var body: some View {
         let stack = model.stack
         // Developer areas whose tools are not on this Mac go last, unticked until asked for.
-        let missing = Area.cleanUp.filter { !stack.applies($0) }
+        let missing = areas.filter { !stack.applies($0) }
         VStack(alignment: .leading, spacing: 0) {
             SectionHeading(
                 title: "What the scan looks at",
@@ -22,7 +24,7 @@ struct AreaPickerPopover: View {
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    ForEach(Area.cleanUp.filter(stack.applies)) { area in
+                    ForEach(areas.filter(stack.applies)) { area in
                         AreaToggleRow(area: area)
                     }
                     if !missing.isEmpty {

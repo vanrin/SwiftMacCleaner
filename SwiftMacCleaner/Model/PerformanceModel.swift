@@ -57,6 +57,8 @@ final class PerformanceModel {
     let settings: AppSettings
     /// Called after a run, so the owner can refresh the disk figure and the offer to put things back.
     @ObservationIgnored var didRun: (CleanOutcome) -> Void = { _ in }
+    /// Called when a scan ends or is stopped, so the overview knows when every part of its scan is done.
+    @ObservationIgnored var didScan: () -> Void = {}
 
     private(set) var phase: Phase = .idle
     private(set) var progress = "Looking around"
@@ -126,12 +128,14 @@ final class PerformanceModel {
             scanned = Date()
             refreshBlocked()
             phase = .summary
+            didScan()
         }
     }
 
     func stop() {
         task?.cancel()
         phase = .idle
+        didScan()
     }
 
     /// Forgets the scan and goes back to the opening screen.
@@ -284,8 +288,14 @@ final class PerformanceModel {
     }
 
     func start() {
+        Task { await run() }
+    }
+
+    /// Carries out the plan for the part on screen and waits for it. Nil when there was nothing to do.
+    @discardableResult
+    func run() async -> CleanOutcome? {
         let plan = plan
-        guard !plan.isEmpty, phase == .managing else { return }
+        guard !plan.isEmpty, phase == .managing else { return nil }
         let section = section
         let skipping = blockedSteps(in: plan)
         // Only the plists moved to the Trash pass through the guard; the commands do not.
@@ -294,12 +304,27 @@ final class PerformanceModel {
         showingReview = false
         runProgress = CleanProgress(fraction: 0, status: "Getting ready")
         phase = .running
-        Task {
-            let result = await Cleaner.run(plan: plan, safety: safety, skipping: skipping, scannedAt: scannedAt) { progress in
-                Task { @MainActor in self.runProgress = progress }
-            }
-            finish(result, section: section)
+        let result = await Cleaner.run(plan: plan, safety: safety, skipping: skipping, scannedAt: scannedAt) { progress in
+            Task { @MainActor in self.runProgress = progress }
         }
+        finish(result, section: section)
+        return result
+    }
+
+    /// The plan for the recommended tasks alone, whatever is ticked: what the overview's Run does here.
+    var recommendedPlan: CleanPlan {
+        PerformancePlan.tasks(checks, selection: Set(recommended.map(\.task)), mailIndex: mailIndex,
+                              executable: Bundle.main.executableURL?.path ?? CommandLine.arguments[0], uid: getuid())
+    }
+
+    /// Ticks the recommended tasks, runs them and waits, for the overview's Run. Nil when none are due
+    /// or there are no results to run from.
+    @discardableResult
+    func performRecommended() async -> CleanOutcome? {
+        guard phase == .summary || phase == .managing || phase == .done, !recommended.isEmpty else { return nil }
+        selectedTasks = Set(recommended.map(\.task))
+        manage(.maintenance)
+        return await run()
     }
 
     /// `recordsRuns` is off for the demo, whose made-up run must not count as a real one.

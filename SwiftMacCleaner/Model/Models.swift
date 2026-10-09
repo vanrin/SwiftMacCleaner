@@ -52,13 +52,14 @@ nonisolated enum Area: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    /// The sidebar entry the area is filed under together with others. An area of the clean-up without
-    /// one stands in the sidebar by itself.
+    /// The part of the app the area belongs to. Leftovers and installers belong to Applications, which
+    /// is not a clean-up, so they have none.
     var group: AreaGroup? {
         switch self {
         case .xcode, .projects, .android, .containers, .packageCaches, .toolchains, .ides, .models: .developer
         case .cachesLogs, .trash, .snapshots: .system
-        case .largeFiles, .leftovers, .installers: nil
+        case .largeFiles: .downloads
+        case .leftovers, .installers: nil
         }
     }
 
@@ -93,9 +94,10 @@ nonisolated enum Area: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-/// Areas of the clean-up that share one sidebar entry, with a page of tiles that leads to each of them.
+/// A clean-up: areas that share one sidebar entry, a scan of their own, a summary with a tile for each
+/// area, and a manager. The overview runs every one of them together.
 nonisolated enum AreaGroup: String, CaseIterable, Identifiable, Sendable {
-    case system, developer
+    case system, developer, downloads
 
     var id: String { rawValue }
 
@@ -103,14 +105,34 @@ nonisolated enum AreaGroup: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .system: "System Clean Up"
         case .developer: "Developer Clean Up"
+        case .downloads: "Large old downloads"
         }
     }
 
-    /// What the areas are called in a sentence: "the developer areas".
-    var noun: String {
+    /// What the clean-up looks at, for a sentence: "Scanning the system areas", "2.1 GB found in Downloads".
+    var scope: String {
         switch self {
-        case .system: "system"
-        case .developer: "developer"
+        case .system: "the system areas"
+        case .developer: "the developer areas"
+        case .downloads: "Downloads"
+        }
+    }
+
+    /// The sentence under the title of the opening screen.
+    var intro: String {
+        switch self {
+        case .system: "Clear out what macOS and your apps leave behind as you use your Mac, and get the space back."
+        case .developer: "Build output, caches, old toolchains, images and models that developer tools pile up. Source files are never touched."
+        case .downloads: "Big files sitting in Downloads that you have not opened for months. They go to the Trash, so they can be put back."
+        }
+    }
+
+    /// The line under the opening screen's list, about what a scan does and does not do.
+    var promise: String {
+        switch self {
+        case .system: "Scanning only measures. Nothing is removed until you confirm: caches are deleted right away, and everything else goes to the Trash first, where it can be put back."
+        case .developer: "Scanning only measures. Nothing is removed until you confirm: build output and caches are deleted right away, and everything that would need setting up again goes to the Trash first."
+        case .downloads: "Scanning only measures. Nothing is removed until you confirm, and everything goes to the Trash first, where it can be put back."
         }
     }
 

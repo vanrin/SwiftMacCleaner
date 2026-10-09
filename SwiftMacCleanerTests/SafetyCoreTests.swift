@@ -362,21 +362,32 @@ struct MenuBarTests {
         #expect(model.isWeeklyCheckDue)
     }
 
-    @Test func cleanSafeTicksOnlyTheSafeTierAndOpensTheConfirmation() throws {
+    @Test func cleanSafeTicksOnlyTheSafeTierEverywhereAndOpensTheOverviewsConfirmation() throws {
         let sandbox = try Sandbox()
         defer { sandbox.remove() }
         let model = AppModel(home: sandbox.root)
+        let developer = model.cleanUp(.developer)
+        let system = model.cleanUp(.system)
         let safe = finding(id: "safe", items: [FindingItem(id: "s/1", title: "", detail: "", size: 10, paths: [sandbox.root.appending(path: ".npm/_cacache")])])
         let review = finding(id: "review", tier: .review, method: .trash, items: [FindingItem(id: "r/1", title: "", detail: "", size: 20, paths: [sandbox.root.appending(path: "Downloads/x.dmg")])])
-        model.show(findings: [safe, review])
-        model.binding(for: review.items[0]).wrappedValue = true
-        #expect(model.selection == ["s/1", "r/1"])
-
-        model.cleanSafe()
-        #expect(model.selection == ["s/1"])
-        #expect(model.showingReview)
-        #expect(model.safeSize == 10)
+        let logs = finding(id: "logs", area: .cachesLogs, items: [FindingItem(id: "c/1", title: "", detail: "", size: 5, paths: [sandbox.root.appending(path: "Library/Logs/x")])])
+        developer.show(findings: [safe, review])
+        system.show(findings: [logs])
+        developer.binding(for: review.items[0]).wrappedValue = true
+        #expect(developer.selection == ["s/1", "r/1"])
+        #expect(model.safeSize == 15)
         #expect(model.largestAreas(1).first?.size == 30)
+
+        // Results from the parts' own scans count: the overview needs no scan of its own first.
+        model.sidebarSelection = .apps
+        model.cleanSafe()
+        #expect(model.overviewPhase == .results)
+        #expect(model.sidebarSelection == .overview)
+        #expect(developer.selection == ["s/1"])
+        #expect(model.included == [.group(.developer), .group(.system)])
+        #expect(model.showingOverviewReview)
+        #expect(model.runPlan.steps.map(\.id) == ["logs", "safe"])
+        #expect(model.runSize == 15)
     }
 
     /// The menu bar once offered the whole Safe tier, 25.8 GB, while its button and the overview
@@ -385,20 +396,21 @@ struct MenuBarTests {
         let sandbox = try Sandbox()
         defer { sandbox.remove() }
         let model = AppModel(home: sandbox.root)
+        let developer = model.cleanUp(.developer)
         let caches = sandbox.root.appending(path: "Library/Caches")
         let safe = finding(items: [
             FindingItem(id: "s/old", title: "", detail: "", size: 10, paths: [caches.appending(path: "old")]),
             FindingItem(id: "s/newest", title: "", detail: "", size: 40, paths: [caches.appending(path: "newest")], preselected: false),
         ])
-        model.show(findings: [safe])
+        developer.show(findings: [safe])
         #expect(model.foundSize == 50)
-        #expect(model.selectedSize == 10)
+        #expect(developer.selectedSize == 10)
         #expect(model.safeSize == 10)
 
-        model.binding(for: safe.items[1]).wrappedValue = true
+        developer.binding(for: safe.items[1]).wrappedValue = true
         model.cleanSafe()
-        #expect(model.selection == ["s/old"])
-        #expect(model.selectedSize == model.safeSize)
+        #expect(developer.selection == ["s/old"])
+        #expect(model.runSize == model.safeSize)
     }
 }
 
@@ -408,55 +420,59 @@ struct AreaGroupTests {
         FindingItem(id: id, title: "", detail: "", size: size)
     }
 
-    @Test func theAreasOfAGroupShareOneTileOnTheOverview() throws {
-        let sandbox = try Sandbox()
-        defer { sandbox.remove() }
-        let model = AppModel(home: sandbox.root)
-        model.show(findings: [
-            finding(id: "derived", area: .xcode, items: [item("x/1", 30)]),
-            finding(id: "caches", area: .packageCaches, tier: .review, method: .trash, items: [item("p/1", 10)]),
-            finding(id: "logs", area: .cachesLogs, items: [item("c/1", 50)]),
-            finding(id: "bin", area: .trash, tier: .review, items: [item("t/1", 20)]),
-            finding(id: "zip", area: .largeFiles, tier: .review, method: .trash, items: [item("l/1", 5)]),
-        ])
-        #expect(model.overviewTiles == [.group(.system), .group(.developer), .area(.largeFiles)])
-        #expect(model.findings(under: .group(.developer)).map(\.id) == ["derived", "caches"])
-        #expect(model.foundSize(under: .group(.developer)) == 40)
-        #expect(model.selectedSize(under: .group(.developer)) == 30)
-        #expect(model.foundSize(under: .group(.system)) == 70)
-        #expect(model.selectedSize(under: .group(.system)) == 50)
-        #expect(model.areas(in: .developer) == AreaGroup.developer.areas)
-        #expect(model.areas(in: .system) == [.cachesLogs, .trash, .snapshots])
+    @Test func everyCleanUpAreaBelongsToOneCleanUp() {
+        let filed = AreaGroup.allCases.flatMap(\.areas)
+        #expect(Set(filed) == Set(Area.cleanUp))
+        #expect(filed.count == Area.cleanUp.count)
+        #expect(Area.largeFiles.group == .downloads)
+        #expect(Area.leftovers.group == nil)
+        #expect(SidebarItem.parts == [.group(.system), .group(.developer), .group(.downloads), .performance, .apps])
     }
 
-    @Test func anAreaOfAGroupIsReachedThroughTheGroup() throws {
+    @Test func eachCleanUpKeepsItsOwnFindingsAndTheOverviewAddsThemUp() throws {
         let sandbox = try Sandbox()
         defer { sandbox.remove() }
         let model = AppModel(home: sandbox.root)
-        #expect(SidebarItem.area(.xcode).entry == .group(.developer))
-        #expect(SidebarItem.area(.snapshots).entry == .group(.system))
-        #expect(SidebarItem.area(.largeFiles).entry == .area(.largeFiles))
+        model.cleanUp(.developer).show(findings: [
+            finding(id: "derived", area: .xcode, items: [item("x/1", 30)]),
+            finding(id: "caches", area: .packageCaches, tier: .review, method: .trash, items: [item("p/1", 10)]),
+        ])
+        model.cleanUp(.system).show(findings: [
+            finding(id: "logs", area: .cachesLogs, items: [item("c/1", 50)]),
+            finding(id: "bin", area: .trash, tier: .review, items: [item("t/1", 20)]),
+        ])
+        model.cleanUp(.downloads).show(findings: [
+            finding(id: "zip", area: .largeFiles, tier: .review, method: .trash, items: [item("l/1", 5)]),
+        ])
+        #expect(model.cleanUp(.developer).foundSize == 40)
+        #expect(model.cleanUp(.developer).selectedSize == 30)
+        #expect(model.cleanUp(.system).foundSize == 70)
+        #expect(model.cleanUp(.system).selectedSize == 50)
+        #expect(model.foundSize == 115)
+        #expect(model.safeSize == 80)
+        #expect(model.largestAreas(2).map(\.area) == [.cachesLogs, .xcode])
+        #expect(model.areas(in: .developer) == AreaGroup.developer.areas)
+        #expect(model.areas(in: .system) == [.cachesLogs, .trash, .snapshots])
+        #expect(model.areas(in: .downloads) == [.largeFiles])
+        // Not ticked anywhere, so nothing for Run to do there; the others have.
+        #expect(!model.hasWork(.group(.downloads)))
+        #expect(model.hasWork(.group(.developer)))
+        #expect(model.hasWork(.group(.system)))
+        #expect(!model.hasWork(.apps))
+    }
 
-        // Before there are results it leads nowhere, like any area.
-        model.select(.group(.developer))
-        #expect(model.sidebarSelection == .overview)
-
-        model.show(findings: [finding(id: "derived", area: .xcode, items: [item("x/1", 30)])])
+    @Test func everyEntryLeadsSomewhereAtAnyTime() throws {
+        let sandbox = try Sandbox()
+        defer { sandbox.remove() }
+        let model = AppModel(home: sandbox.root)
         model.select(.group(.developer))
         #expect(model.sidebarSelection == .group(.developer))
         #expect(model.theme == AreaGroup.developer.theme)
-        model.select(.area(.xcode))
-        #expect(model.sidebarSelection.entry == .group(.developer))
-        #expect(model.theme == Area.xcode.theme)
-    }
-
-    @Test func everyAreaOfTheCleanUpHasOnePlaceInTheSidebar() {
-        let filed = AreaGroup.allCases.flatMap(\.areas)
-        let alone = SidebarItem.cleanUp.compactMap { item -> Area? in
-            if case .area(let area) = item { area } else { nil }
-        }
-        #expect(Set(filed + alone) == Set(Area.cleanUp))
-        #expect(filed.count + alone.count == Area.cleanUp.count)
+        model.select(.group(.downloads))
+        #expect(model.theme == AreaGroup.downloads.theme)
+        model.select(.overview)
+        #expect(model.theme == SidebarItem.overview.theme)
+        #expect(model.overviewPhase == .home)
     }
 
     @Test func leftoversAndInstallersBelongToApplicationsNotTheCleanUp() throws {
@@ -470,7 +486,7 @@ struct AreaGroupTests {
         // Switching one on by hand does not bring it back into the scan.
         model.forcedAreas = [.leftovers]
         #expect(!model.enabledAreas.contains(.leftovers))
-        #expect(!model.cleanUpEntries.contains(.area(.leftovers)))
+        #expect(!model.cleanUpEntries.contains(.group(.developer)) || model.areas(in: .developer).isEmpty == false)
     }
 
     @Test func anAreaThatWasSplitStaysSwitchedOff() throws {
@@ -483,12 +499,171 @@ struct AreaGroupTests {
     }
 
     @Test func aGroupEntryIsBusyUntilItsLastAreaIsDone() {
-        #expect(AppModel.combined([.idle, .idle]) == .idle)
-        #expect(AppModel.combined([.queued, .idle, .queued]) == .queued)
-        #expect(AppModel.combined([.finished, .queued]) == .scanning)
-        #expect(AppModel.combined([.finished, .scanning, .skipped("stopped")]) == .scanning)
-        #expect(AppModel.combined([.finished, .skipped("stopped")]) == .finished)
-        #expect(AppModel.combined([.skipped("stopped"), .idle, .skipped("stopped")]) == .skipped("stopped"))
+        #expect(CleanUpModel.combined([.idle, .idle]) == .idle)
+        #expect(CleanUpModel.combined([.queued, .idle, .queued]) == .queued)
+        #expect(CleanUpModel.combined([.finished, .queued]) == .scanning)
+        #expect(CleanUpModel.combined([.finished, .scanning, .skipped("stopped")]) == .scanning)
+        #expect(CleanUpModel.combined([.finished, .skipped("stopped")]) == .finished)
+        #expect(CleanUpModel.combined([.skipped("stopped"), .idle, .skipped("stopped")]) == .skipped("stopped"))
+    }
+}
+
+@MainActor
+struct SystemCleanUpTests {
+    private func item(_ id: String, _ size: Int64, unknown: Bool = false) -> FindingItem {
+        FindingItem(id: id, title: "", detail: "", size: size, sizeUnknown: unknown)
+    }
+
+    @Test func systemCleanUpLooksAtTheSystemAreasOnItsOwn() throws {
+        let sandbox = try Sandbox()
+        defer { sandbox.remove() }
+        let model = AppModel(home: sandbox.root)
+        let system = model.cleanUp(.system)
+        #expect(system.areas == AreaGroup.system.areas)
+        #expect(model.cleanUp(.developer).areas == AreaGroup.developer.areas)
+        #expect(system.phase == .home)
+
+        // Reachable at any time, like Applications, with nothing scanned by the overview.
+        model.select(.group(.system))
+        #expect(model.sidebarSelection == .group(.system))
+        #expect(model.theme == AreaGroup.system.theme)
+        #expect(model.overviewPhase == .home)
+
+        // Results on one side leave the others alone.
+        system.show(findings: [
+            finding(id: "logs", area: .cachesLogs, items: [item("c/1", 50)]),
+            finding(id: "bin", area: .trash, tier: .review, items: [item("t/1", 20)]),
+        ])
+        #expect(system.phase == .results)
+        #expect(system.foundSize == 70)
+        #expect(system.selectedSize == 50)
+        #expect(model.cleanUp(.developer).phase == .home)
+        #expect(model.cleanUp(.developer).findings.isEmpty)
+        #expect(system.largestAreas(3).map(\.area) == [.cachesLogs, .trash])
+    }
+
+    @Test func aTileCleansItsAreaAloneAndTheRoundButtonEverything() throws {
+        let sandbox = try Sandbox()
+        defer { sandbox.remove() }
+        let model = AppModel(home: sandbox.root)
+        let system = model.cleanUp(.system)
+        let logs = finding(id: "logs", area: .cachesLogs, items: [
+            FindingItem(id: "c/1", title: "", detail: "", size: 50, paths: [sandbox.root.appending(path: "Library/Caches/x")]),
+        ])
+        let bin = finding(id: "bin", area: .trash, tier: .review, items: [
+            FindingItem(id: "t/1", title: "", detail: "", size: 20, paths: [sandbox.root.appending(path: ".Trash/x")]),
+        ])
+        let snapshots = finding(id: "snap", area: .snapshots, tier: .review, method: .adminCommand,
+                                items: [FindingItem(id: "s/1", title: "", detail: "", size: 0, command: ["/usr/bin/tmutil"], sizeUnknown: true)])
+        system.show(findings: [logs, bin, snapshots])
+        system.binding(for: bin.items[0]).wrappedValue = true
+        system.binding(for: snapshots.items[0]).wrappedValue = true
+
+        system.review(area: .trash)
+        #expect(system.showingReview)
+        #expect(system.plan.steps.map(\.id) == ["bin"])
+        #expect(!system.planHasUnknownSize)
+
+        system.review(area: .snapshots)
+        #expect(system.plan.steps.map(\.id) == ["snap"])
+        #expect(system.planHasUnknownSize)
+
+        system.review()
+        #expect(system.plan.steps.map(\.id) == ["logs", "bin", "snap"])
+        #expect(system.selectionHasUnknownSize)
+    }
+
+    @Test func theManagerOpensOneAreaAndTicksItAsAWhole() throws {
+        let sandbox = try Sandbox()
+        defer { sandbox.remove() }
+        let model = AppModel(home: sandbox.root)
+        let system = model.cleanUp(.system)
+        let backups = finding(id: "backups", area: .snapshots, tier: .careful, method: .trash, items: [item("b/1", 30), item("b/2", 10)])
+        let logs = finding(id: "logs", area: .cachesLogs, items: [item("c/1", 50), FindingItem(id: "c/kept", title: "", detail: "", size: 5, preselected: false)])
+        system.show(findings: [logs, backups])
+        #expect(system.selection == ["c/1"])
+
+        system.open(.snapshots)
+        #expect(system.openArea == .snapshots)
+        system.selectAll(in: .snapshots)
+        #expect(system.selection == ["c/1", "b/1", "b/2"])
+        system.selectNone(in: .snapshots)
+        system.selectAll(in: .cachesLogs)
+        #expect(system.selection == ["c/1", "c/kept"])
+        system.selectSafe(in: .cachesLogs)
+        #expect(system.selection == ["c/1"])
+        system.showResults()
+        #expect(system.openArea == nil)
+        #expect(system.phase == .results)
+    }
+}
+
+@MainActor
+struct OverviewRunTests {
+    private func waitUntilDone(_ model: AppModel) async throws {
+        for _ in 0..<400 where model.overviewPhase != .done {
+            try await Task.sleep(for: .milliseconds(25))
+        }
+    }
+
+    @Test func runGoesThroughEveryTickedCleanUpAndKeepsOneReceipt() async throws {
+        let sandbox = try Sandbox()
+        defer { sandbox.remove() }
+        let npm = try sandbox.file(".npm/_cacache/blob.bin").deletingLastPathComponent()
+        let logs = try sandbox.file("Library/Logs/app/out.log").deletingLastPathComponent()
+        let zip = try sandbox.file("Downloads/big.zip")
+
+        let model = AppModel(home: sandbox.root)
+        model.cleanUp(.developer).show(findings: [
+            finding(id: "caches", items: [FindingItem(id: "c/npm", title: "", detail: "", size: 10, paths: [npm])]),
+        ])
+        model.cleanUp(.system).show(findings: [
+            finding(id: "logs", area: .cachesLogs, items: [FindingItem(id: "l/app", title: "", detail: "", size: 10, paths: [logs])]),
+        ])
+        model.cleanUp(.downloads).show(findings: [
+            finding(id: "zip", area: .largeFiles, tier: .review, method: .trash, items: [FindingItem(id: "z/1", title: "", detail: "", size: 10, paths: [zip])]),
+        ])
+        model.cleanUp(.downloads).binding(for: FindingItem(id: "z/1", title: "", detail: "", size: 10)).wrappedValue = true
+        model.reviewSafe()
+        // Safe only: the ticked download is left alone, and so is the part that is unticked on the overview.
+        #expect(model.included == [.group(.developer), .group(.system)])
+        #expect(model.runPlan.steps.map(\.id) == ["logs", "caches"])
+        model.inclusion(of: .group(.system)).wrappedValue = false
+        #expect(model.runPlan.steps.map(\.id) == ["caches"])
+        #expect(model.runSize == 10)
+
+        model.run()
+        #expect(model.overviewPhase == .running)
+        try await waitUntilDone(model)
+
+        #expect(model.overviewPhase == .done)
+        #expect(!Files.exists(npm))
+        #expect(Files.exists(logs))
+        #expect(Files.exists(zip))
+        #expect(model.overviewOutcome?.steps.map(\.id) == ["caches"])
+        #expect(model.cleanUp(.developer).phase == .done)
+        #expect(model.cleanUp(.system).phase == .results)
+        #expect(model.foundSize == 20)
+        model.showOverviewResults()
+        #expect(model.overviewPhase == .results)
+    }
+
+    @Test func receiptsOfSeveralPartsMergeIntoOne() {
+        let started = Date()
+        let first = CleanOutcome(steps: [StepOutcome(id: "a", title: "", method: .delete, size: 5, cleanedItemIDs: ["a/1"], failures: [], skippedReason: nil)],
+                                 freeBefore: 100, freeAfter: 105, trashedSize: 0, duration: 2, logURL: URL(fileURLWithPath: "/tmp/a.log"), started: started)
+        let second = CleanOutcome(steps: [StepOutcome(id: "b", title: "", method: .trash, size: 7, cleanedItemIDs: ["b/1"], failures: [], skippedReason: nil)],
+                                  freeBefore: 105, freeAfter: 105, trashedSize: 7, duration: 3, logURL: nil, started: started.addingTimeInterval(2))
+        let merged = CleanOutcome.merged([first, second])
+        #expect(merged?.steps.map(\.id) == ["a", "b"])
+        #expect(merged?.freeBefore == 100)
+        #expect(merged?.freeAfter == 105)
+        #expect(merged?.reclaimed == 5)
+        #expect(merged?.trashedSize == 7)
+        #expect(merged?.duration == 5)
+        #expect(merged?.logURL?.path == "/tmp/a.log")
+        #expect(merged?.started == started)
+        #expect(CleanOutcome.merged([]) == nil)
     }
 }
 

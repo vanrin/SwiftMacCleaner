@@ -41,7 +41,7 @@ struct MenuBarView: View {
 
             MenuBarOffer(open: openMain)
 
-            if !model.findings.isEmpty {
+            if model.hasFindings {
                 VStack(alignment: .leading, spacing: Design.Spacing.small) {
                     Text("Largest areas")
                         .font(.callout)

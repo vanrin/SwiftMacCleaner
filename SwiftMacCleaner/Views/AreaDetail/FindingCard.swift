@@ -7,7 +7,7 @@ import SwiftUI
 
 /// One finding in full: why it can go, the path or command behind it, and every item inside.
 struct FindingCard: View {
-    @Environment(AppModel.self) private var model
+    @Environment(CleanUpModel.self) private var cleanUp
     let finding: Finding
     let active: InUseCheck?
 
@@ -15,7 +15,7 @@ struct FindingCard: View {
         GlassPanel {
             VStack(alignment: .leading, spacing: Design.Spacing.medium) {
                 HStack(spacing: Design.Spacing.medium) {
-                    Toggle(sources: model.itemBindings(for: finding), isOn: \.self) {
+                    Toggle(sources: cleanUp.itemBindings(for: finding), isOn: \.self) {
                         Text(finding.title)
                             .font(Design.Typeface.tileTitle)
                             .lineLimit(1)

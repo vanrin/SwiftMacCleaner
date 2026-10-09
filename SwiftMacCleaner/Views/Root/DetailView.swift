@@ -5,41 +5,27 @@
 
 import SwiftUI
 
-/// The right-hand side of the window: the screen for where the user is in the clean-up, or one of the
-/// parts that stand apart from it.
+/// The right-hand side of the window: the overview, or one of the parts it runs. Each clean-up's
+/// screens read their clean-up from the environment, so the same screens serve every group.
 struct DetailView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
         let item = model.sidebarSelection
-        let inCleanUp = item != .space && item != .apps && item != .performance
         Group {
-            if item == .space {
-                // Largest Folders stands apart from the clean-up flow and is reachable in any phase.
+            switch item {
+            case .overview:
+                OverviewView()
+            case .group(let group):
+                CleanUpView()
+                    .environment(model.cleanUp(group))
+            case .space:
+                // Largest Folders stands apart: it measures rather than finds, and is reachable in any phase.
                 SpaceView()
-            } else if item == .apps {
-                // So does Applications, which has a scan and a removal of its own.
+            case .apps:
                 AppsView()
-            } else if item == .performance {
-                // And Performance, with its own scan and its own things to run.
+            case .performance:
                 PerformanceView()
-            } else {
-                switch model.phase {
-                case .home:
-                    HomeView()
-                case .scanning:
-                    ScanningView()
-                case .results:
-                    switch model.sidebarSelection {
-                    case .area(let area): AreaDetailView(area: area)
-                    case .group(let group): GroupView(group: group)
-                    default: OverviewView()
-                    }
-                case .cleaning:
-                    CleaningView()
-                case .done:
-                    DoneView()
-                }
             }
         }
         .navigationTitle(title ?? "SwiftMacCleaner")
@@ -55,58 +41,40 @@ struct DetailView: View {
                 // A title is not a control, so it gets no glass behind it.
                 .sharedBackgroundVisibility(.hidden)
             }
-            if inCleanUp, model.phase == .results, model.sidebarSelection != .overview {
-                ToolbarItem(placement: .navigation) {
-                    Button(parent.title, systemImage: "chevron.left", action: showParent)
-                        .labelStyle(.titleBar)
-                        .help(parent == .overview ? "Back to everything the scan found" : "Back to \(parent.title)")
-                }
-            }
-            if model.phase == .home || !inCleanUp {
-                // The result of an uninstall carries the offer to put things back itself.
-                NoticeToolbar(model: model, showsPutBack: inCleanUp
-                              || (item == .apps && model.apps.phase != .done)
-                              || (item == .performance && model.performance.phase != .done))
-            }
-            if inCleanUp, model.phase == .results || model.phase == .done {
-                ToolbarItem {
-                    Button("Rescan", systemImage: "arrow.clockwise", action: model.startScan)
-                        .labelStyle(.titleBar)
-                        .help("Scan again")
-                }
-            }
+            // The result of a clean carries the offer to put things back itself.
+            NoticeToolbar(model: model, showsPutBack: showsPutBack)
+        }
+    }
+
+    private var showsPutBack: Bool {
+        switch model.sidebarSelection {
+        case .overview: model.overviewPhase != .done
+        case .group(let group): model.cleanUp(group).phase != .done
+        case .apps: model.apps.phase != .done
+        case .performance: model.performance.phase != .done
+        case .space: false
         }
     }
 
     /// The small title in the middle of the title bar. The opening screens carry their own large one instead.
     private var title: String? {
         let item = model.sidebarSelection
-        if item == .space {
+        switch item {
+        case .overview:
+            switch model.overviewPhase {
+            case .home: return nil
+            case .scanning: return "Scanning"
+            case .running: return "Running"
+            case .results, .done: return item.title
+            }
+        case .group(let group):
+            return model.cleanUp(group).phase == .home ? nil : item.title
+        case .space:
             return model.space.phase == .idle ? nil : item.title
-        }
-        if item == .apps {
+        case .apps:
             return model.apps.phase == .idle ? nil : item.title
-        }
-        if item == .performance {
+        case .performance:
             return model.performance.phase == .idle ? nil : item.title
         }
-        switch model.phase {
-        case .home: return nil
-        case .scanning: return "Scanning"
-        case .cleaning: return "Cleaning"
-        case .done: return SidebarItem.overview.title
-        case .results: return item.title
-        }
-    }
-
-    /// Where the back button leads: an area filed under a group sits under that group's page,
-    /// everything else under the overview.
-    private var parent: SidebarItem {
-        let entry = model.sidebarSelection.entry
-        return entry == model.sidebarSelection ? .overview : entry
-    }
-
-    private func showParent() {
-        model.select(parent)
     }
 }

@@ -18,6 +18,8 @@ struct SummaryTile: View {
     var isActionable = true
     /// System symbols pictured on lenses in the body of the tile, for things that have no icon of their own.
     var symbols: [String] = []
+    /// The safety tiers of what the tile holds, as badges at the bottom left.
+    var tiers: [SafetyTier] = []
     /// A solid button beside Review, for acting on the finding without looking at it first.
     var primaryTitle: String? = nil
     var primaryAction: () -> Void = {}
@@ -58,7 +60,17 @@ struct SummaryTile: View {
                     Spacer(minLength: 0)
                 }
                 HStack(spacing: Design.Spacing.small) {
-                    Spacer(minLength: 0)
+                    if tiers.isEmpty {
+                        Spacer(minLength: 0)
+                    } else {
+                        // Three badges do not fit beside the buttons on a narrow tile, so they wrap.
+                        FlowLayout(spacing: Design.Spacing.small) {
+                            ForEach(tiers, id: \.self) { tier in
+                                TierBadge(tier: tier)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                     Button("Review", action: action)
                         .buttonStyle(.pill)
                         .disabled(!isActionable)

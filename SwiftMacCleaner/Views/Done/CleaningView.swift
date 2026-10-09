@@ -5,12 +5,11 @@
 
 import SwiftUI
 
-/// Shown while the clean-up runs.
+/// Shown while a clean-up runs, or the overview's run goes through its parts.
 struct CleaningView: View {
-    @Environment(AppModel.self) private var model
+    let progress: CleanProgress
 
     var body: some View {
-        let progress = model.cleanProgress
         ActivityScreen(title: "Cleaning", detail: progress.status) {
             HeroOrb(progress: progress.fraction, isBusy: true) {
                 OrbFigure(value: progress.fraction.formatted(.percent.precision(.fractionLength(0))), caption: "done")

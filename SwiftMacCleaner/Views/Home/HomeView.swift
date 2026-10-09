@@ -34,13 +34,14 @@ struct HomeView: View {
                 }
                 IntroHeading(
                     title: disk.name,
-                    detail: "\(ByteFormat.string(disk.free)) free of \(ByteFormat.string(disk.capacity)). Scanning only measures, and nothing is removed until you confirm."
+                    detail: "\(ByteFormat.string(disk.free)) free of \(ByteFormat.string(disk.capacity)). One scan runs every part of the app. It only measures, and nothing is removed until you confirm."
                 )
             }
+            // One scan runs every part of the app; each part's own entry runs it alone.
             VStack(alignment: .leading, spacing: Design.Spacing.large) {
-                FeatureBullet(glyph: Image(.glyphXcode), text: "Build output and caches")
-                FeatureBullet(glyph: Image(.glyphContainers), text: "Old toolchains, images and models")
-                FeatureBullet(glyph: Image(.glyphTrash), text: "Trash, snapshots and old downloads")
+                FeatureBullet(glyph: Image(.glyphSystem), text: "Junk from macOS, your apps and developer tools")
+                FeatureBullet(glyph: Image(.glyphApps), text: "Apps, their updates and what they left behind")
+                FeatureBullet(glyph: Image(.glyphPerformance), text: "Maintenance tasks, login and background items")
             }
             HomeOptions()
         }
@@ -50,7 +51,7 @@ struct HomeView: View {
                 .keyboardShortcut(.defaultAction)
                 .disabled(nothingTicked)
                 .accessibilityLabel("Scan \(disk.name)")
-                .help("Scan \(disk.name). About a minute.")
+                .help("Run every part's scan on \(disk.name). About a minute.")
         }
     }
 

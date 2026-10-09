@@ -10,23 +10,16 @@ struct SidebarButton: View {
     @Environment(AppModel.self) private var model
     let item: SidebarItem
     var badge: String?
-    /// Dimmed while the entry leads nowhere, which is the case for areas before a scan.
-    var isAvailable = true
     @State private var isHovered = false
 
     var body: some View {
-        let isSelected = model.sidebarSelection.entry == item
-        let isBusy = switch item {
-        case .apps: model.apps.phase == .scanning
-        case .performance: model.performance.phase == .scanning
-        default: model.state(of: item) == .scanning
-        }
+        let isSelected = model.sidebarSelection == item
+        let isBusy = item == .overview ? model.overviewPhase == .scanning : model.isScanning(item)
         Button(action: select) {
             SidebarLabel(title: item.title, glyph: item.glyph, theme: item.theme, badge: badge,
-                         isSelected: isSelected, isHovered: isHovered && isAvailable, isBusy: isBusy)
+                         isSelected: isSelected, isHovered: isHovered, isBusy: isBusy)
         }
         .buttonStyle(.plain)
-        .disabled(!isAvailable)
         .onHover(perform: hover)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }

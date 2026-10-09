@@ -81,6 +81,8 @@ final class AppsModel {
     let settings: AppSettings
     /// Called after a removal, so the owner can refresh the disk figure and the offer to put things back.
     @ObservationIgnored var didRemove: (CleanOutcome) -> Void = { _ in }
+    /// Called when a scan ends or is stopped, so the overview knows when every part of its scan is done.
+    @ObservationIgnored var didScan: () -> Void = {}
 
     private(set) var phase: Phase = .idle
     private(set) var progress = AppScanProgress()
@@ -161,12 +163,14 @@ final class AppsModel {
             scanned = Date()
             refreshRunning()
             phase = .summary
+            didScan()
         }
     }
 
     func stop() {
         task?.cancel()
         phase = .idle
+        didScan()
     }
 
     /// Forgets the scan and goes back to the opening screen.

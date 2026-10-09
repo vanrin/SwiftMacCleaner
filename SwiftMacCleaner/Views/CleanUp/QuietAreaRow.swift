@@ -7,11 +7,12 @@ import SwiftUI
 
 /// One area of a group the scan offered nothing in: whether it was clean, skipped or not looked at, and why.
 struct QuietAreaRow: View {
-    @Environment(AppModel.self) private var model
+    @Environment(CleanUpModel.self) private var cleanUp
     let area: Area
+    let open: (Area) -> Void
 
     var body: some View {
-        let kept = model.protected(in: area)
+        let kept = cleanUp.protected(in: area)
         HStack(spacing: Design.Spacing.medium) {
             // Nothing to clean here, so the lens stays clear.
             FeatureIcon(Image(area.glyph), theme: area.theme, isTinted: false)
@@ -31,7 +32,7 @@ struct QuietAreaRow: View {
     }
 
     private var state: String {
-        switch model.areaState(for: area) {
+        switch cleanUp.areaState(for: area) {
         case .skipped: "Skipped"
         case .idle: "Not scanned"
         case .queued, .scanning, .finished: "Clean"
@@ -39,7 +40,7 @@ struct QuietAreaRow: View {
     }
 
     private func reason(kept: Int) -> String {
-        switch model.areaState(for: area) {
+        switch cleanUp.areaState(for: area) {
         case .skipped(let reason):
             reason
         case .idle:
@@ -54,6 +55,6 @@ struct QuietAreaRow: View {
     }
 
     private func showDetails() {
-        model.select(.area(area))
+        open(area)
     }
 }

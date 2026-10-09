@@ -174,8 +174,8 @@ struct AppModelCleanTests {
                 method: .delete, actionTarget: "", items: items, waitsFor: waitsFor)
     }
 
-    private func waitUntilDone(_ model: AppModel) async throws {
-        for _ in 0..<200 where model.phase != .done {
+    private func waitUntilDone(_ cleanUp: CleanUpModel) async throws {
+        for _ in 0..<200 where cleanUp.phase != .done {
             try await Task.sleep(for: .milliseconds(25))
         }
     }
@@ -187,21 +187,22 @@ struct AppModelCleanTests {
         let maven = try sandbox.file(".m2/repository/lib.jar").deletingLastPathComponent()
 
         let model = AppModel(home: sandbox.root)
-        model.show(findings: [finding(id: "caches", items: [
+        let overview = model.cleanUp(.developer)
+        overview.show(findings: [finding(id: "caches", items: [
             FindingItem(id: "c/npm", title: "npm", detail: "", size: 10, paths: [npm]),
             FindingItem(id: "c/maven", title: "Maven", detail: "", size: 10, paths: [maven], preselected: false),
         ])])
-        #expect(model.selection == ["c/npm"])
+        #expect(overview.selection == ["c/npm"])
 
-        model.clean()
-        try await waitUntilDone(model)
+        overview.clean()
+        try await waitUntilDone(overview)
 
-        #expect(model.phase == .done)
+        #expect(overview.phase == .done)
         #expect(!Files.exists(npm))
         #expect(Files.exists(maven))
-        #expect(model.findings.first?.items.map(\.id) == ["c/maven"])
-        #expect(model.outcome?.failureCount == 0)
-        #expect(model.outcome?.logURL.map(Files.exists) == true)
+        #expect(overview.findings.first?.items.map(\.id) == ["c/maven"])
+        #expect(overview.outcome?.failureCount == 0)
+        #expect(overview.outcome?.logURL.map(Files.exists) == true)
     }
 
     @Test func aStepWhoseAppIsOpenIsLeftAloneAndTheAppIsNotAskedToQuit() async throws {
@@ -211,22 +212,23 @@ struct AppModelCleanTests {
         let cache = try sandbox.file(".npm/_cacache/blob.bin").deletingLastPathComponent()
 
         let model = AppModel(home: sandbox.root)
+        let overview = model.cleanUp(.developer)
         // Finder is always running, so it stands in for an open Xcode.
-        model.show(findings: [
+        overview.show(findings: [
             finding(id: "derived", items: [FindingItem(id: "d/app", title: "App", detail: "", size: 10, paths: [derived])],
                     waitsFor: .app(bundleID: "com.apple.finder", name: "Finder")),
             finding(id: "caches", items: [FindingItem(id: "c/npm", title: "npm", detail: "", size: 10, paths: [cache])]),
         ])
-        #expect(model.blockedSteps(in: model.plan).keys.sorted() == ["derived"])
+        #expect(overview.blockedSteps(in: overview.plan).keys.sorted() == ["derived"])
 
-        model.clean()
-        try await waitUntilDone(model)
+        overview.clean()
+        try await waitUntilDone(overview)
 
         #expect(Files.exists(derived))
         #expect(!Files.exists(cache))
         #expect(model.isRunning(bundleID: "com.apple.finder"))
-        #expect(model.outcome?.steps.first { $0.id == "derived" }?.skippedReason != nil)
-        #expect(model.findings.map(\.id) == ["derived"])
+        #expect(overview.outcome?.steps.first { $0.id == "derived" }?.skippedReason != nil)
+        #expect(overview.findings.map(\.id) == ["derived"])
     }
 }
 

@@ -53,6 +53,8 @@ enum Design {
         static let appIcon: Double = 36
         /// The column beside a list of apps that holds the parts of the manager and the filters.
         static let filterColumn: Double = 228
+        /// The column of System Clean Up's manager, whose area names run longer than the parts of the other managers.
+        static let areaColumn: Double = 272
         /// A search field above a list, and how far it may be squeezed in a narrow window.
         static let searchField: Double = 220
         static let searchFieldMinimum: Double = 120

@@ -5,22 +5,29 @@
 
 import SwiftUI
 
-/// The last look before anything is removed: what happens to each group, and what was checked.
+/// The last look before anything is removed: what happens to each group, and what was checked. One
+/// clean-up's confirmation, or the overview's over every ticked part.
 struct ReviewSheet: View {
     @Environment(AppModel.self) private var model
     @Environment(\.theme) private var theme
     @Environment(\.dismiss) private var dismiss
+    /// What the button says: "Clean" for a clean-up, "Run" for the overview, whose plan also has tasks in it.
+    var verb = "Clean"
+    let plan: CleanPlan
+    /// Steps that wait for an open app, by id, with the reason. Shown, but not counted in what this clean frees.
+    let blocked: [String: String]
+    /// Something ticked has no size macOS can report, so the figure is "at least".
+    let hasUnknownSize: Bool
+    let clean: () -> Void
+    let copyScript: () -> Void
     @State private var copied = false
 
     var body: some View {
-        let plan = model.plan
-        // Steps that wait for an open app are shown, but not counted in what this clean frees.
-        let blocked = model.blockedSteps(in: plan)
         let total = plan.steps.filter { blocked[$0.id] == nil }.reduce(Int64(0)) { $0 + $1.size }
-        let atLeast = model.selectionHasUnknownSize ? "at least " : ""
+        let atLeast = hasUnknownSize ? "at least " : ""
         VStack(alignment: .leading, spacing: Design.Spacing.xLarge) {
             VStack(alignment: .leading, spacing: Design.Spacing.tight) {
-                Text("Clean \(atLeast)\(ByteFormat.string(total)) from \(model.disk.name)?")
+                Text("\(verb) \(atLeast)\(ByteFormat.string(total)) from \(model.disk.name)?")
                     .font(.title)
                     .bold()
                 Text(subtitle(for: plan, blockedCount: blocked.count))
@@ -80,15 +87,15 @@ struct ReviewSheet: View {
             }
 
             HStack(spacing: Design.Spacing.medium) {
-                Button(copied ? "Copied" : "Copy as Shell Script", action: copyScript)
+                Button(copied ? "Copied" : "Copy as Shell Script", action: copyShellScript)
                     .buttonStyle(.pill)
                 Spacer()
                 Button("Cancel", role: .cancel, action: cancel)
                     .buttonStyle(.pill)
                     .keyboardShortcut(.cancelAction)
-                Button("Clean \(atLeast)\(ByteFormat.string(total))", action: model.clean)
+                Button("\(verb) \(atLeast)\(ByteFormat.string(total))", action: clean)
                     .buttonStyle(.primaryPill)
-                    .disabled(total == 0 && !model.selectionHasUnknownSize)
+                    .disabled(total == 0 && !hasUnknownSize && !plan.steps.contains { $0.size == 0 })
             }
         }
         .padding(Design.Spacing.xLarge)
@@ -99,8 +106,8 @@ struct ReviewSheet: View {
         .preferredColorScheme(.dark)
     }
 
-    private func copyScript() {
-        model.copyShellScript()
+    private func copyShellScript() {
+        copyScript()
         copied = true
     }
 
@@ -134,7 +141,7 @@ struct ReviewSheet: View {
         checks.append(("Every path is checked again just before removal. Anything that changed since the scan is skipped and listed on the receipt.", false))
         if plan.needsPassword {
             let others = plan.steps.count - 1
-            checks.append(("Local snapshots: macOS asks for your password for this one step. Cancel that prompt and the other \(others == 1 ? "step" : "\(others) steps") still \(others == 1 ? "runs" : "run").", true))
+            checks.append(("macOS asks for your password for the one step that needs root. Cancel that prompt and the other \(others == 1 ? "step" : "\(others) steps") still \(others == 1 ? "runs" : "run").", true))
         }
         let blockedSteps = plan.steps.filter { blocked[$0.id] != nil }
         if !blockedSteps.isEmpty {
@@ -144,7 +151,7 @@ struct ReviewSheet: View {
             checks.append(("\(who), so \(size) waits until next time. Nothing is quit for you.", true))
         }
         if plan.steps.contains(where: { $0.method == .command || $0.method == .adminCommand }) {
-            checks.append(("brew cleanup, docker, simctl and tmutil clean up through their own commands, which cannot be undone.", true))
+            checks.append(("Commands such as brew cleanup, docker, simctl, tmutil and the maintenance tasks run as they are, which cannot be undone.", true))
         }
         if plan.steps.contains(where: { $0.tier == .careful }) {
             checks.append(("This includes items that cannot be recreated.", true))

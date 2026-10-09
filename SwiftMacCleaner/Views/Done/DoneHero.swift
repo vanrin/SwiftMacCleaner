@@ -10,11 +10,15 @@ struct DoneHero: View {
     @Environment(AppModel.self) private var model
     @Environment(\.theme) private var theme
     let outcome: CleanOutcome
+    /// What is still on offer and was not removed this time.
+    let remaining: Int64
+    /// Leaves the screen when there is nothing left to decide.
+    let done: () -> Void
 
     var body: some View {
         let segments = [
-            UsageSegment(id: "keep", label: "Keeping", bytes: max(0, model.disk.used - model.foundSize), color: Design.Surface.keeping),
-            UsageSegment(id: "found", label: "Still removable", bytes: model.foundSize, color: theme.accent),
+            UsageSegment(id: "keep", label: "Keeping", bytes: max(0, model.disk.used - remaining), color: Design.Surface.keeping),
+            UsageSegment(id: "found", label: "Still removable", bytes: remaining, color: theme.accent),
             UsageSegment(id: "free", label: "Free now", bytes: model.disk.free, color: .clear, isRemainder: true),
         ]
         GlassPanel {
@@ -27,8 +31,8 @@ struct DoneHero: View {
                 VStack(alignment: .leading, spacing: Design.Spacing.xLarge) {
                     IntroHeading(title: "Clean-up complete", detail: detail)
                     UsageLegend(segments: segments)
-                    if model.findings.isEmpty {
-                        Button("Done", action: model.showResults)
+                    if remaining == 0 {
+                        Button("Done", action: done)
                             .buttonStyle(.primaryPill)
                             .keyboardShortcut(.defaultAction)
                     }

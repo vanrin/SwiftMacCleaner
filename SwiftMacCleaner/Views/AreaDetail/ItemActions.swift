@@ -8,6 +8,7 @@ import SwiftUI
 /// What the row menu and the right-click menu of an item both offer.
 struct ItemActions: View {
     @Environment(AppModel.self) private var model
+    @Environment(CleanUpModel.self) private var cleanUp
     let item: FindingItem
     let finding: Finding
 
@@ -21,6 +22,6 @@ struct ItemActions: View {
     }
 
     private func neverSuggest() {
-        model.neverSuggest(item, in: finding)
+        cleanUp.neverSuggest(item, in: finding)
     }
 }

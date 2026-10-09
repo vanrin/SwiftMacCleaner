@@ -9,7 +9,6 @@ struct RootView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        @Bindable var model = model
         let theme = model.theme
         HStack(spacing: 0) {
             SidebarView()
@@ -17,9 +16,6 @@ struct RootView: View {
             SidebarDivider()
             DetailView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        .sheet(isPresented: $model.showingReview) {
-            ReviewSheet()
         }
         // One backdrop for the whole window: the sidebar has no pane of its own.
         .containerBackground(for: .window) {

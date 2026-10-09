@@ -35,6 +35,7 @@ extension AreaGroup {
         switch self {
         case .system: .glyphSystem
         case .developer: .glyphDeveloper
+        case .downloads: .glyphLargeFiles
         }
     }
 }
@@ -45,7 +46,6 @@ extension SidebarItem {
         switch self {
         case .overview: .glyphOverview
         case .group(let group): group.glyph
-        case .area(let area): area.glyph
         case .space: .glyphSpace
         case .apps: .glyphApps
         case .performance: .glyphPerformance

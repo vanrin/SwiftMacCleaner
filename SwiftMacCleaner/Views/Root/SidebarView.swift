@@ -5,14 +5,12 @@
 
 import SwiftUI
 
-/// The column on the left: the overview and what the clean-up is filed under, and at the bottom the
-/// parts of the app that stand apart from the clean-up.
+/// The column on the left: the overview and the clean-ups it runs, and at the bottom the other parts
+/// of the app. Every entry leads somewhere at any time.
 struct SidebarView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        // Areas lead somewhere only once there are results to show.
-        let areasAvailable = model.phase == .results || model.phase == .done
         // The entries at the bottom have room of their own. The sidebar has no pane, so a list that
         // scrolled underneath them would show through.
         VStack(spacing: 0) {
@@ -20,9 +18,8 @@ struct SidebarView: View {
                 VStack(spacing: Design.Spacing.medium) {
                     SidebarButton(item: .overview, badge: overviewBadge)
                     VStack(spacing: Design.Spacing.tight / 2) {
-                        // One entry for each group, however many areas it holds.
                         ForEach(model.cleanUpEntries, id: \.self) { item in
-                            SidebarButton(item: item, badge: badge(for: item), isAvailable: areasAvailable)
+                            SidebarButton(item: item, badge: badge(for: item))
                         }
                     }
                 }
@@ -71,23 +68,24 @@ struct SidebarView: View {
         }
     }
 
+    /// What the clean-ups have found between them, while the overview has a scan to show.
     private var overviewBadge: String? {
-        switch model.phase {
-        case .scanning, .results, .done:
+        switch model.overviewPhase {
+        case .scanning, .results, .running, .done:
             model.foundSize > 0 ? ByteFormat.string(model.foundSize) : nil
-        case .home, .cleaning:
+        case .home:
             nil
         }
     }
 
+    /// What a clean-up's last scan found, once there has been one.
     private func badge(for item: SidebarItem) -> String? {
-        let found = model.foundSize(under: item)
-        return switch model.state(of: item) {
-        case .idle: nil
-        case .queued: "Queued"
+        guard case .group(let group) = item else { return nil }
+        let cleanUp = model.cleanUp(group)
+        return switch cleanUp.phase {
+        case .home: nil
         case .scanning: "Scanning"
-        case .skipped: "Skipped"
-        case .finished: found > 0 ? ByteFormat.string(found) : "Clean"
+        case .results, .cleaning, .done: cleanUp.foundSize > 0 ? ByteFormat.string(cleanUp.foundSize) : "Clean"
         }
     }
 }

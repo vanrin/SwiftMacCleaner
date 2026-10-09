@@ -8,12 +8,13 @@ import SwiftUI
 /// One thing that can be ticked inside a finding.
 struct ItemRow: View {
     @Environment(AppModel.self) private var model
+    @Environment(CleanUpModel.self) private var cleanUp
     let item: FindingItem
     let finding: Finding
 
     var body: some View {
         HStack(spacing: Design.Spacing.medium) {
-            Toggle(isOn: model.binding(for: item)) {
+            Toggle(isOn: cleanUp.binding(for: item)) {
                 VStack(alignment: .leading, spacing: Design.Spacing.tight / 2) {
                     Text(item.title)
                         .font(Design.Typeface.tileBody)

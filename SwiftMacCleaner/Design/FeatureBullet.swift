@@ -10,12 +10,14 @@ struct FeatureBullet: View {
     @Environment(\.theme) private var theme
     let glyph: Image
     let text: String
+    /// Smaller, for a list long enough to need two columns.
+    var isCompact = false
 
     var body: some View {
-        HStack(spacing: Design.Spacing.large) {
-            FeatureIcon(glyph, theme: theme, size: Design.Size.featureIcon)
+        HStack(spacing: isCompact ? Design.Spacing.medium : Design.Spacing.large) {
+            FeatureIcon(glyph, theme: theme, size: isCompact ? Design.Size.rowIcon : Design.Size.featureIcon)
             Text(text)
-                .font(Design.Typeface.feature)
+                .font(isCompact ? Design.Typeface.rowTitle : Design.Typeface.feature)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
