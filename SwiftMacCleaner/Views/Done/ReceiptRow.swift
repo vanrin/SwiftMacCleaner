@@ -8,6 +8,8 @@ import SwiftUI
 /// One step of the receipt: whether it ran, what it did, and how much it covered.
 struct ReceiptRow: View {
     let step: StepOutcome
+    /// What to say under a step that was not skipped, when the usual sentence for its method does not fit.
+    var doneDetail: String? = nil
 
     var body: some View {
         let skipped = step.skippedReason != nil
@@ -18,8 +20,11 @@ struct ReceiptRow: View {
                 .accessibilityLabel(symbolMeaning)
             TitledDetail(title: step.title, detail: detail, detailLineLimit: nil)
             Spacer(minLength: Design.Spacing.medium)
-            SizeLabel(bytes: step.size, isEmphasized: !skipped)
-                .foregroundStyle(skipped ? .secondary : .primary)
+            // A step that frees nothing, such as a task that was run, has no size worth a column.
+            if step.size > 0 {
+                SizeLabel(bytes: step.size, isEmphasized: !skipped)
+                    .foregroundStyle(skipped ? .secondary : .primary)
+            }
         }
         .padding(.horizontal, Design.Spacing.large)
         .padding(.vertical, Design.Spacing.medium)
@@ -64,6 +69,7 @@ struct ReceiptRow: View {
             let done = step.cleanedItemIDs.count
             return "\(verb) \(done) of \(total) \(total == 1 ? "item" : "items"). \(step.skippedItems.count) skipped: changed since the scan."
         }
+        if let doneDetail { return doneDetail }
         if let first = step.failures.first {
             let more = step.failures.count > 1 ? " (and \(step.failures.count - 1) more in the log)" : ""
             return first + more

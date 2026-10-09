@@ -57,6 +57,7 @@ extension SidebarItem {
         case .area(let area): area.theme
         case .space: .ocean
         case .apps: .blue
+        case .performance: .orange
         }
     }
 }
@@ -68,6 +69,7 @@ extension AppModel {
         return switch item {
         case .space: item.theme
         case .apps: apps.phase == .done ? .green : item.theme
+        case .performance: performance.phase == .done ? .green : item.theme
         case .group where phase == .results, .area where phase == .results: item.theme
         case .overview, .group, .area: phase == .done ? .green : SidebarItem.overview.theme
         }

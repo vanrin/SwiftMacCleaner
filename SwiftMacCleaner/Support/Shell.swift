@@ -11,8 +11,10 @@ nonisolated enum Shell {
         var stdout: String
         var stderr: String
         var timedOut: Bool
+        /// The task this ran in was cancelled, so the tool was stopped before it finished.
+        var cancelled = false
 
-        var succeeded: Bool { status == 0 && !timedOut }
+        var succeeded: Bool { status == 0 && !timedOut && !cancelled }
     }
 
     /// Apps launched from Finder get a bare PATH, so the usual install locations are searched by hand.
@@ -37,7 +39,9 @@ nonisolated enum Shell {
         return run("/usr/bin/osascript", ["-e", script], timeout: timeout)
     }
 
-    /// Runs a tool and waits for it, giving up after `timeout` seconds.
+    /// Runs a tool and waits for it, giving up after `timeout` seconds. When the task this runs in is
+    /// cancelled meanwhile, the tool is stopped, so pressing Stop does not leave a `docker` or a
+    /// `tmutil` running on.
     ///
     /// Output goes to temporary files rather than pipes: a tool such as `docker` can leave helper
     /// processes holding a pipe open, which would keep a reader waiting long after the tool is gone.
@@ -80,9 +84,21 @@ nonisolated enum Shell {
         process.terminationHandler = { _ in exited.signal() }
         do { try process.run() } catch { return nil }
 
+        // Waited for in short slices, so a cancelled task is noticed within a quarter of a second.
+        let deadline = DispatchTime.now() + timeout
         var timedOut = false
-        if exited.wait(timeout: .now() + timeout) == .timedOut {
-            timedOut = true
+        var cancelled = false
+        while exited.wait(timeout: .now() + 0.25) == .timedOut {
+            if Task.isCancelled {
+                cancelled = true
+                break
+            }
+            if DispatchTime.now() >= deadline {
+                timedOut = true
+                break
+            }
+        }
+        if timedOut || cancelled {
             process.terminate()
             if exited.wait(timeout: .now() + 2) == .timedOut {
                 kill(process.processIdentifier, SIGKILL)
@@ -91,10 +107,11 @@ nonisolated enum Shell {
         }
 
         return Output(
-            status: timedOut || process.isRunning ? -1 : process.terminationStatus,
+            status: timedOut || cancelled || process.isRunning ? -1 : process.terminationStatus,
             stdout: (try? String(contentsOf: outURL, encoding: .utf8)) ?? "",
             stderr: (try? String(contentsOf: errURL, encoding: .utf8)) ?? "",
-            timedOut: timedOut
+            timedOut: timedOut,
+            cancelled: cancelled
         )
     }
 }

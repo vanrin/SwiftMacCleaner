@@ -32,12 +32,12 @@ struct AppsSummary: View {
                 .padding(.top, Design.Spacing.medium)
 
                 LazyVGrid(columns: columns, spacing: Design.Spacing.large) {
-                    AppsSummaryTile(
+                    SummaryTile(
                         title: updatesTitle(apps), detail: updatesDetail(apps), glyph: .glyphUpdater,
                         icons: apps.updates.prefix(3).compactMap { apps.app(withID: $0.id)?.url },
                         isActionable: !apps.updates.isEmpty, action: reviewUpdates
                     )
-                    AppsSummaryTile(
+                    SummaryTile(
                         title: unused.isEmpty ? "No unused apps" : "\(unused.count) unused \(unused.count == 1 ? "app" : "apps")",
                         detail: unused.isEmpty
                             ? "Every app here was opened in the last 6 months."
@@ -45,14 +45,14 @@ struct AppsSummary: View {
                         glyph: .glyphUnused, icons: unused.prefix(3).map(\.url),
                         isActionable: !unused.isEmpty, action: reviewUnused
                     )
-                    AppsSummaryTile(
+                    SummaryTile(
                         title: apps.leftoverFileSize == 0 ? "No app leftovers" : "\(ByteFormat.string(apps.leftoverFileSize)) of app leftovers",
                         detail: apps.leftoverFileSize == 0
                             ? "Nothing sizeable was left behind by apps that are gone."
                             : "Files in your Library that belong to apps that are no longer installed.",
                         glyph: .glyphLeftovers, isActionable: apps.leftoverFileSize > 0, action: reviewLeftovers
                     )
-                    AppsSummaryTile(
+                    SummaryTile(
                         title: apps.installerSize == 0 ? "No installers" : "\(ByteFormat.string(apps.installerSize)) of installers",
                         detail: installersDetail(apps), glyph: .glyphInstallers,
                         isActionable: apps.installerSize > 0, action: reviewLeftovers

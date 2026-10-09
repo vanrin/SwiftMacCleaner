@@ -1,12 +1,13 @@
 //
-//  AppsSummaryTile.swift
+//  SummaryTile.swift
 //  SwiftMacCleaner
 //
 
 import SwiftUI
 
-/// One thing the Applications scan found, as a tile: what it is, the apps it concerns, and a way in.
-struct AppsSummaryTile: View {
+/// One thing a scan found, as a tile: what it is, the apps it concerns, and a way in. A tile whose
+/// finding can be acted on straight away carries a second, solid button for that.
+struct SummaryTile: View {
     @Environment(\.theme) private var theme
     let title: String
     let detail: String
@@ -15,6 +16,12 @@ struct AppsSummaryTile: View {
     var icons: [URL] = []
     /// Whether there is anything behind the tile to review.
     var isActionable = true
+    /// System symbols pictured on lenses in the body of the tile, for things that have no icon of their own.
+    var symbols: [String] = []
+    /// A solid button beside Review, for acting on the finding without looking at it first.
+    var primaryTitle: String? = nil
+    var primaryAction: () -> Void = {}
+    var height = Design.Size.tileHeight
     let action: () -> Void
 
     var body: some View {
@@ -40,16 +47,31 @@ struct AppsSummaryTile: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(3)
                 Spacer(minLength: 0)
-                HStack {
+                if !symbols.isEmpty {
+                    HStack(spacing: Design.Spacing.large) {
+                        Spacer(minLength: 0)
+                        ForEach(symbols, id: \.self) { symbol in
+                            FeatureIcon(Image(systemName: symbol), theme: theme, size: Design.Size.tileIcon * 1.5)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    Spacer(minLength: 0)
+                }
+                HStack(spacing: Design.Spacing.small) {
                     Spacer(minLength: 0)
                     Button("Review", action: action)
                         .buttonStyle(.pill)
                         .disabled(!isActionable)
                         .accessibilityLabel("Review \(title)")
+                    if let primaryTitle {
+                        Button(primaryTitle, action: primaryAction)
+                            .buttonStyle(.primaryPill)
+                            .disabled(!isActionable)
+                    }
                 }
             }
             .padding(Design.Spacing.large)
-            .frame(height: Design.Size.tileHeight, alignment: .topLeading)
+            .frame(height: height, alignment: .topLeading)
         }
     }
 }

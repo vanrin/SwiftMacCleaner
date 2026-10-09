@@ -1,12 +1,12 @@
 //
-//  AppsPaneHeading.swift
+//  PaneHeading.swift
 //  SwiftMacCleaner
 //
 
 import SwiftUI
 
 /// The top of one part of the manager: what the list under it shows, and the controls that shape that list.
-struct AppsPaneHeading<Controls: View>: View {
+struct PaneHeading<Controls: View>: View {
     let title: String
     let detail: String
     @ContentBuilder var controls: Controls

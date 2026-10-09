@@ -361,8 +361,10 @@ nonisolated enum Cleaner {
 
     private static func runCommand(_ command: [String], asAdmin: Bool) -> Result {
         guard let executable = command.first else { return .failed("Empty command") }
-        let text = command.map { URL(fileURLWithPath: $0).lastPathComponent == $0 ? $0 : URL(fileURLWithPath: $0).lastPathComponent }
-            .joined(separator: " ")
+        // A script is named by its shell alone; the log keeps the script itself.
+        let text = executable.hasSuffix("/sh") ? "sh"
+            : command.map { URL(fileURLWithPath: $0).lastPathComponent == $0 ? $0 : URL(fileURLWithPath: $0).lastPathComponent }
+                .joined(separator: " ")
         let output: Shell.Output?
         if asAdmin {
             output = Shell.runAsAdministrator(command, timeout: 600)
@@ -370,6 +372,7 @@ nonisolated enum Cleaner {
             output = Shell.run(executable, Array(command.dropFirst()), timeout: 600)
         }
         guard let output else { return .failed("Could not start \(text)") }
+        if output.cancelled { return .failed("\(text) was stopped before it finished") }
         if output.timedOut { return .failed("\(text) did not finish in time") }
         if output.status != 0 {
             let reason = output.stderr.trimmingCharacters(in: .whitespacesAndNewlines)

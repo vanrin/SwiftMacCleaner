@@ -5,19 +5,24 @@
 
 import SwiftUI
 
-/// The right-hand side of the window: the screen for where the user is in the clean-up, or Largest Folders.
+/// The right-hand side of the window: the screen for where the user is in the clean-up, or one of the
+/// parts that stand apart from it.
 struct DetailView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        let inCleanUp = model.sidebarSelection != .space && model.sidebarSelection != .apps
+        let item = model.sidebarSelection
+        let inCleanUp = item != .space && item != .apps && item != .performance
         Group {
-            if model.sidebarSelection == .space {
+            if item == .space {
                 // Largest Folders stands apart from the clean-up flow and is reachable in any phase.
                 SpaceView()
-            } else if model.sidebarSelection == .apps {
+            } else if item == .apps {
                 // So does Applications, which has a scan and a removal of its own.
                 AppsView()
+            } else if item == .performance {
+                // And Performance, with its own scan and its own things to run.
+                PerformanceView()
             } else {
                 switch model.phase {
                 case .home:
@@ -59,7 +64,9 @@ struct DetailView: View {
             }
             if model.phase == .home || !inCleanUp {
                 // The result of an uninstall carries the offer to put things back itself.
-                NoticeToolbar(model: model, showsPutBack: inCleanUp || (model.sidebarSelection == .apps && model.apps.phase != .done))
+                NoticeToolbar(model: model, showsPutBack: inCleanUp
+                              || (item == .apps && model.apps.phase != .done)
+                              || (item == .performance && model.performance.phase != .done))
             }
             if inCleanUp, model.phase == .results || model.phase == .done {
                 ToolbarItem {
@@ -79,6 +86,9 @@ struct DetailView: View {
         }
         if item == .apps {
             return model.apps.phase == .idle ? nil : item.title
+        }
+        if item == .performance {
+            return model.performance.phase == .idle ? nil : item.title
         }
         switch model.phase {
         case .home: return nil

@@ -13,7 +13,7 @@ struct LeftoversPane: View {
     var body: some View {
         let apps = model.apps
         VStack(alignment: .leading, spacing: Design.Spacing.large) {
-            AppsPaneHeading(title: "Leftovers", detail: AppsModel.Section.leftovers.detail) {
+            PaneHeading(title: "Leftovers", detail: AppsModel.Section.leftovers.detail) {
                 if !apps.selectedLeftovers.isEmpty {
                     Button("Select None", action: apps.selectNone)
                         .buttonStyle(.pill)

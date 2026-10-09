@@ -48,6 +48,7 @@ extension SidebarItem {
         case .area(let area): area.glyph
         case .space: .glyphSpace
         case .apps: .glyphApps
+        case .performance: .glyphPerformance
         }
     }
 }

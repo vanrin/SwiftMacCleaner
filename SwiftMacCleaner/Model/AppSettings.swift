@@ -70,6 +70,11 @@ final class AppSettings {
         didSet { defaults.set(lastScanDate, forKey: "lastScanDate") }
     }
 
+    /// When each maintenance task last ran, by its name, which decides which are recommended again.
+    var maintenanceRuns: [String: Date] {
+        didSet { defaults.set(maintenanceRuns, forKey: "maintenanceRuns") }
+    }
+
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
@@ -77,6 +82,7 @@ final class AppSettings {
         showsMenuBarItem = defaults.object(forKey: "showsMenuBarItem") as? Bool ?? true
         weeklyCheck = defaults.object(forKey: "weeklyCheck") as? Bool ?? true
         lastScanDate = defaults.object(forKey: "lastScanDate") as? Date
+        maintenanceRuns = defaults.dictionary(forKey: "maintenanceRuns") as? [String: Date] ?? [:]
         let storedDays = defaults.integer(forKey: "staleDays")
         staleDays = Self.staleChoices.contains(storedDays) ? storedDays : 60
         let storedLarge = defaults.integer(forKey: "largeFileDays")
@@ -102,6 +108,15 @@ final class AppSettings {
     func addNeverSuggest(path: String, title: String) {
         guard !neverSuggest.contains(where: { $0.path == path }) else { return }
         neverSuggest.append(NeverSuggestEntry(path: path, title: title, added: Date()))
+    }
+
+    /// The last run of each maintenance task.
+    var lastMaintenanceRuns: [MaintenanceTask: Date] {
+        Dictionary(uniqueKeysWithValues: maintenanceRuns.compactMap { name, date in MaintenanceTask(rawValue: name).map { ($0, date) } })
+    }
+
+    func recordMaintenanceRun(of tasks: [MaintenanceTask], at date: Date = Date()) {
+        for task in tasks { maintenanceRuns[task.rawValue] = date }
     }
 
     func removeNeverSuggest(_ entry: NeverSuggestEntry) {

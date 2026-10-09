@@ -39,6 +39,7 @@ struct SidebarView: View {
                 }
             }
             VStack(spacing: Design.Spacing.tight / 2) {
+                SidebarButton(item: .performance, badge: performanceBadge)
                 SidebarButton(item: .apps, badge: appsBadge)
                 SidebarButton(item: .space)
                 SettingsLink {
@@ -57,6 +58,16 @@ struct SidebarView: View {
         case .idle: nil
         case .scanning: "Scanning"
         case .summary, .managing, .removing, .done: model.apps.apps.count.formatted()
+        }
+    }
+
+    /// How many tasks the last look found worth running, once there has been one.
+    private var performanceBadge: String? {
+        switch model.performance.phase {
+        case .idle: nil
+        case .scanning: "Scanning"
+        case .summary, .managing, .running, .done:
+            model.performance.recommended.isEmpty ? "Fine" : "\(model.performance.recommended.count) to run"
         }
     }
 

@@ -14,8 +14,8 @@ struct UninstallerPane: View {
         @Bindable var apps = model.apps
         let shown = apps.visibleApps
         VStack(alignment: .leading, spacing: Design.Spacing.large) {
-            AppsPaneHeading(title: apps.filter.title, detail: detail(for: apps.filter)) {
-                AppsSearchField(text: $apps.search)
+            PaneHeading(title: apps.filter.title, detail: detail(for: apps.filter)) {
+                SearchField(text: $apps.search, prompt: "Search apps")
                 Spacer(minLength: 0)
                 Menu("Select") {
                     Button("All Shown", action: apps.selectAllVisible)

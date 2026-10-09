@@ -1,12 +1,12 @@
 //
-//  AppsColumnRow.swift
+//  ManagerColumnRow.swift
 //  SwiftMacCleaner
 //
 
 import SwiftUI
 
 /// One choice in the manager's column: a part of the manager, or a filter, with how much is in it.
-struct AppsColumnRow: View {
+struct ManagerColumnRow: View {
     let title: String
     let value: String
     let isSelected: Bool

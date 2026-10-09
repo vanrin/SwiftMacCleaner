@@ -559,6 +559,17 @@ struct ShellTests {
         #expect(!output.succeeded)
     }
 
+    @Test func aCancelledTaskStopsTheTool() async throws {
+        let started = Date()
+        let task = Task.detached { Shell.run("/bin/sleep", ["30"], timeout: 60) }
+        try await Task.sleep(for: .milliseconds(400))
+        task.cancel()
+        let output = try #require(await task.value)
+        #expect(output.cancelled)
+        #expect(!output.succeeded)
+        #expect(Date().timeIntervalSince(started) < 5)
+    }
+
     @Test func givesUpOnAToolThatHangs() throws {
         let started = Date()
         let output = try #require(Shell.run("/bin/sleep", ["30"], timeout: 0.5))

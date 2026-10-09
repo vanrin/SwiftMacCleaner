@@ -47,7 +47,17 @@ enum Launcher {
             ScanReportPrinter.printSpace(folder: folder)
             return
         }
+        // `SwiftMacCleaner --print-performance` prints what the Performance scan finds and exits. Nothing is run.
+        if CommandLine.arguments.contains("--print-performance") {
+            ScanReportPrinter.printPerformance()
+            return
+        }
         #endif
+        // `SwiftMacCleaner --free-purgeable` is how the Free Up Purgeable Space task runs: the app starts
+        // itself without a window, reserves the disk's free space for a moment, and reports what macOS gave back.
+        if CommandLine.arguments.contains("--free-purgeable") {
+            exit(PurgeableSpace.main())
+        }
         SwiftMacCleanerApp.main()
     }
 }
@@ -310,6 +320,46 @@ nonisolated enum ScanReportPrinter {
                 print(step.failures.isEmpty ? "ok   \(step.cleanedItemIDs.count) items moved to the Trash" : "!    \(step.failures.joined(separator: "; "))")
             }
             if let log = outcome.logURL { print("Log: \(log.path)") }
+        }
+        finished.wait()
+    }
+
+    /// Prints the maintenance checks, the login items and the launch agents and daemons. Nothing is run.
+    static func printPerformance() {
+        let settings = AppSettings()
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let lastRuns = MainActor.assumeIsolated { settings.lastMaintenanceRuns }
+        let finished = DispatchSemaphore(value: 0)
+        Task.detached {
+            defer {
+                fflush(stdout)
+                finished.signal()
+            }
+            let started = Date()
+            let facts = await MaintenanceScanner.gather(home: home)
+            print("Facts: purgeable \(ByteFormat.string(facts.purgeable)), free memory \(facts.freeMemoryPercent.map { "\($0)%" } ?? "unknown"), "
+                  + "Spotlight \(facts.spotlightIndexing.map { $0 ? "indexing" : "not indexing" } ?? "unknown"), Mail index \(facts.mailIndex)")
+            print("\n## Maintenance tasks")
+            for check in MaintenanceScanner.checks(facts: facts, lastRuns: lastRuns) {
+                let mark = check.isRecommended ? "*" : check.isAvailable ? " " : "-"
+                let size = check.size > 0 ? "  \(ByteFormat.string(check.size))" : ""
+                print(" \(mark) \(check.task.title)\(size)" + (check.task.needsPassword ? "  [password]" : ""))
+                if let reason = check.reason { print("      \(reason)") }
+                if let why = check.unavailable { print("      unavailable: \(why)") }
+            }
+            let login = LoginItemScanner.scan()
+            print("\n## Login items")
+            if let failure = login.failure { print("   \(failure)") }
+            for item in login.items {
+                print("   \(item.name)  \(item.path.path)" + (item.isHidden ? "  hidden" : "") + (item.exists ? "" : "  missing"))
+            }
+            let background = await BackgroundItemScanner.scan(home: home, ownBundleID: Bundle.main.bundleIdentifier ?? "")
+            print("\n## Background items")
+            for item in background.items {
+                print("   \(item.title)  |  \(item.detail)  |  \(item.plist.path)")
+            }
+            for issue in background.issues { print("   ! \(issue)") }
+            print("\nDone in \(String(format: "%.1f", Date().timeIntervalSince(started))) s")
         }
         finished.wait()
     }

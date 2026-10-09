@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="3300" height="2200">
+ <!--Written by Tools/make-glyphs.swift. Change the drawing there, not here.-->
+ <style>.monochrome-0 {fill:#000000}
+.monochrome-1 {fill:#000000}
+
+.multicolor-0:tintColor {fill:#007AFF}
+.multicolor-1:tintColor {fill:#007AFF}
+
+.hierarchical-0:secondary {fill:#8E8E8E}
+.hierarchical-1:primary {fill:#212121}
+</style>
+ <g id="Notes">
+  <rect height="2200" id="artboard" style="fill:white;opacity:1" width="3300" x="0" y="0"/>
+  <text id="template-version" style="stroke:none;fill:black;font-family:sans-serif;font-size:13;text-anchor:end;" transform="matrix(1 0 0 1 3036 1933)">Template v.4.0</text>
+  <text style="stroke:none;fill:black;font-family:sans-serif;font-size:13;text-anchor:end;" transform="matrix(1 0 0 1 3036 1951)">Requires Xcode 14 or greater</text>
+  <text id="descriptive-name" style="stroke:none;fill:black;font-family:sans-serif;font-size:13;text-anchor:end;" transform="matrix(1 0 0 1 3036 1969)">glyph.performance</text>
+  <text style="stroke:none;fill:black;font-family:sans-serif;font-size:13;text-anchor:end;" transform="matrix(1 0 0 1 3036 1987)">Typeset at 100 points</text>
+ </g>
+ <g id="Guides">
+  <line id="Baseline-S" style="fill:none;stroke:#27AAE1;opacity:1;stroke-width:0.5;" x1="263" x2="3036" y1="696.0" y2="696.0"/>
+  <line id="Capline-S" style="fill:none;stroke:#27AAE1;opacity:1;stroke-width:0.5;" x1="263" x2="3036" y1="625.5409999999999" y2="625.5409999999999"/>
+  <line id="Baseline-M" style="fill:none;stroke:#27AAE1;opacity:1;stroke-width:0.5;" x1="263" x2="3036" y1="1126.0" y2="1126.0"/>
+  <line id="Capline-M" style="fill:none;stroke:#27AAE1;opacity:1;stroke-width:0.5;" x1="263" x2="3036" y1="1055.541" y2="1055.541"/>
+  <line id="Baseline-L" style="fill:none;stroke:#27AAE1;opacity:1;stroke-width:0.5;" x1="263" x2="3036" y1="1556.0" y2="1556.0"/>
+  <line id="Capline-L" style="fill:none;stroke:#27AAE1;opacity:1;stroke-width:0.5;" x1="263" x2="3036" y1="1485.541" y2="1485.541"/>
+  <line id="left-margin-Ultralight-S" style="fill:none;stroke:#00AEEF;stroke-width:0.5;opacity:1.0;" x1="510.0" x2="510.0" y1="600.785" y2="720.121"/>
+  <line id="right-margin-Ultralight-S" style="fill:none;stroke:#00AEEF;stroke-width:0.5;opacity:1.0;" x1="610.0" x2="610.0" y1="600.785" y2="720.121"/>
+  <line id="left-margin-Regular-S" style="fill:none;stroke:#00AEEF;stroke-width:0.5;opacity:1.0;" x1="1400.0" x2="1400.0" y1="600.785" y2="720.121"/>
+  <line id="right-margin-Regular-S" style="fill:none;stroke:#00AEEF;stroke-width:0.5;opacity:1.0;" x1="1500.0" x2="1500.0" y1="600.785" y2="720.121"/>
+  <line id="left-margin-Black-S" style="fill:none;stroke:#00AEEF;stroke-width:0.5;opacity:1.0;" x1="2860.0" x2="2860.0" y1="600.785" y2="720.121"/>
+  <line id="right-margin-Black-S" style="fill:none;stroke:#00AEEF;stroke-width:0.5;opacity:1.0;" x1="2960.0" x2="2960.0" y1="600.785" y2="720.121"/>
+ </g>
+ <g id="Symbols">
+  <g id="Black-S" transform="matrix(1 0 0 1 2860.0 696.0)">
+   <path class="monochrome-0 multicolor-0:tintColor hierarchical-0:secondary" d="M85.208 -56.063L85.208 -14.396C85.208 -6.457 78.772 -0.021 70.833 -0.021L29.167 -0.021C21.228 -0.021 14.792 -6.457 14.792 -14.396L14.792 -56.063C14.792 -64.002 21.228 -70.438 29.167 -70.438L70.833 -70.438C78.772 -70.438 85.208 -64.002 85.208 -56.063Z"/>
+   <path class="monochrome-1 multicolor-1:tintColor hierarchical-1:primary" d="M57.271 -58.909L54.678 -41.688L66.250 -41.688C67.816 -41.688 68.692 -39.882 67.722 -38.652L45.222 -10.110C44.006 -8.567 41.536 -9.698 41.909 -11.627L45.227 -28.771L33.750 -28.771C32.200 -28.771 31.319 -30.545 32.257 -31.780L53.923 -60.322C55.097 -61.868 57.560 -60.829 57.271 -58.909Z"/>
+  </g>
+  <g id="Regular-S" transform="matrix(1 0 0 1 1400.0 696.0)">
+   <path class="monochrome-0 multicolor-0:tintColor hierarchical-0:secondary" d="M85.208 -56.063L85.208 -14.396C85.208 -6.457 78.772 -0.021 70.833 -0.021L29.167 -0.021C21.228 -0.021 14.792 -6.457 14.792 -14.396L14.792 -56.063C14.792 -64.002 21.228 -70.438 29.167 -70.438L70.833 -70.438C78.772 -70.438 85.208 -64.002 85.208 -56.063Z"/>
+   <path class="monochrome-1 multicolor-1:tintColor hierarchical-1:primary" d="M57.271 -58.909L54.678 -41.688L66.250 -41.688C67.816 -41.688 68.692 -39.882 67.722 -38.652L45.222 -10.110C44.006 -8.567 41.536 -9.698 41.909 -11.627L45.227 -28.771L33.750 -28.771C32.200 -28.771 31.319 -30.545 32.257 -31.780L53.923 -60.322C55.097 -61.868 57.560 -60.829 57.271 -58.909Z"/>
+  </g>
+  <g id="Ultralight-S" transform="matrix(1 0 0 1 510.0 696.0)">
+   <path class="monochrome-0 multicolor-0:tintColor hierarchical-0:secondary" d="M85.208 -56.063L85.208 -14.396C85.208 -6.457 78.772 -0.021 70.833 -0.021L29.167 -0.021C21.228 -0.021 14.792 -6.457 14.792 -14.396L14.792 -56.063C14.792 -64.002 21.228 -70.438 29.167 -70.438L70.833 -70.438C78.772 -70.438 85.208 -64.002 85.208 -56.063Z"/>
+   <path class="monochrome-1 multicolor-1:tintColor hierarchical-1:primary" d="M57.271 -58.909L54.678 -41.688L66.250 -41.688C67.816 -41.688 68.692 -39.882 67.722 -38.652L45.222 -10.110C44.006 -8.567 41.536 -9.698 41.909 -11.627L45.227 -28.771L33.750 -28.771C32.200 -28.771 31.319 -30.545 32.257 -31.780L53.923 -60.322C55.097 -61.868 57.560 -60.829 57.271 -58.909Z"/>
+  </g>
+ </g>
+</svg>

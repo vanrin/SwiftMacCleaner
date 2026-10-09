@@ -14,7 +14,7 @@ struct AppsColumn: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Design.Spacing.tight / 2) {
                 ForEach(AppsModel.Section.allCases) { section in
-                    AppsColumnRow(title: section.title, value: value(for: section, in: apps), isSelected: apps.section == section,
+                    ManagerColumnRow(title: section.title, value: value(for: section, in: apps), isSelected: apps.section == section,
                                   isProminent: true) {
                         apps.section = section
                     }
@@ -44,7 +44,7 @@ struct AppsColumn: View {
     }
 
     private func filterRow(_ filter: AppsModel.Filter, in apps: AppsModel) -> some View {
-        AppsColumnRow(title: filter.title, value: apps.count(for: filter).formatted(), isSelected: apps.filter == filter) {
+        ManagerColumnRow(title: filter.title, value: apps.count(for: filter).formatted(), isSelected: apps.filter == filter) {
             apps.filter = filter
         }
     }

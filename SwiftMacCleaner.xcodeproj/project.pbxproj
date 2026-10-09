@@ -377,7 +377,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSAppleEventsUsageDescription = "SwiftMacCleaner asks Finder to move an app to the Trash when macOS will not let it move the app itself.";
+				INFOPLIST_KEY_NSAppleEventsUsageDescription = "SwiftMacCleaner asks System Events for your login items, and asks Finder to move an app to the Trash when macOS will not let it move the app itself.";
 				INFOPLIST_KEY_NSDesktopFolderUsageDescription = "SwiftMacCleaner looks for build folders in the project folders you chose.";
 				INFOPLIST_KEY_NSDocumentsFolderUsageDescription = "SwiftMacCleaner looks for build folders in the project folders you chose.";
 				INFOPLIST_KEY_NSDownloadsFolderUsageDescription = "SwiftMacCleaner looks for old installers in your Downloads folder.";
@@ -413,7 +413,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSAppleEventsUsageDescription = "SwiftMacCleaner asks Finder to move an app to the Trash when macOS will not let it move the app itself.";
+				INFOPLIST_KEY_NSAppleEventsUsageDescription = "SwiftMacCleaner asks System Events for your login items, and asks Finder to move an app to the Trash when macOS will not let it move the app itself.";
 				INFOPLIST_KEY_NSDesktopFolderUsageDescription = "SwiftMacCleaner looks for build folders in the project folders you chose.";
 				INFOPLIST_KEY_NSDocumentsFolderUsageDescription = "SwiftMacCleaner looks for build folders in the project folders you chose.";
 				INFOPLIST_KEY_NSDownloadsFolderUsageDescription = "SwiftMacCleaner looks for old installers in your Downloads folder.";

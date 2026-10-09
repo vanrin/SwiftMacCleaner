@@ -17,6 +17,8 @@ enum SidebarItem: Hashable {
     case space
     /// Applications: uninstalling, updates, leftovers and installers, which has a scan of its own.
     case apps
+    /// Performance: maintenance tasks, login items and background items, with a scan of its own too.
+    case performance
 
     var title: String {
         switch self {
@@ -25,6 +27,7 @@ enum SidebarItem: Hashable {
         case .area(let area): area.title
         case .space: "Largest Folders"
         case .apps: "Applications"
+        case .performance: "Performance"
         }
     }
 
@@ -63,6 +66,7 @@ final class AppModel {
     let home: URL
     let space: SpaceModel
     let apps: AppsModel
+    let performance: PerformanceModel
 
     private(set) var phase: Phase = .home
     private(set) var disk = DiskInfo.current()
@@ -107,11 +111,13 @@ final class AppModel {
         self.settings = settings
         space = SpaceModel(home: home)
         apps = AppsModel(home: home, settings: settings)
+        performance = PerformanceModel(home: home, settings: settings)
         disabledAreas = Area.stored(forKey: "disabledAreas")
         forcedAreas = Area.stored(forKey: "forcedAreas")
         putBackPending = PutBack.pending(home: home)
         updateStack()
         apps.didRemove = { [weak self] outcome in self?.absorb(outcome) }
+        performance.didRun = { [weak self] outcome in self?.absorb(outcome) }
         #if DEBUG
         if let flag = CommandLine.arguments.firstIndex(of: "--demo") {
             let arguments = Array(CommandLine.arguments.dropFirst(flag + 1))
@@ -198,6 +204,10 @@ final class AppModel {
             if let trashed = apps.outcome?.trashed, !trashed.isEmpty {
                 putBackPending = PutBack.Manifest(date: Date(), items: trashed)
             }
+        case "performance":
+            // `--demo performance [intro|scanning|summary|manager|login|background|review|running|done]`
+            sidebarSelection = .performance
+            performance.showDemo(arguments.first ?? "summary")
         case "scanning":
             let done: Set<Area> = [.xcode, .projects, .android]
             findings.removeAll { !done.contains($0.area) }
@@ -428,7 +438,7 @@ final class AppModel {
         switch item {
         case .group(let group): state(of: group)
         case .area(let area): areaState(for: area)
-        case .overview, .space, .apps: .idle
+        case .overview, .space, .apps, .performance: .idle
         }
     }
 
@@ -506,7 +516,7 @@ final class AppModel {
         case .overview: findings
         case .group(let group): findings.filter { $0.area.group == group }
         case .area(let area): findings(in: area)
-        case .space, .apps: []
+        case .space, .apps, .performance: []
         }
     }
 
@@ -561,7 +571,7 @@ final class AppModel {
 
     func select(_ item: SidebarItem) {
         switch (phase, item) {
-        case (_, .space), (_, .apps):
+        case (_, .space), (_, .apps), (_, .performance):
             sidebarSelection = item
         case (.results, _):
             sidebarSelection = item
@@ -661,7 +671,7 @@ final class AppModel {
 
     // MARK: Put Back
 
-    /// Takes in what Applications removed: its Trash items join the offer to put things back.
+    /// Takes in what Applications or Performance removed: their Trash items join the offer to put things back.
     private func absorb(_ outcome: CleanOutcome) {
         PutBack.save(outcome, home: home)
         putBackPending = PutBack.pending(home: home)

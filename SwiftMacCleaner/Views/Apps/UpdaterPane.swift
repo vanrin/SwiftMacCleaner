@@ -14,7 +14,7 @@ struct UpdaterPane: View {
         let apps = model.apps
         let hasStoreUpdates = apps.updates.contains { $0.feed == .appStore }
         VStack(alignment: .leading, spacing: Design.Spacing.large) {
-            AppsPaneHeading(title: "App Updates", detail: AppsModel.Section.updater.detail) {
+            PaneHeading(title: "App Updates", detail: AppsModel.Section.updater.detail) {
                 if hasStoreUpdates {
                     Button("Open App Store Updates", action: apps.openAppStoreUpdates)
                         .buttonStyle(.pill)
