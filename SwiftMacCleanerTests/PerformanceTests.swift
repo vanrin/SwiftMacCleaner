@@ -34,6 +34,63 @@ private func check(_ task: MaintenanceTask, in checks: [MaintenanceCheck]) -> Ma
     checks.first { $0.task == task }!
 }
 
+/// The readings a disk gives one after another while it hands a reservation back. The last one repeats.
+private nonisolated final class Readings {
+    private let gigabytes: [Double]
+    private(set) var taken = 0
+
+    init(_ gigabytes: [Double]) { self.gigabytes = gigabytes }
+
+    func next() -> DiskInfo {
+        let value = gigabytes[min(taken, gigabytes.count - 1)]
+        taken += 1
+        return DiskInfo(name: "Test", capacity: 500_000_000_000, free: Int64(value * 1_000_000_000))
+    }
+}
+
+struct PurgeableSpaceTests {
+    private func settled(_ readings: Readings, freeBefore: Double, reserved: Double, limit: Int = 100) -> (disk: DiskInfo, isBack: Bool) {
+        PurgeableSpace.settled(freeBefore: Int64(freeBefore * 1_000_000_000), reserved: Int64(reserved * 1_000_000_000),
+                               readings: limit, pause: {}, measure: readings.next)
+    }
+
+    /// What went wrong: the disk was read while it still counted the reservation as used, and a run
+    /// that freed space was reported as having lost 53 GB.
+    @Test func theDiskIsReadOnceItsReservationIsBack() {
+        // Nothing comes back at first, although the reading holds still, and then it comes in steps.
+        let readings = Readings([2.6, 2.6, 2.6, 2.6, 2.6, 14, 40, 61, 63.1])
+        let result = settled(readings, freeBefore: 62, reserved: 60.4)
+        #expect(result.isBack)
+        #expect(result.disk.free == 63_100_000_000)
+        // No longer than it takes: the readings above, and three more to see that it has stopped rising.
+        #expect(readings.taken == 12)
+    }
+
+    @Test func aReservationThatDoesNotComeBackIsSaidSo() {
+        let readings = Readings([2.6])
+        let result = settled(readings, freeBefore: 62, reserved: 60.4, limit: 10)
+        #expect(!result.isBack)
+        #expect(result.disk.free == 2_600_000_000)
+        #expect(readings.taken == 10)
+    }
+
+    @Test func nothingReservedMeansNoWaiting() {
+        let readings = Readings([62])
+        let result = settled(readings, freeBefore: 62, reserved: 0)
+        #expect(result.isBack)
+        #expect(readings.taken == 1)
+    }
+
+    @Test func otherProgramsWritingDoNotHoldUpASmallReservation() {
+        // Half a gigabyte was reserved, and something else wrote 50 MB in the meantime.
+        let readings = Readings([61.5, 61.95])
+        let result = settled(readings, freeBefore: 62, reserved: 0.5)
+        #expect(result.isBack)
+        #expect(result.disk.free == 61_950_000_000)
+        #expect(readings.taken < 10)
+    }
+}
+
 struct MaintenanceRuleTests {
     let now = Date()
 
