@@ -53,8 +53,9 @@ private struct GeneralSettings: View {
             Section {
                 Toggle("Show disk space in the menu bar", isOn: $settings.showsMenuBarItem)
                 Toggle("Check once a week", isOn: $settings.weeklyCheck)
+                OpenAtLoginToggle(openAtLogin: model.openAtLogin)
             } footer: {
-                Text("The weekly check scans on its own while the app is open and idle, then tells you what it found. It never removes anything.")
+                Text("The weekly check scans on its own while the app is open and idle, then tells you what it found. It never removes anything. Opened at login, the app starts without its window, so the menu bar item is there and the check keeps running from one restart to the next.")
             }
             Section {
                 Toggle("Look for app updates", isOn: $settings.checksAppUpdates)
@@ -64,6 +65,33 @@ private struct GeneralSettings: View {
         }
         .formStyle(.grouped)
         .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// The switch for opening at login, with what macOS still needs from the user when it needs something.
+private struct OpenAtLoginToggle: View {
+    let openAtLogin: OpenAtLogin
+
+    var body: some View {
+        Toggle("Open at login", isOn: Binding(get: { openAtLogin.isOn }, set: openAtLogin.set))
+            // macOS keeps the answer, and it may have been changed in System Settings since it was last shown.
+            .onAppear(perform: openAtLogin.refresh)
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+                openAtLogin.refresh()
+            }
+        if openAtLogin.state == .needsApproval {
+            LabeledContent {
+                Button("Open Login Items", action: openAtLogin.openSystemSettings)
+            } label: {
+                Text("macOS is waiting for you to allow it under Login Items in System Settings.")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        if let failure = openAtLogin.failure {
+            Text(failure)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 }
 

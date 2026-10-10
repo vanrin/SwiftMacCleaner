@@ -69,14 +69,20 @@ enum Launcher {
 }
 
 struct SwiftMacCleanerApp: App {
-    @State private var model = AppModel()
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
+    @State private var model: AppModel
+
+    init() {
+        let model = AppModel()
+        _model = State(initialValue: model)
+        AppDelegate.model = model
+    }
 
     var body: some Scene {
         @Bindable var settings = model.settings
         Window("SwiftMacCleaner", id: "main") {
             RootView()
                 .environment(model)
-                .task { model.startBackgroundChecks() }
         }
         .defaultSize(width: 1200, height: 760)
         .commands {
@@ -93,6 +99,42 @@ struct SwiftMacCleanerApp: App {
                 .environment(model)
         }
         .menuBarExtraStyle(.window)
+    }
+}
+
+/// Sees to what has to happen whether or not a window opens: the background checks start, and when
+/// macOS opens the app at login, the window stays off the screen.
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    /// The app's one model, handed over as the app is made.
+    static var model: AppModel?
+    /// The app hid before its launch finished, on the guess that macOS made this launch at login.
+    private var hidAhead = false
+
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        // Hidden this early, no window is ever drawn. Whether the guess was right is known once the launch has finished.
+        let isRegistered = Self.model?.openAtLogin.isOn == true
+        guard LoginLaunch.pretendsGuess || LoginLaunch.isLikely(isRegistered: isRegistered, sessionStart: LoginLaunch.sessionStart()) else { return }
+        hidAhead = true
+        NSApp.hide(nil)
+    }
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        let atLogin = LoginLaunch.pretendsLogin || LoginLaunch.wasMadeAtLogin
+        if atLogin, !hidAhead {
+            // Later after logging in than the guess allows for: the window shows for a moment before it goes.
+            NSApp.hide(nil)
+        } else if !atLogin, hidAhead {
+            // The user opened the app just after logging in. The hiding takes hold only after the launch,
+            // so it is undone when it has.
+            NotificationCenter.default.addObserver(self, selector: #selector(showAfterAll), name: NSApplication.didHideNotification, object: nil)
+        }
+        // At login the Mac is busy enough; the first look at the disk can wait.
+        Self.model?.startBackgroundChecks(after: atLogin ? AppModel.loginQuietTime : 0)
+    }
+
+    @objc private func showAfterAll() {
+        NotificationCenter.default.removeObserver(self, name: NSApplication.didHideNotification, object: nil)
+        NSApp.unhide(nil)
     }
 }
 

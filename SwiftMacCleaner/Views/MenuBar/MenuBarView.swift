@@ -101,6 +101,8 @@ struct MenuBarView: View {
 
     private func openMain() {
         openWindow(id: "main")
+        // Opened at login, the app is hidden until it is asked for.
+        NSApp.unhide(nil)
         NSApp.activate()
     }
 }

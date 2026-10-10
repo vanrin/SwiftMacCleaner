@@ -61,6 +61,8 @@ final class AppModel {
     let duplicates: DuplicatesModel
     let apps: AppsModel
     let performance: PerformanceModel
+    /// Whether macOS opens the app at login.
+    let openAtLogin: OpenAtLogin
 
     private(set) var disk = DiskInfo.current()
     /// Items from the last clean that are still in the Trash and can be put back.
@@ -101,9 +103,11 @@ final class AppModel {
     /// Launched with made-up results: the weekly check must not start a real scan over them.
     @ObservationIgnored private var isDemo = false
 
-    init(home: URL = FileManager.default.homeDirectoryForCurrentUser, settings: AppSettings = AppSettings()) {
+    init(home: URL = FileManager.default.homeDirectoryForCurrentUser, settings: AppSettings = AppSettings(),
+         openAtLogin: OpenAtLogin = OpenAtLogin()) {
         self.home = home
         self.settings = settings
+        self.openAtLogin = openAtLogin
         cleanUps = AreaGroup.allCases.map { CleanUpModel(home: home, settings: settings, group: $0) }
         space = SpaceModel(home: home)
         duplicates = DuplicatesModel(home: home, settings: settings)
@@ -429,13 +433,20 @@ final class AppModel {
 
     @ObservationIgnored private var checkTimer: Timer?
 
-    /// Keeps the disk figure fresh and, once a week, scans on its own while the app sits idle.
-    func startBackgroundChecks() {
+    /// How long after a launch at login the first check waits, while everything else on the Mac starts up.
+    static let loginQuietTime: TimeInterval = 300
+
+    /// Keeps the disk figure fresh and, once a week, scans on its own while the app sits idle. The
+    /// first look is taken at once, or after `delay` when the Mac has better things to do just then.
+    func startBackgroundChecks(after delay: TimeInterval = 0) {
         guard checkTimer == nil else { return }
         checkTimer = Timer.scheduledTimer(withTimeInterval: 1800, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.backgroundTick() }
         }
-        backgroundTick()
+        guard delay > 0 else { return backgroundTick() }
+        Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
+            Task { @MainActor in self?.backgroundTick() }
+        }
     }
 
     func backgroundTick() {
