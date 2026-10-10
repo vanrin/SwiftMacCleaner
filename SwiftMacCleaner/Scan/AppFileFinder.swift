@@ -46,7 +46,7 @@ nonisolated enum AppFileFinder {
         Place(path: "Library/Preferences/ByHost", kind: .preferences, match: .identifier),
         Place(path: "Library/Logs", kind: .logs, match: .identifierOrName),
         Place(path: "Library/Logs/DiagnosticReports", kind: .crashes, match: .crashReport),
-        Place(path: "Library/LaunchAgents", kind: .loginItems, match: .identifier),
+        Place(path: "Library/LaunchAgents", kind: .backgroundItems, match: .identifier),
     ]
 
     /// Endings that come after the identifier in a file name.
@@ -69,7 +69,11 @@ nonisolated enum AppFileFinder {
                 }
                 guard !name.hasPrefix("."), let owner = owners.owner(of: name, match: place.match),
                       safety.allows(entry) else { continue }
-                found[owner, default: []].append(AppFile(url: entry, kind: place.kind))
+                var file = AppFile(url: entry, kind: place.kind)
+                if place.kind == .backgroundItems {
+                    file.service = Files.plist(at: entry).flatMap { launchService(in: $0, domain: .userAgent) }
+                }
+                found[owner, default: []].append(file)
             }
         }
         for (owner, file) in nestedFiles(for: apps, home: home, claimed: Set(found.values.joined().map(\.url)))
@@ -137,6 +141,13 @@ nonisolated enum AppFileFinder {
             }
         }
         return found
+    }
+
+    /// The service a launch agent's or daemon's property list starts. Nil when it names none, in which
+    /// case launchd ignores the file too.
+    static func launchService(in plist: [String: Any], domain: BackgroundItem.Domain) -> LaunchService? {
+        guard let label = plist["Label"] as? String, !label.isEmpty else { return nil }
+        return LaunchService(label: label, domain: domain)
     }
 
     /// The bundle identifier macOS recorded for a container. Nil when macOS will not let the app read it.

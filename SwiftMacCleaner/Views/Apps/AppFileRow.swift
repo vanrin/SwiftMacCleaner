@@ -26,6 +26,10 @@ struct AppFileRow: View {
                 }
             }
             .toggleStyle(.check)
+            if file.isSystemWide {
+                Badge(text: "Asks for your password", style: .password)
+                    .help("Belongs to the system. It is stopped and moved with your password, and Put Back cannot return it.")
+            }
             Spacer(minLength: Design.Spacing.medium)
             SizeLabel(bytes: file.size, isEmphasized: false, unknown: file.sizeUnknown)
             Button("Show \(file.url.lastPathComponent) in Finder", systemImage: "magnifyingglass", action: showInFinder)

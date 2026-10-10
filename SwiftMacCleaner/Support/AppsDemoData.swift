@@ -14,7 +14,8 @@ nonisolated enum AppsDemoData {
 
     private static func app(_ name: String, _ bundleID: String, version: String, megabytes: Double,
                             source: AppSource = .other, openedDaysAgo: Double?, needsPassword: Bool = false,
-                            feed: UpdateFeed? = nil, files: [(String, AppFileKind, Double)] = []) -> InstalledApp {
+                            feed: UpdateFeed? = nil, files: [(String, AppFileKind, Double)] = [],
+                            systemFiles: [AppFile] = []) -> InstalledApp {
         let url = URL(fileURLWithPath: "/Applications/\(name).app", isDirectory: true)
         let now = Date()
         return InstalledApp(
@@ -25,8 +26,18 @@ nonisolated enum AppsDemoData {
             needsPassword: needsPassword || source == .appStore, feed: feed ?? (source == .appStore ? .appStore : nil),
             files: [AppFile(url: url, kind: .binaries, size: Int64(megabytes * 1e6))] + files.map { path, kind, size in
                 AppFile(url: library.appending(path: path), kind: kind, size: Int64(size * 1e6))
-            }
+            } + systemFiles
         )
+    }
+
+    /// A launch daemon under /Library and the helper it runs as root, as a package installer leaves them.
+    private static func daemon(_ label: String, megabytes: Double) -> [AppFile] {
+        [
+            AppFile(url: URL(fileURLWithPath: "/Library/LaunchDaemons/\(label).plist"), kind: .backgroundItems, size: 4_096,
+                    service: LaunchService(label: label, domain: .systemDaemon), isSystemWide: true),
+            AppFile(url: URL(fileURLWithPath: "/Library/PrivilegedHelperTools/\(label)"), kind: .helpers,
+                    size: Int64(megabytes * 1e6), isSystemWide: true),
+        ]
     }
 
     static func apps() -> [InstalledApp] {
@@ -38,8 +49,8 @@ nonisolated enum AppsDemoData {
                 ("Caches/com.example.harbor", .caches, 148),
                 ("Preferences/com.example.harbor.plist", .preferences, 0.004),
                 ("Logs/Harbor", .logs, 21),
-                ("LaunchAgents/com.example.harbor.helper.plist", .loginItems, 0.004),
-            ]),
+                ("LaunchAgents/com.example.harbor.helper.plist", .backgroundItems, 0.004),
+            ], systemFiles: daemon("com.example.harbor.vmnetd", megabytes: 7)),
             app("Keyframe", "com.example.keyframe", version: "2.8", megabytes: 3_150, source: .appStore, openedDaysAgo: 402, files: [
                 ("Containers/com.example.keyframe", .containers, 5_820),
                 ("Group Containers/4QX8.com.example.keyframe", .containers, 640),
@@ -81,7 +92,8 @@ nonisolated enum AppsDemoData {
             app("Pixel Forge", "com.example.pixelforge", version: "1.0.3", megabytes: 58, openedDaysAgo: 413, files: [
                 ("Preferences/com.example.pixelforge.plist", .preferences, 0.004),
             ]),
-            app("Sprout VPN", "com.example.sproutvpn", version: "7.4.1", megabytes: 13, openedDaysAgo: nil, needsPassword: true),
+            app("Sprout VPN", "com.example.sproutvpn", version: "7.4.1", megabytes: 13, openedDaysAgo: nil, needsPassword: true,
+                systemFiles: daemon("com.example.sproutvpn.tunnel", megabytes: 2.3)),
             app("Lumen Notes", "com.example.lumen", version: "5.1", megabytes: 341, openedDaysAgo: 26, feed: feed, files: [
                 ("Application Support/Lumen Notes", .supportingFiles, 1_150),
                 ("HTTPStorages/com.example.lumen", .caches, 0.3),

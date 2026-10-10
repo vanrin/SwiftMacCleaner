@@ -25,7 +25,7 @@ struct AppsReviewRow: View {
                     if isOpen {
                         Badge(text: "Open", style: .waits)
                     }
-                    if app.needsPassword, step.requiresFirst {
+                    if (app.needsPassword && step.requiresFirst) || !model.apps.selectedSystemFiles(of: app).isEmpty {
                         Badge(text: "Asks for your password", style: .password)
                     }
                 }

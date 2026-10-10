@@ -7,7 +7,7 @@ import Foundation
 
 /// What a file an app keeps is for, which is how the uninstaller groups an app's files.
 nonisolated enum AppFileKind: Int, CaseIterable, Sendable, Comparable {
-    case binaries, supportingFiles, caches, containers, preferences, logs, crashes, loginItems
+    case binaries, supportingFiles, caches, containers, preferences, logs, crashes, backgroundItems, helpers
 
     static func < (lhs: AppFileKind, rhs: AppFileKind) -> Bool { lhs.rawValue < rhs.rawValue }
 
@@ -20,7 +20,8 @@ nonisolated enum AppFileKind: Int, CaseIterable, Sendable, Comparable {
         case .preferences: "Preferences"
         case .logs: "Logs"
         case .crashes: "Crash Reports"
-        case .loginItems: "Login Items"
+        case .backgroundItems: "Background Items"
+        case .helpers: "Privileged Helpers"
         }
     }
 
@@ -33,9 +34,16 @@ nonisolated enum AppFileKind: Int, CaseIterable, Sendable, Comparable {
         case .preferences: "slider.horizontal.3"
         case .logs: "doc.text"
         case .crashes: "exclamationmark.triangle"
-        case .loginItems: "power"
+        case .backgroundItems: "power"
+        case .helpers: "lock.shield"
         }
     }
+}
+
+/// A service launchd runs, named the way `launchctl` is asked about it.
+nonisolated struct LaunchService: Sendable, Hashable {
+    var label: String
+    var domain: BackgroundItem.Domain
 }
 
 /// One file or folder that belongs to an app: the app itself, or something it keeps in the Library.
@@ -45,6 +53,12 @@ nonisolated struct AppFile: Identifiable, Sendable, Hashable {
     var size: Int64 = 0
     /// macOS would not let the app look inside, so `size` is 0 and the row says so instead of showing a number.
     var sizeUnknown = false
+    /// The service the file starts, when it is a launch agent or daemon. The service is stopped before
+    /// the file goes, or it would run on until the next login or restart.
+    var service: LaunchService? = nil
+    /// The file sits in a folder under /Library that only root may change. It is moved with the user's
+    /// password, and Put Back cannot return it.
+    var isSystemWide = false
 
     var id: String { url.path }
 }
@@ -130,6 +144,8 @@ nonisolated struct InstalledApp: Identifiable, Sendable, Hashable {
     var id: String { url.path }
     var size: Int64 { files.reduce(0) { $0 + $1.size } }
     var bundleFile: AppFile? { files.first { $0.kind == .binaries } }
+    /// What the app's installer left under /Library: launch daemons, launch agents and the helpers they run.
+    var systemFiles: [AppFile] { files.filter(\.isSystemWide) }
 
     /// Not opened for six months, or never opened and installed that long ago.
     func isUnused(asOf now: Date = Date()) -> Bool {

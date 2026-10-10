@@ -101,6 +101,8 @@ final class AppsModel {
     private(set) var removeProgress = CleanProgress(fraction: 0, status: "")
     private(set) var outcome: CleanOutcome?
     private(set) var removal = Removal(isUninstall: true, apps: 0, items: 0, size: 0)
+    /// What the receipt says under a step whose app had files under /Library, by step.
+    private(set) var receiptDetails: [String: String] = [:]
 
     var section: Section = .uninstaller
     var filter: Filter = .all
@@ -347,7 +349,7 @@ final class AppsModel {
     var plan: CleanPlan {
         removesLeftovers
             ? CleanPlan.make(findings: leftovers, selection: selectedLeftovers)
-            : Uninstaller.plan(for: apps, selection: selectedFiles)
+            : Uninstaller.plan(for: apps, selection: selectedFiles, home: home)
     }
 
     /// The apps the plan touches, in the order of its steps.
@@ -367,6 +369,19 @@ final class AppsModel {
     }
 
     var needsPassword: Bool { !removesLeftovers && Uninstaller.needsPassword(apps, selection: selectedFiles) }
+    /// Whether an app that belongs to root is ticked, which Finder is asked to move.
+    var needsFinder: Bool { !removesLeftovers && Uninstaller.needsFinder(apps, selection: selectedFiles) }
+
+    /// The ticked files that sit under /Library, which are moved with the password and cannot be put back.
+    func selectedSystemFiles(of app: InstalledApp) -> [AppFile] { Uninstaller.systemFiles(of: app, in: selectedFiles) }
+
+    /// How many of those a removal would move right now: an app that is open is left alone, its files too.
+    var selectedSystemFileCount: Int {
+        guard !removesLeftovers else { return 0 }
+        return apps.reduce(0) { $0 + (running.contains($1.bundleID) ? 0 : selectedSystemFiles(of: $1).count) }
+    }
+
+    func receiptDetail(for step: StepOutcome) -> String? { receiptDetails[step.id] }
 
     func remove() {
         let plan = plan
@@ -393,7 +408,14 @@ final class AppsModel {
     }
 
     private func finish(_ result: CleanOutcome, isUninstall: Bool) {
-        let removed = result.cleanedItemIDs
+        let removed = isUninstall ? Uninstaller.removedFiles(in: result, apps: apps, selection: selectedFiles) : result.cleanedItemIDs
+        receiptDetails = [:]
+        if isUninstall {
+            for step in result.steps {
+                guard let app = apps.first(where: { Uninstaller.stepID(for: $0) == step.id }) else { continue }
+                receiptDetails[step.id] = Uninstaller.receiptDetail(for: app, step: step, selection: selectedFiles, removed: removed)
+            }
+        }
         let before = apps.count
         let size = apps.flatMap(\.files).filter { removed.contains($0.id) }.reduce(0) { $0 + $1.size }
             + leftovers.flatMap(\.items).filter { removed.contains($0.id) }.reduce(0) { $0 + $1.size }

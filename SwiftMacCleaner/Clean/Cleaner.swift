@@ -50,12 +50,15 @@ nonisolated struct SafetyGuard: Sendable {
         let components = resolved.split(separator: "/").map(String.init)
         guard !components.contains(".."), !components.isEmpty else { return "outside the allowed area" }
 
-        if neverSuggest.contains(where: { resolved == $0 || resolved.hasPrefix($0 + "/") }) {
-            return "on your Never Suggest list"
-        }
+        if isOnNeverSuggest(resolved) { return "on your Never Suggest list" }
         if let reason = structuralRefusal(resolved: resolved) { return reason }
         if let reason = contentRefusal(resolved: resolved) { return reason }
         return nil
+    }
+
+    /// Whether the user asked never to have this path, or anything it sits inside, offered.
+    func isOnNeverSuggest(_ path: String) -> Bool {
+        neverSuggest.contains { path == $0 || path.hasPrefix($0 + "/") }
     }
 
     private func structuralRefusal(resolved: String) -> String? {

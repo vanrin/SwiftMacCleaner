@@ -308,19 +308,21 @@ nonisolated enum ScanReportPrinter {
                 return
             }
             let selection = Set(app.files.map(\.id))
-            let plan = Uninstaller.plan(for: [app], selection: selection)
+            let plan = Uninstaller.plan(for: [app], selection: selection, home: home)
             for step in plan.steps {
                 print("\(step.title): \(step.summary), \(ByteFormat.string(step.size))")
                 for operation in step.operations {
                     if case .trash(let url) = operation.kind { print("   \(url.path)") }
                 }
+                for file in app.systemFiles { print("   \(file.url.path)  [with your password]") }
             }
             let safety = SafetyGuard(root: home, allowedApplications: Uninstaller.bundles(in: [app], selection: selection),
                                      neverSuggest: neverSuggest)
             let outcome = await Cleaner.run(plan: plan, safety: safety) { _ in }
             PutBack.save(outcome, home: home)
+            let removed = Uninstaller.removedFiles(in: outcome, apps: [app], selection: selection)
             for step in outcome.steps {
-                print(step.failures.isEmpty ? "ok   \(step.cleanedItemIDs.count) items moved to the Trash" : "!    \(step.failures.joined(separator: "; "))")
+                print(step.failures.isEmpty ? "ok   \(removed.count) items moved to the Trash" : "!    \(step.failures.joined(separator: "; "))")
             }
             if let log = outcome.logURL { print("Log: \(log.path)") }
         }

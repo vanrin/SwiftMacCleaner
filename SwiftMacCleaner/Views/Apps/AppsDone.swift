@@ -37,7 +37,7 @@ struct AppsDone: View {
                     if let message = model.putBackMessage {
                         PutBackMessage(text: message)
                     }
-                    ReceiptPanel(outcome: outcome)
+                    ReceiptPanel(outcome: outcome, doneDetail: apps.receiptDetail)
                 }
                 .pageLayout()
             }

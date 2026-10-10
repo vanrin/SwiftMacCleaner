@@ -134,7 +134,11 @@ nonisolated enum PerformancePlan {
     /// Tells launchd to let the service go. `tolerant` swallows the error a service that is not loaded
     /// gives, for when launchd could not be asked beforehand.
     static func unloadCommand(for item: BackgroundItem, uid: uid_t, tolerant: Bool) -> [String] {
-        let target = "\(item.domain.launchdDomain(uid: uid))/\(item.label)"
+        unloadCommand(for: LaunchService(label: item.label, domain: item.domain), uid: uid, tolerant: tolerant)
+    }
+
+    static func unloadCommand(for service: LaunchService, uid: uid_t, tolerant: Bool) -> [String] {
+        let target = "\(service.domain.launchdDomain(uid: uid))/\(service.label)"
         return tolerant
             ? ["/bin/sh", "-c", "/bin/launchctl bootout \(CleanPlan.quote(target)) >/dev/null 2>&1 || true"]
             : ["/bin/launchctl", "bootout", target]

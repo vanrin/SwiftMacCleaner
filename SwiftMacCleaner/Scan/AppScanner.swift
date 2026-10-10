@@ -30,9 +30,12 @@ nonisolated struct AppIdentity: Sendable {
     var executable: String
     /// The shared containers its signature entitles it to.
     var groups: [String]
+    /// The privileged helpers its Info.plist says it may install, by the name launchd knows each one by.
+    var helpers: [String] = []
 }
 
-/// Lists the apps in the Applications folders with what each one keeps in the Library. It only reads.
+/// Lists the apps in the Applications folders with what each one keeps in the Library, and what its
+/// installer left under /Library. It only reads.
 nonisolated enum AppScanner {
     static func applicationRoots(home: URL) -> [URL] {
         [URL(fileURLWithPath: "/Applications", isDirectory: true), home.appending(path: "Applications")]
@@ -86,7 +89,8 @@ nonisolated enum AppScanner {
             .compactMap { $0?.lowercased() }.filter { !$0.isEmpty }
         let identity = AppIdentity(
             id: app.id, bundleID: bundleID, names: Set(names),
-            executable: info["CFBundleExecutable"] as? String ?? "", groups: signature.groups
+            executable: info["CFBundleExecutable"] as? String ?? "", groups: signature.groups,
+            helpers: (info["SMPrivilegedExecutables"] as? [String: Any]).map { Array($0.keys) } ?? []
         )
         return (app, identity)
     }
@@ -176,10 +180,13 @@ nonisolated enum AppScanner {
 
     /// Every app in the roots, each with its files measured. Stopping early returns the apps measured so far.
     @concurrent
-    static func scan(home: URL, roots: [URL]? = nil, safety: SafetyGuard,
+    static func scan(home: URL, roots: [URL]? = nil, safety: SafetyGuard, systemFolders: [SystemFolder] = SystemFolder.standard,
                      progress: @escaping @Sendable (AppScanProgress) -> Void) async -> [InstalledApp] {
         let described = bundles(in: roots ?? applicationRoots(home: home)).compactMap { describe($0) }
-        let related = AppFileFinder.files(for: described.map(\.identity), home: home, safety: safety)
+        var related = AppFileFinder.files(for: described.map(\.identity), home: home, safety: safety)
+        for (owner, files) in SystemFileFinder.files(for: described.map(\.identity), folders: systemFolders) {
+            related[owner, default: []] += files.filter { !safety.isOnNeverSuggest($0.url.resolvingSymlinksInPath().path) }
+        }
 
         var apps: [InstalledApp] = []
         for (index, entry) in described.enumerated() {
@@ -189,8 +196,10 @@ nonisolated enum AppScanner {
             let files = related[app.id] ?? []
             let sizes = await Sizing.sizes(of: [app.url] + files.map(\.url))
             app.files = [AppFile(url: app.url, kind: .binaries, size: sizes[app.url] ?? 0)] + files.map { file in
-                let size = sizes[file.url] ?? 0
-                return AppFile(url: file.url, kind: file.kind, size: size, sizeUnknown: size == 0 && isUnreadable(file.url))
+                var file = file
+                file.size = sizes[file.url] ?? 0
+                file.sizeUnknown = file.size == 0 && isUnreadable(file.url)
+                return file
             }
             apps.append(app)
         }

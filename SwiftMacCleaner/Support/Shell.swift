@@ -30,13 +30,17 @@ nonisolated enum Shell {
         searchDirectories.map { "\($0)/\(name)" }.first { FileManager.default.isExecutableFile(atPath: $0) }
     }
 
-    /// Runs a command as root through macOS's own password prompt. Only `tmutil` needs this.
+    /// Runs a command as root through macOS's own password prompt.
     /// Cancelling the prompt makes `osascript` fail with error -128, which the caller reads as "skipped".
     static func runAsAdministrator(_ command: [String], timeout: TimeInterval = 600) -> Output? {
+        run("/usr/bin/osascript", ["-e", appleScript(running: command, asAdministrator: true)], timeout: timeout)
+    }
+
+    /// The AppleScript that hands a command to the shell, each word quoted so the shell reads it as given.
+    static func appleScript(running command: [String], asAdministrator: Bool) -> String {
         let quoted = command.map { "'" + $0.replacingOccurrences(of: "'", with: "'\\''") + "'" }.joined(separator: " ")
         let escaped = quoted.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
-        let script = "do shell script \"\(escaped)\" with administrator privileges"
-        return run("/usr/bin/osascript", ["-e", script], timeout: timeout)
+        return "do shell script \"\(escaped)\"" + (asAdministrator ? " with administrator privileges" : "")
     }
 
     /// Runs a tool and waits for it, giving up after `timeout` seconds. When the task this runs in is

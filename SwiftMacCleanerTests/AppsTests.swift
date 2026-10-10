@@ -2,8 +2,8 @@
 //  AppsTests.swift
 //  SwiftMacCleanerTests
 //
-//  The Applications screen: which files belong to which app, what an uninstall moves, and how update
-//  feeds are read.
+//  The Applications screen: which files belong to which app, what an uninstall moves, what it stops
+//  and moves under /Library, and how update feeds are read.
 //
 
 import Foundation
@@ -30,6 +30,24 @@ private struct Sandbox {
         return url
     }
 
+    /// A property list, as launchd reads them.
+    @discardableResult
+    func plist(_ path: String, _ contents: [String: Any]) throws -> URL {
+        let url = root.appending(path: path)
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try PropertyListSerialization.data(fromPropertyList: contents, format: .xml, options: 0).write(to: url)
+        return url
+    }
+
+    /// Three folders that stand in for the ones under /Library that only root may change.
+    var systemFolders: [SystemFolder] {
+        [
+            SystemFolder(url: root.appending(path: "System/LaunchDaemons"), holds: .launchItems(.systemDaemon)),
+            SystemFolder(url: root.appending(path: "System/LaunchAgents"), holds: .launchItems(.systemAgent)),
+            SystemFolder(url: root.appending(path: "System/PrivilegedHelperTools"), holds: .helpers),
+        ]
+    }
+
     /// An app bundle with the least an app needs: an Info.plist and a program.
     @discardableResult
     func app(_ name: String, id: String, in folder: String = "Applications", version: String = "1.0",
@@ -49,8 +67,8 @@ private struct Sandbox {
 }
 
 private func identity(_ id: String, _ bundleID: String, names: Set<String> = [], executable: String = "",
-                      groups: [String] = []) -> AppIdentity {
-    AppIdentity(id: id, bundleID: bundleID, names: names, executable: executable, groups: groups)
+                      groups: [String] = [], helpers: [String] = []) -> AppIdentity {
+    AppIdentity(id: id, bundleID: bundleID, names: names, executable: executable, groups: groups, helpers: helpers)
 }
 
 struct AppFileFinderTests {
@@ -163,12 +181,110 @@ struct AppFileFinderTests {
         #expect(byKind[.preferences] == ["com.example.relay.ABCD.plist", "com.example.relay.plist"])
         #expect(byKind[.logs] == ["Relay"])
         #expect(byKind[.crashes] == ["Relay-2026-09-14-101502.ips"])
-        #expect(byKind[.loginItems] == ["com.example.relay.agent.plist"])
+        #expect(byKind[.backgroundItems] == ["com.example.relay.agent.plist"])
         // Another app's folder is not this app's, and a path on the Never Suggest list is not listed at all.
         #expect(!files.contains { $0.url.lastPathComponent == "com.example.other" })
         #expect(!files.contains { $0.url.path.contains("HTTPStorages") })
         // Listed in the order the kinds are shown.
         #expect(files.map(\.kind) == files.map(\.kind).sorted())
+    }
+}
+
+/// What an app's installer leaves under /Library. The cases are the ones found on a real Mac: a helper
+/// named in the app's Info.plist, a daemon that names its app in its own plist, an agent that runs a
+/// program inside the app, and a daemon named after the app's identifier.
+struct SystemFileFinderTests {
+    private func listing(_ files: [AppFile]?) -> [String] {
+        (files ?? []).map { "\($0.kind.title): \($0.url.lastPathComponent)" }
+    }
+
+    @Test func givesEachBackgroundItemAndHelperToTheAppThatInstalledIt() throws {
+        let sandbox = try Sandbox()
+        defer { sandbox.remove() }
+        let tools = sandbox.root.appending(path: "System/PrivilegedHelperTools")
+        let harbor = identity("/Applications/Harbor.app", "com.example.harbor", helpers: ["com.example.vmnetd"])
+        let meet = identity("/Applications/Meet.app", "us.example.xos")
+        let tidy = identity("/Applications/Tidy.app", "com.example.Tidy5")
+
+        try sandbox.plist("System/LaunchDaemons/com.example.vmnetd.plist",
+                          ["Label": "com.example.vmnetd", "Program": tools.appending(path: "com.example.vmnetd").path])
+        try sandbox.file("System/PrivilegedHelperTools/com.example.vmnetd")
+        // Nothing in the app names this one. Its plist names the app, and the helper is what that plist runs.
+        try sandbox.plist("System/LaunchDaemons/com.example.socket.plist", [
+            "Label": "com.example.socket", "ProgramArguments": [tools.appending(path: "com.example.socket").path],
+            "AssociatedBundleIdentifiers": ["com.example.harbor"],
+        ])
+        try sandbox.file("System/PrivilegedHelperTools/com.example.socket")
+        try sandbox.plist("System/LaunchAgents/us.example.updater.plist",
+                          ["Label": "us.example.updater", "ProgramArguments": ["/Applications/Meet.app/Contents/Library/Updater", "--check"]])
+        try sandbox.plist("System/LaunchDaemons/com.example.Tidy5.Agent.plist", ["Label": "com.example.Tidy5.Agent"])
+        try sandbox.file("System/PrivilegedHelperTools/com.example.Tidy5.Agent")
+        // Nothing ties these to an app, and Apple's are never looked at, whatever they say.
+        try sandbox.plist("System/LaunchDaemons/org.example.vpn.plist",
+                          ["Label": "org.example.vpn", "ProgramArguments": ["/Library/Frameworks/VPN.framework/agent"]])
+        try sandbox.file("System/PrivilegedHelperTools/org.example.vpn")
+        try sandbox.plist("System/LaunchDaemons/com.apple.thing.plist",
+                          ["Label": "com.apple.thing", "AssociatedBundleIdentifiers": "com.example.harbor"])
+        try sandbox.file("System/LaunchDaemons/com.example.harbor.notes.txt")
+
+        let found = SystemFileFinder.files(for: [harbor, meet, tidy], folders: sandbox.systemFolders)
+        #expect(listing(found[harbor.id]) == [
+            "Background Items: com.example.socket.plist", "Background Items: com.example.vmnetd.plist",
+            "Privileged Helpers: com.example.socket", "Privileged Helpers: com.example.vmnetd",
+        ])
+        #expect(listing(found[meet.id]) == ["Background Items: us.example.updater.plist"])
+        #expect(listing(found[tidy.id]) == ["Background Items: com.example.Tidy5.Agent.plist", "Privileged Helpers: com.example.Tidy5.Agent"])
+        #expect(found.count == 3)
+        #expect(found.values.joined().allSatisfy { $0.isSystemWide })
+        #expect(found[harbor.id]?.first?.service == LaunchService(label: "com.example.socket", domain: .systemDaemon))
+        #expect(found[meet.id]?.first?.service == LaunchService(label: "us.example.updater", domain: .systemAgent))
+        #expect(found[tidy.id]?.last?.service == nil)
+    }
+
+    @Test func anItemTwoAppsHaveAClaimOnGoesToNeither() throws {
+        let sandbox = try Sandbox()
+        defer { sandbox.remove() }
+        let write = identity("/Applications/Write.app", "com.maker.write", helpers: ["com.maker.licensing.helper"])
+        let draw = identity("/Applications/Draw.app", "com.maker.draw", helpers: ["com.maker.licensing.helper"])
+        try sandbox.plist("System/LaunchDaemons/com.maker.licensing.helper.plist", ["Label": "com.maker.licensing.helper"])
+        try sandbox.file("System/PrivilegedHelperTools/com.maker.licensing.helper")
+        try sandbox.plist("System/LaunchAgents/com.maker.update.plist",
+                          ["Label": "com.maker.update", "AssociatedBundleIdentifiers": ["com.maker.write", "com.maker.draw"]])
+        // Named after one app and listed by the other: two claims, so it is left alone as well.
+        try sandbox.plist("System/LaunchDaemons/com.maker.write.sync.plist",
+                          ["Label": "com.maker.write.sync", "AssociatedBundleIdentifiers": "com.maker.draw"])
+
+        #expect(SystemFileFinder.files(for: [write, draw], folders: sandbox.systemFolders).isEmpty)
+        // With one of the two gone, the other is the only one left with a claim.
+        let alone = SystemFileFinder.files(for: [write], folders: sandbox.systemFolders)
+        #expect(listing(alone[write.id]) == [
+            "Background Items: com.maker.licensing.helper.plist", "Background Items: com.maker.update.plist",
+            "Background Items: com.maker.write.sync.plist", "Privileged Helpers: com.maker.licensing.helper",
+        ])
+    }
+
+    @Test func onlyAPlainFileDirectlyInsideOneOfTheFoldersMayBeMoved() throws {
+        let sandbox = try Sandbox()
+        defer { sandbox.remove() }
+        let folders = sandbox.systemFolders
+        let plain = try sandbox.file("System/LaunchDaemons/com.example.relay.plist")
+        let deeper = try sandbox.file("System/LaunchDaemons/Inner/com.example.relay.plist")
+        let apple = try sandbox.file("System/LaunchDaemons/com.apple.relay.plist")
+        let hidden = try sandbox.file("System/PrivilegedHelperTools/.hidden")
+        let outside = try sandbox.file("Library/LaunchAgents/com.example.relay.plist")
+        let link = sandbox.root.appending(path: "System/PrivilegedHelperTools/com.example.link")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: outside)
+
+        #expect(SystemFolder.allows(plain, in: folders))
+        #expect(SystemFolder.allows(sandbox.root.appending(path: "System/LaunchAgents/../LaunchDaemons/com.example.relay.plist"), in: folders))
+        #expect(!SystemFolder.allows(deeper, in: folders))
+        #expect(!SystemFolder.allows(deeper.deletingLastPathComponent(), in: folders))
+        #expect(!SystemFolder.allows(apple, in: folders))
+        #expect(!SystemFolder.allows(hidden, in: folders))
+        #expect(!SystemFolder.allows(outside, in: folders))
+        #expect(!SystemFolder.allows(link, in: folders))
+        #expect(!SystemFolder.allows(sandbox.root.appending(path: "System/LaunchDaemons/missing.plist"), in: folders))
+        #expect(!SystemFolder.allows(plain, in: []))
     }
 }
 
@@ -256,6 +372,31 @@ struct AppScannerTests {
         #expect(relay.kinds == [.binaries, .supportingFiles, .preferences])
         let tally = try #require(apps.first { $0.name == "Tally" })
         #expect(tally.files.count == 1)
+    }
+
+    @Test func listsWhatAnAppLeftUnderTheSystemLibraryNextToItsOwnFiles() async throws {
+        let sandbox = try Sandbox()
+        defer { sandbox.remove() }
+        let bundle = try sandbox.app("Harbor", id: "com.example.harbor",
+                                     extra: ["SMPrivilegedExecutables": ["com.example.vmnetd": "identifier \"com.example.vmnetd\""]])
+        try sandbox.plist("Library/LaunchAgents/com.example.harbor.sync.plist", ["Label": "com.example.harbor.sync-agent"])
+        try sandbox.plist("System/LaunchDaemons/com.example.vmnetd.plist", ["Label": "com.example.vmnetd"])
+        try sandbox.file("System/PrivilegedHelperTools/com.example.vmnetd", bytes: 300_000)
+        let never = try sandbox.plist("System/LaunchAgents/com.example.harbor.menu.plist", ["Label": "com.example.harbor.menu"])
+        #expect(AppScanner.describe(bundle)?.identity.helpers == ["com.example.vmnetd"])
+
+        let safety = SafetyGuard(root: sandbox.root, neverSuggest: [never.resolvingSymlinksInPath().path])
+        let apps = await AppScanner.scan(home: sandbox.root, roots: [sandbox.root.appending(path: "Applications")], safety: safety,
+                                         systemFolders: sandbox.systemFolders) { _ in }
+        let harbor = try #require(apps.first)
+        #expect(harbor.kinds == [.binaries, .backgroundItems, .helpers])
+        // The agent in the home folder says which service it starts, so the service can be stopped with it.
+        let agent = try #require(harbor.files(of: .backgroundItems).first { !$0.isSystemWide })
+        #expect(agent.service == LaunchService(label: "com.example.harbor.sync-agent", domain: .userAgent))
+        #expect(harbor.systemFiles.map(\.url.lastPathComponent) == ["com.example.vmnetd.plist", "com.example.vmnetd"])
+        #expect(harbor.systemFiles.last?.size ?? 0 >= 300_000)
+        // A path on the Never Suggest list is not listed, under /Library either.
+        #expect(!harbor.files.contains { $0.url.lastPathComponent == "com.example.harbor.menu.plist" })
     }
 
     @Test func readsWhereAnElectronAppLooksForUpdates() {
@@ -370,6 +511,153 @@ struct UninstallerTests {
         #expect(PutBack.restore(pending, home: sandbox.root).isEmpty)
         #expect(Files.exists(bundle.appending(path: "Contents/Info.plist")))
         #expect(Files.exists(support.appending(path: "data.db")))
+    }
+
+    // MARK: Files under /Library
+
+    /// An app with a launch agent in the home folder, and a daemon and its helper in the stand-in system folders.
+    private func appWithSystemFiles(_ name: String, in sandbox: Sandbox, label: String) throws -> InstalledApp {
+        let bundle = URL(fileURLWithPath: "/Applications/\(name).app")
+        let agent = try sandbox.plist("Library/LaunchAgents/\(label).agent.plist", ["Label": "\(label).agent"])
+        let daemon = try sandbox.plist("System/LaunchDaemons/\(label).plist", ["Label": label])
+        let helper = try sandbox.file("System/PrivilegedHelperTools/\(label)", bytes: 2_000)
+        return InstalledApp(url: bundle, name: name, bundleID: "com.example.relay", files: [
+            AppFile(url: bundle, kind: .binaries, size: 4_000),
+            AppFile(url: agent, kind: .backgroundItems, size: 100, service: LaunchService(label: "\(label).agent", domain: .userAgent)),
+            AppFile(url: daemon, kind: .backgroundItems, size: 300, service: LaunchService(label: label, domain: .systemDaemon), isSystemWide: true),
+            AppFile(url: helper, kind: .helpers, size: 2_000, isSystemWide: true),
+        ])
+    }
+
+    @Test func stopsServicesAndLeavesTheSystemFilesToOneScriptThatRunsLast() throws {
+        let sandbox = try Sandbox()
+        defer { sandbox.remove() }
+        var relay = try appWithSystemFiles("Relay", in: sandbox, label: "com.example.relay.daemon")
+        // Ticked, but no longer a plain file by the time the plan is made: it never reaches the script.
+        let link = sandbox.root.appending(path: "System/PrivilegedHelperTools/com.example.relay.link")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: relay.files[3].url)
+        relay.files.append(AppFile(url: link, kind: .helpers, isSystemWide: true))
+        let selection = Set(relay.files.map(\.id))
+
+        let plan = Uninstaller.plan(for: [relay], selection: selection, home: sandbox.root, uid: 501, systemFolders: sandbox.systemFolders)
+        let step = try #require(plan.steps.first)
+        #expect(step.requiresFirst)
+        #expect(step.size == 6_400)
+        #expect(step.operations.count == 4)
+        #expect(step.operations[0].kind == .trash(relay.url))
+        #expect(step.operations[1].kind == .run(["/bin/sh", "-c", "/bin/launchctl bootout 'gui/501/com.example.relay.daemon.agent' >/dev/null 2>&1 || true"]))
+        #expect(step.operations[2].kind == .trash(relay.files[1].url))
+        #expect(step.operations[3].itemID == Uninstaller.systemItemID(for: relay))
+        #expect(step.operations[3].size == 2_300)
+        guard case .runAsAdmin(let command) = step.operations[3].kind else {
+            Issue.record("The system files are not moved as root")
+            return
+        }
+        #expect(command.prefix(2) == ["/bin/sh", "-c"])
+        let script = command[2]
+        #expect(script.contains("/bin/launchctl bootout 'system/com.example.relay.daemon' >/dev/null 2>&1"))
+        #expect(script.contains("s='\(relay.files[2].url.path)'"))
+        #expect(script.contains("s='\(relay.files[3].url.path)'"))
+        #expect(script.contains("'Relay system files '"))
+        #expect(script.contains("/usr/sbin/chown -h 501 \"$d\"/'LaunchDaemons' \"$d\"/'PrivilegedHelperTools' \"$d\""))
+        #expect(!script.contains("chown -R"))
+        #expect(!script.contains("rm "))
+        #expect(!script.contains(link.path))
+        #expect(Uninstaller.needsPassword([relay], selection: selection))
+        #expect(!Uninstaller.needsFinder([relay], selection: selection))
+
+        // Only the app's own files ticked: nothing runs as root and no password is asked for.
+        let own = Set(relay.files.filter { !$0.isSystemWide }.map(\.id))
+        let ownPlan = Uninstaller.plan(for: [relay], selection: own, home: sandbox.root, uid: 501, systemFolders: sandbox.systemFolders)
+        #expect(ownPlan.steps.first?.operations.count == 3)
+        #expect(!Uninstaller.needsPassword([relay], selection: own))
+    }
+
+    /// The script is run here the way the app runs it, through AppleScript, but as the test's own user,
+    /// which is enough to move files it owns. The app's name is one a shell would trip over if any part
+    /// of the way there read it as more than a name.
+    @Test func theScriptGathersTheSystemFilesInOneFolderInTheTrash() throws {
+        let sandbox = try Sandbox()
+        defer { sandbox.remove() }
+        let trash = sandbox.root.appending(path: ".Trash")
+        try FileManager.default.createDirectory(at: trash, withIntermediateDirectories: true)
+        // A label no real service has, so asking launchd to stop it does nothing.
+        let label = "com.example.relay.\(UUID().uuidString)"
+        let name = "Relay's \"Best\" $(id) `id` \\ Friend"
+        var relay = try appWithSystemFiles(name, in: sandbox, label: label)
+        let gone = AppFile(url: sandbox.root.appending(path: "System/LaunchAgents/\(label).gone.plist"), kind: .backgroundItems, isSystemWide: true)
+        relay.files.append(gone)
+        let system = relay.systemFiles
+
+        let command = Uninstaller.systemCommand(for: relay, files: system, home: sandbox.root, uid: getuid())
+        let output = try #require(Shell.run("/usr/bin/osascript", ["-e", Shell.appleScript(running: command, asAdministrator: false)], timeout: 30))
+        #expect(output.succeeded, "\(output.stderr)")
+        let folders = Files.children(of: trash)
+        #expect(folders.count == 1)
+        let folder = try #require(folders.first)
+        #expect(folder.lastPathComponent.hasPrefix("\(name) system files 20"))
+        #expect(Files.exists(folder.appending(path: "LaunchDaemons/\(label).plist")))
+        #expect(Files.exists(folder.appending(path: "PrivilegedHelperTools/\(label)")))
+        #expect(!Files.exists(system[0].url))
+        #expect(!Files.exists(system[1].url))
+
+        // Everything ticked is gone from where it was, the file that was already missing included.
+        let selection = Set(relay.files.map(\.id))
+        let step = StepOutcome(id: Uninstaller.stepID(for: relay), title: relay.name, method: .trash, size: 0,
+                               cleanedItemIDs: [relay.url.path, relay.files[1].id, Uninstaller.systemItemID(for: relay)], failures: [])
+        let outcome = CleanOutcome(steps: [step], freeBefore: 0, freeAfter: 0, trashedSize: 0, duration: 0, logURL: nil, started: Date())
+        let removed = Uninstaller.removedFiles(in: outcome, apps: [relay], selection: selection)
+        #expect(removed == selection)
+        let detail = try #require(Uninstaller.receiptDetail(for: relay, step: step, selection: selection, removed: removed))
+        #expect(detail.contains("3 files from /Library were stopped and moved there too"))
+        #expect(detail.contains("Put Back does not return those"))
+    }
+
+    @Test func aSystemFileThatWouldNotMoveStaysOnTheListAndTheReceiptSaysSo() throws {
+        let sandbox = try Sandbox()
+        defer { sandbox.remove() }
+        try FileManager.default.createDirectory(at: sandbox.root.appending(path: ".Trash"), withIntermediateDirectories: true)
+        let relay = try appWithSystemFiles("Relay", in: sandbox, label: "com.example.relay.\(UUID().uuidString)")
+        let system = relay.systemFiles
+        // The daemons' folder is closed, so its file cannot be taken out; the helper's folder is not.
+        let closed = system[0].url.deletingLastPathComponent().path
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: closed)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: closed) }
+
+        let command = Uninstaller.systemCommand(for: relay, files: system, home: sandbox.root, uid: getuid())
+        let output = try #require(Shell.run(command[0], Array(command.dropFirst()), timeout: 30))
+        #expect(output.status == 1)
+        #expect(output.stderr.contains("failed: 0"))
+        #expect(Files.exists(system[0].url))
+        #expect(!Files.exists(system[1].url))
+
+        let selection = Set(relay.files.map(\.id))
+        func step(cleaned: [String], failures: [String] = [], skipped: String? = nil) -> StepOutcome {
+            StepOutcome(id: Uninstaller.stepID(for: relay), title: relay.name, method: .trash, size: 0,
+                        cleanedItemIDs: cleaned, failures: failures, skippedReason: skipped)
+        }
+        func removed(after step: StepOutcome) -> Set<String> {
+            let outcome = CleanOutcome(steps: [step], freeBefore: 0, freeAfter: 0, trashedSize: 0, duration: 0, logURL: nil, started: Date())
+            return Uninstaller.removedFiles(in: outcome, apps: [relay], selection: selection)
+        }
+        func detail(_ step: StepOutcome, removed: Set<String>) -> String? {
+            Uninstaller.receiptDetail(for: relay, step: step, selection: selection, removed: removed)
+        }
+
+        let partial = step(cleaned: [relay.url.path, relay.files[1].id], failures: ["sh failed: failed: 0"])
+        #expect(removed(after: partial) == [relay.url.path, relay.files[1].id, system[1].id])
+        #expect(detail(partial, removed: removed(after: partial))?.hasPrefix("1 of 2 files in /Library could not be moved") == true)
+
+        // With the password prompt cancelled, nothing under /Library moves.
+        let cancelled = step(cleaned: [relay.url.path], failures: ["sh was skipped: the password prompt was cancelled"])
+        #expect(detail(cancelled, removed: [relay.url.path])?.hasPrefix("The password prompt was cancelled, so 2 files in /Library stayed") == true)
+        // The app itself did not move, so nothing after it was tried and the usual sentence stands.
+        let stuck = step(cleaned: [], failures: ["Could not move /Applications/Relay.app to the Trash"])
+        #expect(detail(stuck, removed: []) == nil)
+        // An app that was open was left alone, whatever is or is not on disk.
+        let waiting = step(cleaned: [], skipped: "Relay was open")
+        #expect(removed(after: waiting).isEmpty)
+        #expect(detail(waiting, removed: []) == nil)
     }
 
     @Test func tellsARefusalByMacOSFromAnyOtherFailure() {
@@ -563,6 +851,30 @@ struct AppsModelTests {
         #expect(reported?.trashed.count == 6)
         apps.manageMore()
         #expect(apps.phase == .managing)
+    }
+
+    @Test func tickingFilesUnderTheSystemLibraryAsksForThePassword() throws {
+        let apps = model()
+        apps.showDemo("manager")
+        apps.selectNone()
+        #expect(!apps.needsPassword)
+        let sprout = try #require(apps.apps.first { $0.name == "Sprout VPN" })
+        #expect(sprout.kinds == [.binaries, .backgroundItems, .helpers])
+        for binding in apps.bindings(for: sprout.systemFiles) { binding.wrappedValue = true }
+        #expect(apps.selectedSystemFileCount == 2)
+        #expect(apps.selectedSystemFiles(of: sprout).map(\.kind) == [.backgroundItems, .helpers])
+        #expect(apps.needsPassword)
+        // The app itself is not ticked, so Finder has nothing to move: the password is for the files alone.
+        #expect(!apps.needsFinder)
+        // The made-up files are not on this Mac, and a file that is not there never reaches a script.
+        #expect(apps.plan.isEmpty)
+
+        // An app that is open is left alone, so its files under /Library are not counted as about to move.
+        let harbor = try #require(apps.apps.first { $0.name == "Harbor" })
+        apps.selectNone()
+        for binding in apps.bindings(for: harbor.systemFiles) { binding.wrappedValue = true }
+        #expect(apps.selectedSystemFiles(of: harbor).count == 2)
+        #expect(apps.selectedSystemFileCount == 0)
     }
 
     @Test func leftoversAreRemovedThroughTheirOwnPlan() {

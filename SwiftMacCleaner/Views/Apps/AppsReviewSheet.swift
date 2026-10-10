@@ -17,12 +17,13 @@ struct AppsReviewSheet: View {
         let blocked = apps.blockedSteps(in: plan)
         let total = plan.steps.filter { blocked[$0.id] == nil }.reduce(Int64(0)) { $0 + $1.size }
         let verb = apps.removesLeftovers ? "Remove" : "Uninstall"
+        let systemFiles = apps.selectedSystemFileCount
         VStack(alignment: .leading, spacing: Design.Spacing.xLarge) {
             VStack(alignment: .leading, spacing: Design.Spacing.tight) {
                 Text(title(apps, plan: plan))
                     .font(.title)
                     .bold()
-                Text("\(ByteFormat.string(total)) goes to the Trash. Nothing is deleted, and it can all be put back from the next screen.")
+                Text("\(ByteFormat.string(total)) goes to the Trash. Nothing is deleted, and \(systemFiles == 0 ? "it can all" : "all but the files from /Library can") be put back from the next screen.")
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -106,8 +107,12 @@ struct AppsReviewSheet: View {
         if blockedCount > 0 {
             checks.append(("\(blockedCount == 1 ? "1 app is" : "\(blockedCount) apps are") open and will be left alone. Quit \(blockedCount == 1 ? "it" : "them") above to include \(blockedCount == 1 ? "it" : "them"). Nothing is quit for you.", true))
         }
-        if apps.needsPassword {
+        if apps.needsFinder {
             checks.append(("Apps installed by the App Store or by a package belong to the system. Finder moves those, and macOS asks for your password.", true))
+        }
+        let systemFiles = apps.selectedSystemFileCount
+        if systemFiles > 0 {
+            checks.append(("\(systemFiles == 1 ? "1 file is" : "\(systemFiles) files are") in /Library and \(systemFiles == 1 ? "belongs" : "belong") to the system: background items and the helpers they run. With your password \(systemFiles == 1 ? "it is" : "they are") stopped and moved to a folder of \(systemFiles == 1 ? "its" : "their") own in the Trash. Put Back does not return \(systemFiles == 1 ? "it" : "them").", true))
         }
         checks.append(("macOS guards app bundles. Where it does not let this app move one, Finder is asked to, and macOS may ask you once to allow that.", false))
         if plan.steps.contains(where: { !$0.requiresFirst }) {
