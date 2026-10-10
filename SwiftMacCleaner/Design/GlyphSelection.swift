@@ -47,6 +47,7 @@ extension SidebarItem {
         case .overview: .glyphOverview
         case .group(let group): group.glyph
         case .space: .glyphSpace
+        case .duplicates: .glyphDuplicates
         case .apps: .glyphApps
         case .performance: .glyphPerformance
         }

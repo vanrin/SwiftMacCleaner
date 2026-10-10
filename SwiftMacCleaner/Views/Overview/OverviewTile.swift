@@ -92,7 +92,7 @@ struct OverviewTile: View {
             if leftovers > 0 { return (ByteFormat.string(leftovers), "of leftovers and installers to review") }
             let unused = apps.unusedApps.count
             return unused > 0 ? ("\(unused) unused \(unused == 1 ? "app" : "apps")", "to review") : ("Up to date", "nothing to remove")
-        case .overview, .space:
+        case .overview, .space, .duplicates:
             return ("", "")
         }
     }

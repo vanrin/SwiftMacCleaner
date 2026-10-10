@@ -22,6 +22,8 @@ struct DetailView: View {
             case .space:
                 // Largest Folders stands apart: it measures rather than finds, and is reachable in any phase.
                 SpaceView()
+            case .duplicates:
+                DuplicatesView()
             case .apps:
                 AppsView()
             case .performance:
@@ -52,6 +54,7 @@ struct DetailView: View {
         case .group(let group): model.cleanUp(group).phase != .done
         case .apps: model.apps.phase != .done
         case .performance: model.performance.phase != .done
+        case .duplicates: model.duplicates.phase != .done
         case .space: false
         }
     }
@@ -71,6 +74,8 @@ struct DetailView: View {
             return model.cleanUp(group).phase == .home ? nil : item.title
         case .space:
             return model.space.phase == .idle ? nil : item.title
+        case .duplicates:
+            return model.duplicates.phase == .idle ? nil : item.title
         case .apps:
             return model.apps.phase == .idle ? nil : item.title
         case .performance:

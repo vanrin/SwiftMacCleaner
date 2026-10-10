@@ -62,6 +62,22 @@ extension AppModel {
             }
         case .space:
             return SidebarStatus()
+        case .duplicates:
+            switch duplicates.phase {
+            case .idle:
+                return SidebarStatus()
+            case .scanning:
+                return SidebarStatus(badge: "Scanning")
+            case .results, .removing, .done:
+                let count = duplicates.groups.count
+                guard count > 0 else { return SidebarStatus(badge: "None") }
+                // Copies that share their space give nothing back, so the count stands in for the figure.
+                let gain = duplicates.reclaimable
+                return SidebarStatus(badge: gain > 0 ? ByteFormat.string(gain) : count.formatted(),
+                                     detail: "\(count == 1 ? "1 group" : "\(count.formatted()) groups") of identical files"
+                                         + (gain > 0 ? " · \(ByteFormat.string(gain)) to get back" : ""),
+                                     hasFindings: true)
+            }
         }
     }
 }

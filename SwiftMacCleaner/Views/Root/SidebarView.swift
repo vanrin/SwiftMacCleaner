@@ -5,8 +5,8 @@
 
 import SwiftUI
 
-/// The column on the left: the overview, the parts it runs in the order of its tiles, and Largest
-/// Folders, with the settings alone at the foot. Every entry leads somewhere at any time. Folded
+/// The column on the left: the overview, the parts it runs in the order of its tiles, and the two it
+/// leaves alone, Largest Folders and Duplicates, with the settings alone at the foot. Every entry leads somewhere at any time. Folded
 /// down, it is a rail of the same entries with their names left out.
 struct SidebarView: View {
     @Environment(AppModel.self) private var model
@@ -24,8 +24,11 @@ struct SidebarView: View {
                             SidebarButton(item: part, isCollapsed: isCollapsed)
                         }
                     }
-                    // Apart from the rest: the overview's scan leaves it alone.
-                    SidebarButton(item: .space, isCollapsed: isCollapsed)
+                    // Apart from the rest: the overview's scan leaves these alone.
+                    VStack(spacing: Design.Spacing.tight / 2) {
+                        SidebarButton(item: .space, isCollapsed: isCollapsed)
+                        SidebarButton(item: .duplicates, isCollapsed: isCollapsed)
+                    }
                 }
                 .padding(.horizontal, Design.Spacing.small + Design.Spacing.tight / 2)
                 .padding(.vertical, Design.Spacing.small)

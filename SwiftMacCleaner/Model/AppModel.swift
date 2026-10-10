@@ -15,6 +15,8 @@ enum SidebarItem: Hashable {
     case group(AreaGroup)
     /// Largest Folders, which the overview leaves alone: it measures rather than finds.
     case space
+    /// Duplicates, which the overview leaves alone too: reading files to compare them takes a while.
+    case duplicates
     /// Applications: uninstalling, updates, leftovers and installers, with a scan of its own.
     case apps
     /// Performance: maintenance tasks, login items and background items, with a scan of its own too.
@@ -25,6 +27,7 @@ enum SidebarItem: Hashable {
         case .overview: "Overview"
         case .group(let group): group.title
         case .space: "Largest Folders"
+        case .duplicates: "Duplicates"
         case .apps: "Applications"
         case .performance: "Performance"
         }
@@ -55,6 +58,7 @@ final class AppModel {
     /// One clean-up per group, in the order the sidebar lists them.
     let cleanUps: [CleanUpModel]
     let space: SpaceModel
+    let duplicates: DuplicatesModel
     let apps: AppsModel
     let performance: PerformanceModel
 
@@ -102,6 +106,7 @@ final class AppModel {
         self.settings = settings
         cleanUps = AreaGroup.allCases.map { CleanUpModel(home: home, settings: settings, group: $0) }
         space = SpaceModel(home: home)
+        duplicates = DuplicatesModel(home: home, settings: settings)
         apps = AppsModel(home: home, settings: settings)
         performance = PerformanceModel(home: home, settings: settings)
         disabledAreas = Area.stored(forKey: "disabledAreas")
@@ -114,6 +119,7 @@ final class AppModel {
         }
         apps.didScan = { [weak self] in self?.partDidScan() }
         apps.didRemove = { [weak self] outcome in self?.absorb(outcome) }
+        duplicates.didRemove = { [weak self] outcome in self?.absorb(outcome) }
         performance.didScan = { [weak self] in self?.partDidScan() }
         performance.didRun = { [weak self] outcome in self?.absorb(outcome) }
         #if DEBUG
@@ -227,6 +233,7 @@ final class AppModel {
         case .group(let group): cleanUp(group).phase == .scanning
         case .apps: apps.phase == .scanning
         case .performance: performance.phase == .scanning
+        case .duplicates: duplicates.phase == .scanning
         case .overview, .space: false
         }
     }
@@ -237,7 +244,7 @@ final class AppModel {
         case .group(let group): cleanUp(group).phase != .home && cleanUp(group).phase != .scanning
         case .apps: apps.phase != .idle && apps.phase != .scanning
         case .performance: performance.phase != .idle && performance.phase != .scanning
-        case .overview, .space: false
+        case .overview, .space, .duplicates: false
         }
     }
 
@@ -250,7 +257,7 @@ final class AppModel {
             return cleanUp.phase == .results && (cleanUp.selectedSize > 0 || cleanUp.selectionHasUnknownSize)
         case .performance:
             return performance.phase != .idle && performance.phase != .scanning && !performance.recommended.isEmpty
-        case .apps, .overview, .space:
+        case .apps, .overview, .space, .duplicates:
             return false
         }
     }
@@ -592,6 +599,14 @@ final class AppModel {
                         if let largest = space.current?.children.first { space.open(largest) }
                     }
                 }
+            }
+        case "duplicates":
+            // `--demo duplicates [intro|scanning|results|ticked|review|removing|done]`, or `scan <folder>`
+            sidebarSelection = .duplicates
+            duplicates.showDemo(arguments.first ?? "results",
+                                folder: arguments.dropFirst().first.map { URL(fileURLWithPath: $0, isDirectory: true) })
+            if let trashed = duplicates.outcome?.trashed, !trashed.isEmpty {
+                putBackPending = PutBack.Manifest(date: Date(), items: trashed)
             }
         case "apps":
             // `--demo apps [intro|scanning|summary|manager|updater|leftovers|review|removing|done]`

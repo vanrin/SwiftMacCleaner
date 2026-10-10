@@ -47,6 +47,12 @@ enum Launcher {
             ScanReportPrinter.printSpace(folder: folder)
             return
         }
+        // `SwiftMacCleaner --print-duplicates <folder> [more folders]` prints the groups of identical files
+        // found in them and exits. Nothing is removed.
+        if let flag = CommandLine.arguments.firstIndex(of: "--print-duplicates") {
+            ScanReportPrinter.printDuplicates(folders: Array(CommandLine.arguments.dropFirst(flag + 1)))
+            return
+        }
         // `SwiftMacCleaner --print-performance` prints what the Performance scan finds and exits. Nothing is run.
         if CommandLine.arguments.contains("--print-performance") {
             ScanReportPrinter.printPerformance()
@@ -325,6 +331,39 @@ nonisolated enum ScanReportPrinter {
                 print(step.failures.isEmpty ? "ok   \(removed.count) items moved to the Trash" : "!    \(step.failures.joined(separator: "; "))")
             }
             if let log = outcome.logURL { print("Log: \(log.path)") }
+        }
+        finished.wait()
+    }
+
+    /// Prints the groups of identical files in the folders, the one that gives back the most first.
+    /// Without a folder it looks through the home folder.
+    static func printDuplicates(folders: [String]) {
+        let settings = AppSettings()
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let safety = SafetyGuard(root: home, neverSuggest: settings.neverSuggest.map(\.path))
+        let roots = folders.isEmpty ? [home] : folders.map { URL(fileURLWithPath: $0, isDirectory: true) }
+        let finished = DispatchSemaphore(value: 0)
+        Task.detached {
+            defer {
+                fflush(stdout)
+                finished.signal()
+            }
+            guard let scan = await DuplicateScanner.scan(roots: roots, home: home, safety: safety) else { return }
+            let seconds = String(format: "%.1f", scan.duration)
+            let copies = scan.groups.reduce(0) { $0 + $1.files.count }
+            print("\(scan.groups.count) groups, \(copies) files, in \(seconds) s: \(scan.filesSeen) files looked at, "
+                  + "\(ByteFormat.string(scan.bytesRead)) read, \(ByteFormat.string(scan.reclaimable)) to get back"
+                  + (scan.cloudOnly > 0 ? ", \(scan.cloudOnly) kept in the cloud left out" : ""))
+            for path in scan.unreadable { print("could not be read: \(path)") }
+            for group in scan.groups.prefix(40) {
+                print("\n\(group.kind.title)  \(ByteFormat.string(group.size)) each  gives back \(ByteFormat.string(group.reclaimable))")
+                for file in group.files {
+                    let notes = [file.sharesSpace ? "clone, 1 of \(file.storage.cloneCount)" : nil, file.lockedReason.map { "stays: \($0)" }]
+                        .compactMap { $0 }
+                    print("   \(file.url.path)" + (notes.isEmpty ? "" : "  [\(notes.joined(separator: "; "))]"))
+                }
+            }
+            if scan.groups.count > 40 { print("\nand \(scan.groups.count - 40) more groups") }
         }
         finished.wait()
     }

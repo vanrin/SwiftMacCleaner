@@ -26,9 +26,23 @@ struct SidebarTests {
         let home = try temporaryHome()
         defer { try? FileManager.default.removeItem(at: home) }
         let model = AppModel(home: home)
-        for item in [SidebarItem.overview, .space] + SidebarItem.parts {
+        for item in [SidebarItem.overview, .space, .duplicates] + SidebarItem.parts {
             #expect(model.sidebarStatus(of: item) == SidebarStatus())
         }
+    }
+
+    @Test func duplicatesSaysWhatKeepingOneCopyOfEachGivesBack() throws {
+        let home = try temporaryHome()
+        defer { try? FileManager.default.removeItem(at: home) }
+        let model = AppModel(home: home)
+        model.duplicates.showDemo("results")
+        let status = model.sidebarStatus(of: .duplicates)
+        #expect(status.badge == ByteFormat.string(model.duplicates.reclaimable))
+        #expect(status.hint?.hasPrefix("8 groups of identical files") == true)
+        #expect(status.hasFindings)
+        // The overview's scan leaves it alone, so it is none of the overview's parts.
+        #expect(!SidebarItem.parts.contains(.duplicates))
+        #expect(!model.isScanning(.duplicates) && !model.hasResults(.duplicates) && !model.hasWork(.duplicates))
     }
 
     @Test func aCleanUpSaysWhatItFoundAndTheRailMarksIt() throws {

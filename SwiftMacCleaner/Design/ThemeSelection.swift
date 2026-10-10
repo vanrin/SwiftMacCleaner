@@ -56,6 +56,7 @@ extension SidebarItem {
         case .overview: .violet
         case .group(let group): group.theme
         case .space: .ocean
+        case .duplicates: .magenta
         case .apps: .blue
         case .performance: .orange
         }
@@ -68,6 +69,7 @@ extension AppModel {
         let item = sidebarSelection
         return switch item {
         case .space: item.theme
+        case .duplicates: duplicates.phase == .done ? .green : item.theme
         case .apps: apps.phase == .done ? .green : item.theme
         case .performance: performance.phase == .done ? .green : item.theme
         case .group(let group): cleanUp(group).phase == .done ? .green : item.theme
