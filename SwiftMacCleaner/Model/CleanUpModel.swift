@@ -412,7 +412,7 @@ final class CleanUpModel {
     func safetyGuard() -> SafetyGuard {
         SafetyGuard(
             root: home,
-            extraRoots: GuardRoots.userTemporaryFolders(),
+            extraRoots: GuardRoots.temporaryFolders(),
             allowedApplications: settings.offersOldXcodes ? GuardRoots.otherXcodes() : [],
             neverSuggest: settings.neverSuggest.map(\.path),
             backupsAllowed: true

@@ -189,6 +189,9 @@ nonisolated enum Cleaner {
         var outcomes: [StepOutcome] = []
         let operationCount = max(1, plan.steps.reduce(0) { $0 + $1.operations.count })
         var finished = 0
+        // Asked once, and only when the plan reaches into a temp folder: what is open there right now.
+        let openFiles = plan.steps.contains { $0.operations.contains { reachesTemp($0, safety: safety) } }
+            ? OpenFiles.snapshot(under: safety.extraRoots) : nil
 
         for step in plan.steps {
             log.append("")
@@ -205,7 +208,16 @@ nonisolated enum Cleaner {
             var outcome = StepOutcome(id: step.id, title: step.title, method: step.method, size: step.size,
                                       cleanedItemIDs: [], failures: [], skippedReason: nil)
             var failedItems = Set<String>()
-            // The freshness check runs per item, so an item with several paths is left whole or removed whole.
+            // Both checks run per item, so an item with several paths is left whole or removed whole.
+            if let openFiles {
+                for operation in step.operations where outcome.skippedItems[operation.itemID] == nil {
+                    if let use = inUse(operation, openFiles: openFiles, safety: safety) {
+                        outcome.skippedItems[operation.itemID] = use
+                        failedItems.insert(operation.itemID)
+                        log.append("skipped \(use)")
+                    }
+                }
+            }
             if let scannedAt {
                 for operation in step.operations where outcome.skippedItems[operation.itemID] == nil {
                     if let change = changedSinceScan(operation, scannedAt: scannedAt) {
@@ -274,14 +286,34 @@ nonisolated enum Cleaner {
 
     /// The freshness check: a sentence when the item, or anything directly inside it, changed after the scan.
     static func changedSinceScan(_ operation: CleanOperation, scannedAt: Date) -> String? {
-        let url: URL
-        switch operation.kind {
-        case .delete(let target), .trash(let target): url = target
-        case .run, .runAsAdmin: return nil
-        }
+        guard let url = target(of: operation) else { return nil }
         guard let newest = newestChange(in: url), newest > scannedAt.addingTimeInterval(1) else { return nil }
         return "\(url.path): changed since the scan, so it was left alone"
     }
+
+    /// The path an operation removes, when it removes one.
+    private static func target(of operation: CleanOperation) -> URL? {
+        switch operation.kind {
+        case .delete(let url), .trash(let url): url
+        case .run, .runAsAdmin: nil
+        }
+    }
+
+    /// Whether the operation removes something from one of the temp folders the guard lets through.
+    static func reachesTemp(_ operation: CleanOperation, safety: SafetyGuard) -> Bool {
+        guard let path = target(of: operation).map({ OpenFiles.canonical($0.standardizedFileURL.path) }) else { return false }
+        return safety.extraRoots.contains { path.hasPrefix(OpenFiles.canonical($0.standardizedFileURL.path) + "/") }
+    }
+
+    /// The in-use check, for what sits in a temp folder: a sentence when a running program has the
+    /// item, or something inside it, open at this moment. The scan looked too, but that was a while ago.
+    static func inUse(_ operation: CleanOperation, openFiles: OpenFiles, safety: SafetyGuard) -> String? {
+        guard reachesTemp(operation, safety: safety), let url = target(of: operation), openFiles.isInUse(url) else { return nil }
+        return "\(url.path): \(inUseReason), so it was left alone"
+    }
+
+    /// How a receipt tells an item that was in use from one that changed.
+    static let inUseReason = "a running program has it open"
 
     /// The newest modification date anywhere inside the item. An app writing deep inside a folder
     /// counts as a change to the folder; the walk is bounded so a huge tree stays cheap.

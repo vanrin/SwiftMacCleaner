@@ -67,7 +67,7 @@ struct ReceiptRow: View {
         let total = step.cleanedItemIDs.count + step.skippedItems.count + step.failures.count
         if !step.skippedItems.isEmpty {
             let done = step.cleanedItemIDs.count
-            return "\(verb) \(done) of \(total) \(total == 1 ? "item" : "items"). \(step.skippedItems.count) skipped: changed since the scan."
+            return "\(verb) \(done) of \(total) \(total == 1 ? "item" : "items"). \(step.skippedItems.count) skipped: \(skippedWhy)."
         }
         if let doneDetail { return doneDetail }
         if let first = step.failures.first {
@@ -80,6 +80,13 @@ struct ReceiptRow: View {
         case .command: "Removed by the tool that owns it."
         case .adminCommand: "Removed with your password. The space comes back over the next minutes."
         }
+    }
+
+    /// Why items were left alone: they changed after the scan, a running program had them open, or some of each.
+    private var skippedWhy: String {
+        let inUse = step.skippedItems.values.count { $0.contains(Cleaner.inUseReason) }
+        if inUse == 0 { return "changed since the scan" }
+        return inUse == step.skippedItems.count ? "open in a running program" : "changed since the scan, or open in a running program"
     }
 
     private var verb: String {

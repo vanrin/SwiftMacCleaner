@@ -157,6 +157,13 @@ nonisolated enum GuardRoots {
         }
     }
 
+    /// The temp folder every program on the Mac shares. macOS empties it at each restart, and a
+    /// user can remove only what is their own from it.
+    static let sharedTemporaryFolder = URL(fileURLWithPath: "/private/tmp", isDirectory: true)
+
+    /// Every temp folder the guard lets a clean-up reach into.
+    static func temporaryFolders() -> [URL] { userTemporaryFolders() + [sharedTemporaryFolder] }
+
     /// The Xcode `xcode-select` points at, which is never offered.
     static func selectedXcode() -> URL? {
         guard let output = Shell.run("/usr/bin/xcode-select", ["-p"], timeout: 10), output.succeeded else { return nil }

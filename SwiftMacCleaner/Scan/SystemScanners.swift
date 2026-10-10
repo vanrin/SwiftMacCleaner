@@ -5,7 +5,8 @@
 
 import Foundation
 
-/// App caches and logs in the user's Library, app container caches, and the per-user temp folders.
+/// App caches and logs in the user's Library, app container caches, the per-user temp folders, and
+/// what is this user's in the temp folder every program shares.
 nonisolated enum CachesLogsScanner {
     /// System caches that are not named com.apple.* but are still best left to macOS.
     static let systemCacheFolders: Set<String> = [
@@ -26,9 +27,13 @@ nonisolated enum CachesLogsScanner {
 
         if let finding = await appCaches(context, ownName: ownName) { findings.append(finding) }
         if let finding = await containerCaches(context, ownName: ownName) { findings.append(finding) }
-        if let finding = await temporaryFolders(context) { findings.append(finding) }
+        // Asked once for every temp folder: what a running program has open is left where it is.
+        let openFiles = OpenFiles.snapshot(under: GuardRoots.temporaryFolders())
+        let shared = SharedTempScanner.scan(context, openFiles: openFiles)
+        if let finding = await temporaryFolders(context, openFiles: openFiles, settled: shared.settled) { findings.append(finding) }
+        if let finding = SharedTempScanner.finding(for: shared.idle) { findings.append(finding) }
         if let finding = await logs(context) { findings.append(finding) }
-        return AreaScanResult(findings: findings)
+        return AreaScanResult(findings: findings, protected: shared.protected)
     }
 
     private static func appCaches(_ context: ScanContext, ownName: String) async -> Finding? {
@@ -82,14 +87,15 @@ nonisolated enum CachesLogsScanner {
         )
     }
 
-    /// Items apps left in the per-user folders under /var/folders and then forgot about.
-    private static func temporaryFolders(_ context: ScanContext) async -> Finding? {
+    /// Items apps left in the per-user folders under /var/folders and then forgot about, together with
+    /// what has sat just as long at the top of the temp folder every program shares.
+    private static func temporaryFolders(_ context: ScanContext, openFiles: OpenFiles, settled: [FindingItem]) async -> Finding? {
         let cutoff = context.now.addingTimeInterval(-tempIdleDays * 86_400)
         var candidates: [PathCandidate] = []
         for folder in GuardRoots.userTemporaryFolders() {
             let kind = folder.lastPathComponent == "C" ? "cache" : "temp"
             for entry in Files.children(of: folder) where !entry.lastPathComponent.hasPrefix("com.apple.") && !Files.isSymlink(entry) {
-                guard let newest = Cleaner.newestChange(in: entry), newest < cutoff else { continue }
+                guard let newest = Cleaner.newestChange(in: entry), newest < cutoff, !openFiles.isInUse(entry) else { continue }
                 candidates.append(PathCandidate(
                     title: entry.lastPathComponent,
                     detail: "In your \(kind) folder, untouched since \(context.relative(newest))",
@@ -97,17 +103,19 @@ nonisolated enum CachesLogsScanner {
                 ))
             }
         }
-        let items = await Sizing.items(prefix: "caches.temp", from: candidates, minimumSize: 10_000_000)
+        let items = (await Sizing.items(prefix: "caches.temp", from: candidates, minimumSize: 10_000_000) + settled)
+            .sorted { $0.size > $1.size }
         guard !items.isEmpty else { return nil }
+        let shared = GuardRoots.sharedTemporaryFolder.path
         return Finding(
             id: "caches.temp",
             area: .cachesLogs,
             tier: .safe,
             title: "Your temp and cache folders",
-            summary: "\(items.count) \(items.count == 1 ? "item" : "items") untouched for \(Int(tempIdleDays))+ days under /var/folders",
-            explanation: "Files apps left in the per-user temp and cache folders macOS gives you under /var/folders. Only items untouched for a week are offered; macOS clears the rest on reboot.",
+            summary: "\(items.count) \(items.count == 1 ? "item" : "items") untouched for \(Int(tempIdleDays))+ days under /var/folders and \(shared)",
+            explanation: "Files apps left in the per-user temp and cache folders macOS gives you under /var/folders, and what is yours in \(shared), the temp folder every program shares. Only items untouched for a week, with nothing in them open in a running program, are offered; macOS clears the rest on reboot.",
             method: .delete,
-            actionTarget: "Your folders under /var/folders",
+            actionTarget: "Your folders under /var/folders, and \(shared)",
             items: items
         )
     }

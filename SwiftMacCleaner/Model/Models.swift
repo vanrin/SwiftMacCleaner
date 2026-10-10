@@ -43,7 +43,7 @@ nonisolated enum Area: String, CaseIterable, Identifiable, Sendable {
         case .toolchains: "Old JDKs, Node, Python, Ruby, Rust and Flutter versions"
         case .ides: "VS Code, Cursor, JetBrains and Android Studio caches, logs and old versions"
         case .models: "Hugging Face, Ollama, PyTorch and LM Studio downloads"
-        case .cachesLogs: "~/Library/Caches, app containers, your temp folder, logs and crash reports"
+        case .cachesLogs: "~/Library/Caches, app containers, temp folders, logs and crash reports"
         case .trash: "Items in the Trash that are waiting to be emptied"
         case .snapshots: "Time Machine local snapshots, iPhone backups"
         case .largeFiles: "Big files in Downloads that have sat untouched for months"
