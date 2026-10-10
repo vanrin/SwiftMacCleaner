@@ -60,7 +60,7 @@ private struct GeneralSettings: View {
             Section {
                 Toggle("Look for app updates", isOn: $settings.checksAppUpdates)
             } footer: {
-                Text("When Applications scans, it asks the App Store and each app's own update feed which version is current. Only app identifiers and your region are sent. Nothing is installed for you.")
+                Text("When Applications scans, it asks the App Store, Homebrew's catalogue and each app's own update feed which version is current. Only app identifiers, the names of Homebrew casks and your region are sent. Nothing is installed until you ask for it.")
             }
         }
         .formStyle(.grouped)

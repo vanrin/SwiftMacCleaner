@@ -181,8 +181,10 @@ nonisolated enum AppScanner {
     /// Every app in the roots, each with its files measured. Stopping early returns the apps measured so far.
     @concurrent
     static func scan(home: URL, roots: [URL]? = nil, safety: SafetyGuard, systemFolders: [SystemFolder] = SystemFolder.standard,
+                     caskrooms: [URL] = HomebrewCasks.caskrooms(),
                      progress: @escaping @Sendable (AppScanProgress) -> Void) async -> [InstalledApp] {
         let described = bundles(in: roots ?? applicationRoots(home: home)).compactMap { describe($0) }
+        let casks = Dictionary(HomebrewCasks.installed(in: caskrooms).map { ($0.app.standardizedFileURL.path, $0) }) { first, _ in first }
         var related = AppFileFinder.files(for: described.map(\.identity), home: home, safety: safety)
         for (owner, files) in SystemFileFinder.files(for: described.map(\.identity), folders: systemFolders) {
             related[owner, default: []] += files.filter { !safety.isOnNeverSuggest($0.url.resolvingSymlinksInPath().path) }
@@ -192,6 +194,7 @@ nonisolated enum AppScanner {
         for (index, entry) in described.enumerated() {
             if Task.isCancelled { break }
             var app = entry.app
+            app.cask = casks[app.url.resolvingSymlinksInPath().standardizedFileURL.path]
             progress(AppScanProgress(done: index, total: described.count, name: app.name))
             let files = related[app.id] ?? []
             let sizes = await Sizing.sizes(of: [app.url] + files.map(\.url))

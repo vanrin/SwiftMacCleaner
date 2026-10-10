@@ -30,7 +30,7 @@ final class AppsModel {
         var detail: String {
             switch self {
             case .uninstaller: "Remove whole apps together with the files they keep in your Library."
-            case .updater: "See which apps have a newer version, and go to where each one is updated."
+            case .updater: "See which apps have a newer version. Homebrew installs the ones it manages; the rest are updated where they came from."
             case .leftovers: "Files left by apps that are already gone, and installers you no longer need."
             }
         }
@@ -103,6 +103,12 @@ final class AppsModel {
     private(set) var removal = Removal(isUninstall: true, apps: 0, items: 0, size: 0)
     /// What the receipt says under a step whose app had files under /Library, by step.
     private(set) var receiptDetails: [String: String] = [:]
+    /// Updates Homebrew is installing or has yet to get to, by app. It works on one at a time.
+    private(set) var installing: Set<String> = []
+    /// The one it is working on right now.
+    private(set) var installingNow: String?
+    /// Why an update did not go through, by app, for the line under its row.
+    private(set) var installFailures: [String: String] = [:]
 
     var section: Section = .uninstaller
     var filter: Filter = .all
@@ -114,6 +120,10 @@ final class AppsModel {
 
     @ObservationIgnored private var task: Task<Void, Never>?
     @ObservationIgnored private var scanned: Date?
+    @ObservationIgnored private var installTask: Task<Void, Never>?
+    /// Has Homebrew upgrade one cask. Nil when Homebrew is not installed, so nothing is offered through it.
+    @ObservationIgnored var upgradeCask: (@Sendable (String) async -> HomebrewCasks.UpgradeResult)? = AppsModel.homebrewUpgrade()
+    @ObservationIgnored var isAppRunning: (String) -> Bool = RunningApps.isRunning(bundleID:)
 
     init(home: URL, settings: AppSettings) {
         self.home = home
@@ -123,7 +133,10 @@ final class AppsModel {
     // MARK: Scanning
 
     func startScan() {
+        // Homebrew is half-way through replacing an app. The list is looked at again when it is done.
+        guard installing.isEmpty else { return didScan() }
         task?.cancel()
+        installFailures = [:]
         apps = []
         updates = []
         leftovers = []
@@ -341,6 +354,68 @@ final class AppsModel {
         if let url = URL(string: "macappstore://showUpdatesPage") { NSWorkspace.shared.open(url) }
     }
 
+    // MARK: Installing with Homebrew
+
+    /// The real thing: `brew upgrade` for one cask, run off the main thread and waited for.
+    static func homebrewUpgrade() -> (@Sendable (String) async -> HomebrewCasks.UpgradeResult)? {
+        guard let brew = HomebrewCasks.brew() else { return nil }
+        return { token in
+            await Task.detached { HomebrewCasks.upgrade(token: token, brew: brew) }.value
+        }
+    }
+
+    /// Whether this app can install the update itself: Homebrew installed the app, and Homebrew is there.
+    func canInstall(_ update: AppUpdate) -> Bool { update.cask != nil && upgradeCask != nil }
+
+    var installableUpdates: [AppUpdate] { updates.filter(canInstall) }
+
+    /// Has Homebrew install the updates, one after another: it will not work on two things at once.
+    func install(_ chosen: [AppUpdate]) {
+        let fresh = chosen.filter { canInstall($0) && !installing.contains($0.id) }
+        guard !fresh.isEmpty else { return }
+        installing.formUnion(fresh.map(\.id))
+        for update in fresh { installFailures[update.id] = nil }
+        let earlier = installTask
+        installTask = Task {
+            await earlier?.value
+            for update in fresh {
+                installingNow = update.id
+                if let failure = await install(update) { installFailures[update.id] = failure }
+                installing.remove(update.id)
+            }
+            installingNow = nil
+        }
+    }
+
+    /// Installs one update and takes it off the list. Returns the sentence to show when it did not go through.
+    private func install(_ update: AppUpdate) async -> String? {
+        guard let app = app(withID: update.id), let token = update.cask, let upgradeCask else { return nil }
+        // Nothing is quit for the user, and an app is not replaced while it runs.
+        guard !isAppRunning(app.bundleID) else {
+            refreshRunning()
+            return "\(app.name) is open. Quit it, then update again."
+        }
+        if case .failed(let reason) = await upgradeCask(token) { return reason }
+
+        // The app is read again: what counts is the version that is there now, not what Homebrew said.
+        guard let index = apps.firstIndex(where: { $0.id == update.id }) else { return nil }
+        if let fresh = AppScanner.describe(app.url)?.app {
+            apps[index].version = fresh.version
+            apps[index].build = fresh.build
+            apps[index].installed = fresh.installed
+            if AppUpdateChecker.isNewer(update.newVersion, than: fresh.version) {
+                return "Homebrew finished, but \(app.name) is still version \(fresh.version)."
+            }
+            let size = await Sizing.sizes(of: [app.url])[app.url]
+            if let size, let bundle = apps.firstIndex(where: { $0.id == update.id }),
+               let file = apps[bundle].files.firstIndex(where: { $0.kind == .binaries }) {
+                apps[bundle].files[file].size = size
+            }
+        }
+        updates.removeAll { $0.id == update.id }
+        return nil
+    }
+
     // MARK: Removing
 
     /// Whether the round button removes leftovers or uninstalls apps.
@@ -471,6 +546,12 @@ final class AppsModel {
         apps = AppsDemoData.apps()
         updates = AppsDemoData.updates(for: apps)
         checkedUpdates = true
+        // Made-up apps are never handed to the real Homebrew.
+        upgradeCask = { _ in
+            try? await Task.sleep(for: .seconds(2))
+            return .done
+        }
+        isAppRunning = { _ in false }
         leftovers = AppsDemoData.leftovers()
         running = ["com.example.harbor"]
         scanned = Date()
@@ -485,6 +566,15 @@ final class AppsModel {
             phase = .summary
         case "updater":
             section = .updater
+        case "updater-homebrew":
+            // Two for Homebrew, one of which it cannot install: the queue, and what a failure says.
+            section = .updater
+            for index in updates.indices where app(withID: updates[index].id)?.name == "Inkwell" { updates[index].cask = "inkwell" }
+            upgradeCask = { token in
+                try? await Task.sleep(for: .seconds(2))
+                let refused = Shell.Output(status: 1, stdout: "", stderr: "sudo: a terminal is required to read the password", timedOut: false, cancelled: false)
+                return token == "inkwell" ? .done : .failed(HomebrewCasks.failure(from: refused, token: token))
+            }
         case "leftovers":
             section = .leftovers
             selectedLeftovers = Set(leftovers.first?.items.prefix(2).map(\.id) ?? [])

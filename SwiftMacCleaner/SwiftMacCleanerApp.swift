@@ -304,7 +304,8 @@ nonisolated enum ScanReportPrinter {
             for app in shown {
                 let opened = app.lastOpened.map { $0.formatted(date: .abbreviated, time: .omitted) } ?? "never"
                 let flags = [app.source == .appStore ? "App Store" : nil, app.needsPassword ? "Finder only" : nil,
-                             app.isUnused() ? "unused" : nil, app.feed.map { _ in "has a feed" }].compactMap { $0 }
+                             app.isUnused() ? "unused" : nil, app.feed.map { _ in "has a feed" },
+                             app.cask.map { "cask \($0.token) \($0.version)\($0.isOfficial ? "" : ", from another tap")" }].compactMap { $0 }
                 print("\n\(app.name)  \(app.version)  \(app.bundleID)  \(ByteFormat.string(app.size))  opened \(opened)"
                       + (flags.isEmpty ? "" : "  [\(flags.joined(separator: ", "))]"))
                 guard name != nil else { continue }
@@ -322,7 +323,7 @@ nonisolated enum ScanReportPrinter {
                 for update in newer {
                     let app = apps.first { $0.id == update.id }?.name ?? update.id
                     let released = update.released.map { $0.formatted(date: .abbreviated, time: .omitted) } ?? "unknown date"
-                    print("   \(app): \(update.installedVersion) -> \(update.newVersion)  (\(update.feed.title), \(released)"
+                    print("   \(app): \(update.installedVersion) -> \(update.newVersion)  (\(update.source), \(released)"
                           + (update.size.map { ", \(ByteFormat.string($0))" } ?? "") + ")")
                 }
             }

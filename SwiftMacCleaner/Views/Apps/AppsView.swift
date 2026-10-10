@@ -43,7 +43,8 @@ struct AppsView: View {
                 ToolbarItem {
                     Button("Rescan", systemImage: "arrow.clockwise", action: apps.startScan)
                         .labelStyle(.titleBar)
-                        .help("Look at the installed apps again")
+                        .disabled(!apps.installing.isEmpty)
+                        .help(apps.installing.isEmpty ? "Look at the installed apps again" : "Homebrew is installing an update")
                 }
             }
         }

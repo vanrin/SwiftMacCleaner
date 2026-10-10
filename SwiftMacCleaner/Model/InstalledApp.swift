@@ -109,11 +109,14 @@ nonisolated enum UpdateFeed: Sendable, Hashable {
     case sparkle(URL)
     /// The `latest-mac.yml` an Electron app's updater reads.
     case electron(URL)
+    /// Homebrew's catalogue of casks, for an update only it reported. No app has this as its feed.
+    case homebrew
 
     var title: String {
         switch self {
         case .appStore: "App Store"
         case .sparkle, .electron: "The app's own update feed"
+        case .homebrew: "Homebrew"
         }
     }
 }
@@ -138,6 +141,8 @@ nonisolated struct InstalledApp: Identifiable, Sendable, Hashable {
     /// The bundle belongs to another user, usually root, so only Finder can move it and macOS asks for a password.
     var needsPassword = false
     var feed: UpdateFeed?
+    /// The Homebrew cask that installed the app, when one did. Homebrew can then install its updates.
+    var cask: InstalledCask?
     /// The app itself first, then what it keeps in the Library.
     var files: [AppFile] = []
 
@@ -172,4 +177,9 @@ nonisolated struct AppUpdate: Identifiable, Sendable, Hashable {
     var feed: UpdateFeed
     /// The app's page in the App Store, where the update is installed.
     var storeURL: URL?
+    /// The cask Homebrew upgrades to install this update, when Homebrew has it.
+    var cask: String? = nil
+
+    /// Where the update comes from, as a row says it.
+    var source: String { cask == nil ? feed.title : UpdateFeed.homebrew.title }
 }

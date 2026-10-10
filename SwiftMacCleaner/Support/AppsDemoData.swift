@@ -114,7 +114,9 @@ nonisolated enum AppsDemoData {
             return AppUpdate(id: app.id, installedVersion: app.version, newVersion: version,
                              released: now.addingTimeInterval(-daysAgo * 86_400), size: megabytes.map { Int64($0 * 1e6) },
                              notes: notes, feed: app.feed ?? .appStore,
-                             storeURL: app.source == .appStore ? URL(string: "macappstore://showUpdatesPage") : nil)
+                             storeURL: app.source == .appStore ? URL(string: "macappstore://showUpdatesPage") : nil,
+                             // Relay was installed with Homebrew, so its update can be installed from here.
+                             cask: name == "Relay" ? "relay" : nil)
         }
     }
 

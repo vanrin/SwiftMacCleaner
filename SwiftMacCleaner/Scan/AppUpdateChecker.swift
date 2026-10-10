@@ -5,8 +5,9 @@
 
 import Foundation
 
-/// Asks each app's update feed which version is current. It only reads: installing an update is left
-/// to the App Store or to the app's own updater, which check what they download.
+/// Asks each app's update feed which version is current, and Homebrew's catalogue for the apps
+/// Homebrew installed. It only reads: installing is left to the App Store, to the app's own updater,
+/// or to Homebrew when the user asks for it, each of which checks what it downloads.
 nonisolated enum AppUpdateChecker {
     /// The storefront tried when the user's own does not carry an app.
     static let fallbackRegion = "us"
@@ -17,6 +18,7 @@ nonisolated enum AppUpdateChecker {
         let system = ProcessInfo.processInfo.operatingSystemVersion
         let systemVersion = "\(system.majorVersion).\(system.minorVersion).\(system.patchVersion)"
         var found: [String: AppUpdate] = [:]
+        var fromHomebrew: [String: AppUpdate] = [:]
 
         let storeApps = apps.filter { $0.feed == .appStore }
         var missing = storeApps
@@ -43,15 +45,39 @@ nonisolated enum AppUpdateChecker {
                         guard let data = await fetch(url, session: session), let text = String(data: data, encoding: .utf8) else { return nil }
                         return electronUpdate(for: app, manifest: text)
                     }
-                case .appStore, nil:
-                    continue
+                case .appStore, .homebrew, nil:
+                    break
+                }
+                // Asked as well as the app's own feed: an update Homebrew has is one this app can install.
+                if let cask = app.cask, cask.isOfficial, let lookup = HomebrewCasks.lookup(for: cask.token) {
+                    group.addTask {
+                        guard let data = await fetch(lookup, session: session), let release = HomebrewCasks.release(from: data) else { return nil }
+                        return HomebrewCasks.update(for: app, cask: cask, release: release)
+                    }
                 }
             }
             for await update in group {
-                if let update { found[update.id] = update }
+                guard let update else { continue }
+                if update.cask == nil { found[update.id] = update } else { fromHomebrew[update.id] = update }
             }
         }
-        return apps.compactMap { found[$0.id] }
+        return merged(feeds: found, homebrew: fromHomebrew, order: apps.map(\.id))
+    }
+
+    /// One update for each app, in the order given. Where Homebrew has one too, that is the one
+    /// offered, since it can be installed from here, with whatever the app's own feed said about the
+    /// release kept beside it.
+    static func merged(feeds: [String: AppUpdate], homebrew: [String: AppUpdate], order: [String]) -> [AppUpdate] {
+        order.compactMap { id in
+            guard var update = homebrew[id] else { return feeds[id] }
+            if let feed = feeds[id] {
+                update.feed = feed.feed
+                update.released = feed.released
+                update.size = feed.size
+                update.notes = feed.notes
+            }
+            return update
+        }
     }
 
     private static func fetch(_ url: URL?, session: URLSession) async -> Data? {

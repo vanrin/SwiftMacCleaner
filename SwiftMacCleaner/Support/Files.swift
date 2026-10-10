@@ -37,6 +37,11 @@ nonisolated enum Files {
         return (try? PropertyListSerialization.propertyList(from: data, format: nil)) as? [String: Any]
     }
 
+    static func json(at url: URL) -> [String: Any]? {
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+    }
+
     /// True when macOS refused access, as opposed to the folder simply not being there.
     static func isPermissionError(_ error: Error) -> Bool {
         let error = error as NSError

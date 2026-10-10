@@ -35,12 +35,35 @@ struct UpdateRow: View {
                         .lineLimit(1)
                 }
                 Spacer(minLength: Design.Spacing.medium)
-                Button(update.feed == .appStore ? "Update in App Store" : "Open to Update", action: open)
-                    .buttonStyle(.pill)
-                    .accessibilityLabel(update.feed == .appStore ? "Update \(app.name) in the App Store" : "Open \(app.name) to update it")
-                    .help(update.feed == .appStore
-                          ? "Shows \(app.name) in the App Store, where the update is installed"
-                          : "Opens \(app.name), whose own updater installs the update")
+                if !model.apps.canInstall(update) {
+                    Button(update.feed == .appStore ? "Update in App Store" : "Open to Update", action: open)
+                        .buttonStyle(.pill)
+                        .accessibilityLabel(update.feed == .appStore ? "Update \(app.name) in the App Store" : "Open \(app.name) to update it")
+                        .help(update.feed == .appStore
+                              ? "Shows \(app.name) in the App Store, where the update is installed"
+                              : "Opens \(app.name), whose own updater installs the update")
+                } else if model.apps.installing.contains(update.id) {
+                    // Homebrew works on one at a time, so the others say they are waiting their turn.
+                    HStack(spacing: Design.Spacing.small) {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text(model.apps.installingNow == update.id ? "Updating…" : "Waiting…")
+                            .foregroundStyle(.secondary)
+                    }
+                    .accessibilityElement(children: .combine)
+                } else {
+                    Button("Update", action: install)
+                        .buttonStyle(.primaryPill)
+                        .accessibilityLabel("Update \(app.name) with Homebrew")
+                        .help("Homebrew downloads version \(update.newVersion) and installs it in place of the one here")
+                }
+            }
+            if let failure = model.apps.installFailures[update.id] {
+                Label(failure, systemImage: "exclamationmark.triangle.fill")
+                    .font(.callout)
+                    .foregroundStyle(Design.Signal.warning)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.leading, Design.Size.appIcon + Design.Spacing.medium)
             }
             if let notes = update.notes {
                 Button(action: toggleNotes) {
@@ -67,7 +90,7 @@ struct UpdateRow: View {
 
     /// Where the update comes from, when it came out, and how big the download is.
     private var detail: String {
-        var parts = [update.feed.title]
+        var parts = [update.source]
         if let released = update.released { parts.append("Released \(released.formatted(date: .abbreviated, time: .omitted))") }
         if let size = update.size { parts.append(ByteFormat.string(size)) }
         return parts.joined(separator: " · ")
@@ -75,6 +98,10 @@ struct UpdateRow: View {
 
     private func open() {
         model.apps.open(update)
+    }
+
+    private func install() {
+        model.apps.install([update])
     }
 
     private func toggleNotes() {
