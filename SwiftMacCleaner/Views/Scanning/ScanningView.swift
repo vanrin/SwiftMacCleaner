@@ -15,7 +15,7 @@ struct ScanningView: View {
     var body: some View {
         let areas = cleanUp.scannedAreas
         let fraction = Double(cleanUp.finishedAreaCount) / Double(max(areas.count, 1))
-        ActivityScreen(title: title ?? "Scanning \(model.disk.name)", detail: detail(areas)) {
+        ActivityScreen(title: title ?? "Scanning \(model.disk.name)", detail: cleanUp.scanDetail) {
             HeroOrb(progress: fraction, isBusy: true) {
                 OrbFigure(value: ByteFormat.string(cleanUp.foundSize), caption: "found so far")
             }
@@ -25,13 +25,5 @@ struct ScanningView: View {
                 .buttonStyle(.orb(progress: fraction))
                 .help("Stop scanning and show what was found so far")
         }
-    }
-
-    /// The areas being measured right now, and how many are done.
-    private func detail(_ areas: [Area]) -> String {
-        let progress = "\(cleanUp.finishedAreaCount) of \(areas.count) areas done"
-        let current = areas.filter { cleanUp.areaState(for: $0) == .scanning }.map(\.title)
-        guard !current.isEmpty else { return progress }
-        return "\(current.formatted(.list(type: .and, width: .narrow))) · \(progress)"
     }
 }

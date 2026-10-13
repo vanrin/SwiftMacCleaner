@@ -12,7 +12,7 @@ struct AppsScanning: View {
     var body: some View {
         let apps = model.apps
         let progress = apps.progress
-        ActivityScreen(title: "Looking at your apps", detail: detail(progress)) {
+        ActivityScreen(title: model.scanTitle(of: .apps), detail: progress.detail) {
             HeroOrb(progress: progress.fraction, isBusy: true) {
                 OrbFigure(value: progress.done.formatted(), caption: "of \(progress.total.formatted()) apps")
             }
@@ -22,10 +22,5 @@ struct AppsScanning: View {
                 .buttonStyle(.orb(progress: progress.fraction))
                 .help("Stop looking and go back")
         }
-    }
-
-    private func detail(_ progress: AppScanProgress) -> String {
-        if progress.isCheckingUpdates { return "Asking the update feeds which versions are current" }
-        return progress.name.isEmpty ? "Listing the Applications folders" : "Measuring \(progress.name) and the files it keeps"
     }
 }

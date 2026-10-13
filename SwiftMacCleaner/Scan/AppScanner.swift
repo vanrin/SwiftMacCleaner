@@ -17,6 +17,12 @@ nonisolated struct AppScanProgress: Sendable, Equatable {
     var isCheckingUpdates = false
 
     var fraction: Double { total == 0 ? 0 : Double(done) / Double(total) }
+
+    /// What the scan is on right now, in a line.
+    var detail: String {
+        if isCheckingUpdates { return "Asking the update feeds which versions are current" }
+        return name.isEmpty ? "Listing the Applications folders" : "Measuring \(name) and the files it keeps"
+    }
 }
 
 /// What tells one app's files from another's: its identifier, the names it goes by, and what it was signed with.

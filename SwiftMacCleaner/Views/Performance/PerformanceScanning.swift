@@ -11,7 +11,7 @@ struct PerformanceScanning: View {
 
     var body: some View {
         let performance = model.performance
-        ActivityScreen(title: "Examining your Mac", detail: performance.progress) {
+        ActivityScreen(title: model.scanTitle(of: .performance), detail: model.scanDetail(of: .performance)) {
             ModuleHero(.performance, isBusy: true)
         }
         .orbAction {

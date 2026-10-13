@@ -20,7 +20,7 @@ struct CleanUpView: View {
             case .home:
                 CleanUpIntro()
             case .scanning:
-                ScanningView(title: "Scanning \(cleanUp.group.scope)")
+                ScanningView(title: model.scanTitle(of: .group(cleanUp.group)))
             case .results:
                 if cleanUp.openArea != nil {
                     CleanUpManager()

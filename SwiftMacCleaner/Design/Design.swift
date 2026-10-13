@@ -53,6 +53,14 @@ enum Design {
         static let heroIcon: Double = 140
         /// How far from the middle of the disc the pointer has its full pull on that icon.
         static let heroReach: Double = 280
+        /// A part's icon on its card while the overview scans: on the card at work, and dimmed on one
+        /// that is not the one shown at work. Each is the most it gets; a small card has a smaller one.
+        static let scanIcon: Double = 168
+        static let waitingIcon: Double = 72
+        /// Under this width inside, a card that is done has no room for its name and its icon side by side.
+        static let scanCardNarrow: Double = 170
+        /// Under this height inside, a card has room for one line of its name over what it says.
+        static let scanCardShort: Double = 130
         /// The dot on a rail glyph whose part has something to do.
         static let sidebarDot: Double = 7
         /// The icon in front of a line of an intro's list.
@@ -190,6 +198,8 @@ enum Design {
         static let iconTurn = Animation.easeOut(duration: 0.16)
         /// Half of one breath of an icon whose part is being scanned.
         static let iconBusy = Animation.easeInOut(duration: 0.6)
+        /// The cards of the overview's scan making room for the next one at work.
+        static let scanCards = Animation.smooth(duration: 0.45)
     }
 
     /// Text, and the solid dark tone of what stands out on the ground: the chosen tick, a main pill.

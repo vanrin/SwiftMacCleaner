@@ -10,7 +10,7 @@ struct ProtectionScanning: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        ActivityScreen(title: "Checking your Mac's protection", detail: "Reading how its defences are set") {
+        ActivityScreen(title: model.scanTitle(of: .protection), detail: model.scanDetail(of: .protection)) {
             ModuleHero(.protection, isBusy: true)
         }
         .orbAction {
