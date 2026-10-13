@@ -3,6 +3,10 @@
 A disk cleaner and maintenance app for macOS, written in SwiftUI. It scans for what can go, shows
 all of it, and removes only what you tick.
 
+<p align="center">
+  <img src="Screenshots/overview.webp" width="840" alt="The Overview screen: a Mac showing the free space on the disk, what one scan covers, and a round Scan button">
+</p>
+
 > **This app deletes files and can run commands as root.** It comes with no warranty: see the
 > [licence](LICENSE). Read the review sheet before you confirm a clean, and keep a backup.
 
@@ -20,6 +24,29 @@ all of it, and removes only what you tick.
 | **Performance** | Maintenance tasks, login items and background items. |
 | **Protection** | A read-only check of FileVault, the screen lock, Gatekeeper, System Integrity Protection, malware definitions, automatic updates, the firewall and sharing. It changes nothing. |
 | **Menu bar** | Processor, memory and battery readings, and a check once a week. |
+
+## A closer look
+
+<table>
+  <tr>
+    <td width="50%" valign="top"><img src="Screenshots/results.webp" alt="The Overview after a scan: a tile for each part of the app with what it found"><br><b>Overview after a scan.</b> A tile for each part, with what it found and what Smart selection ticked.</td>
+    <td width="50%" valign="top"><img src="Screenshots/review.webp" alt="The review sheet: free space before and after, open apps that a step waits for, and every step with how it is carried out"><br><b>Review before anything goes.</b> Every step and how it is carried out, and the open apps it waits for.</td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><img src="Screenshots/developer-clean-up.webp" alt="Developer Clean Up open on Xcode: DerivedData listed project by project, each with a tick box and its size"><br><b>Developer Clean Up.</b> Xcode, projects, package caches, toolchains and more, finding by finding.</td>
+    <td width="50%" valign="top"><img src="Screenshots/applications.webp" alt="Applications: an app opened out into the files it keeps in the Library, all ticked for removal"><br><b>Applications.</b> An app and every file it keeps in the Library, removed together.</td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><img src="Screenshots/performance.webp" alt="Performance: the maintenance tasks, the recommended ones ticked, with a note on those that ask for a password"><br><b>Performance.</b> Maintenance tasks, login items and background items.</td>
+    <td width="50%" valign="top"><img src="Screenshots/protection.webp" alt="Protection: three settings worth a look and five that are in place"><br><b>Protection.</b> A read-only check of the Mac's own defences. It changes nothing.</td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><img src="Screenshots/duplicates.webp" alt="Duplicates: groups of identical files with where each copy is and what removing the extras gives back"><br><b>Duplicates.</b> Identical files, with one copy of each always kept.</td>
+    <td width="50%" valign="top" align="center"><img src="Screenshots/menu-bar.webp" width="230" alt="The menu bar popover: free space, and rings for processor, memory and battery"><br><b>Menu bar.</b> Free space, processor, memory and battery.</td>
+  </tr>
+</table>
+
+The pictures show the app's demo mode, so the findings in them are made up.
 
 ## How it keeps from removing the wrong thing
 
@@ -110,6 +137,7 @@ Trash. None of these exist in a Release build.
 | `SwiftMacCleaner/Vitals` | The processor, memory and battery readings. |
 | `SwiftMacCleaner/Support` | Shell, files, formatting, and the made-up data for `--demo`. |
 | `SwiftMacCleanerTests` | The unit tests. |
+| `Screenshots` | The pictures in this README. |
 | `Tools/make-glyphs.swift` | Draws the app's icons and writes them into the asset catalogue. |
 
 ## Contributing and security
