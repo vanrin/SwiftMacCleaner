@@ -21,6 +21,8 @@ enum SidebarItem: Hashable {
     case apps
     /// Performance: maintenance tasks, login items and background items, with a scan of its own too.
     case performance
+    /// Protection: how this Mac's own defences are set. Its check only reads, and Run has nothing to do there.
+    case protection
 
     var title: String {
         switch self {
@@ -30,11 +32,12 @@ enum SidebarItem: Hashable {
         case .duplicates: "Duplicates"
         case .apps: "Applications"
         case .performance: "Performance"
+        case .protection: "Protection"
         }
     }
 
     /// The parts the overview's scan runs and its tiles stand for, in the order they are shown.
-    static let parts = AreaGroup.allCases.map(SidebarItem.group) + [.performance, .apps]
+    static let parts = AreaGroup.allCases.map(SidebarItem.group) + [.protection, .performance, .apps]
 }
 
 /// Which apps are running, asked of the workspace. Kept apart so a non-UI caller can ask too.
@@ -61,6 +64,7 @@ final class AppModel {
     let duplicates: DuplicatesModel
     let apps: AppsModel
     let performance: PerformanceModel
+    let protection: ProtectionModel
     /// Whether macOS opens the app at login.
     let openAtLogin: OpenAtLogin
 
@@ -113,6 +117,7 @@ final class AppModel {
         duplicates = DuplicatesModel(home: home, settings: settings)
         apps = AppsModel(home: home, settings: settings)
         performance = PerformanceModel(home: home, settings: settings)
+        protection = ProtectionModel(settings: settings)
         disabledAreas = Area.stored(forKey: "disabledAreas")
         forcedAreas = Area.stored(forKey: "forcedAreas")
         putBackPending = PutBack.pending(home: home)
@@ -126,6 +131,7 @@ final class AppModel {
         duplicates.didRemove = { [weak self] outcome in self?.absorb(outcome) }
         performance.didScan = { [weak self] in self?.partDidScan() }
         performance.didRun = { [weak self] outcome in self?.absorb(outcome) }
+        protection.didScan = { [weak self] in self?.partDidScan() }
         #if DEBUG
         if let flag = CommandLine.arguments.firstIndex(of: "--demo") {
             isDemo = true
@@ -228,6 +234,7 @@ final class AppModel {
         }
         apps.startScan()
         performance.startScan()
+        protection.startScan()
         partDidScan()
     }
 
@@ -237,6 +244,7 @@ final class AppModel {
         case .group(let group): cleanUp(group).phase == .scanning
         case .apps: apps.phase == .scanning
         case .performance: performance.phase == .scanning
+        case .protection: protection.phase == .scanning
         case .duplicates: duplicates.phase == .scanning
         case .overview, .space: false
         }
@@ -248,12 +256,14 @@ final class AppModel {
         case .group(let group): cleanUp(group).phase != .home && cleanUp(group).phase != .scanning
         case .apps: apps.phase != .idle && apps.phase != .scanning
         case .performance: performance.phase != .idle && performance.phase != .scanning
+        case .protection: protection.phase == .results
         case .overview, .space, .duplicates: false
         }
     }
 
     /// Whether Run would do anything for the part: ticked items in a clean-up, or recommended tasks.
     /// Applications never acts on its own: apps are only ever removed by hand, and updates by the store.
+    /// Protection never does either: its settings are the user's to change.
     func hasWork(_ part: SidebarItem) -> Bool {
         switch part {
         case .group(let group):
@@ -261,7 +271,7 @@ final class AppModel {
             return cleanUp.phase == .results && (cleanUp.selectedSize > 0 || cleanUp.selectionHasUnknownSize)
         case .performance:
             return performance.phase != .idle && performance.phase != .scanning && !performance.recommended.isEmpty
-        case .apps, .overview, .space, .duplicates:
+        case .apps, .protection, .overview, .space, .duplicates:
             return false
         }
     }
@@ -316,6 +326,7 @@ final class AppModel {
         for cleanUp in cleanUps where cleanUp.phase == .scanning { cleanUp.stopScan() }
         if apps.phase == .scanning { apps.stop() }
         if performance.phase == .scanning { performance.stop() }
+        if protection.phase == .scanning { protection.stop() }
         finishOverviewScan()
     }
 
@@ -630,6 +641,10 @@ final class AppModel {
             // `--demo performance [intro|scanning|summary|manager|login|background|review|running|done]`
             sidebarSelection = .performance
             performance.showDemo(arguments.first ?? "summary")
+        case "protection":
+            // `--demo protection [intro|scanning|results|fine|scan]`
+            sidebarSelection = .protection
+            protection.showDemo(arguments.first ?? "results")
         case "system", "developer", "largeFiles":
             // `--demo <group> [intro|scanning|summary|quiet|manager|review|cleaning|done|scan]`
             guard let group = AreaGroup(rawValue: screen) else { return }
@@ -644,11 +659,13 @@ final class AppModel {
             loadDemo(screen: "queued", into: cleanUp(.largeFiles))
             apps.showDemo("scanning")
             performance.showDemo("summary")
+            protection.showDemo("results")
             overviewPhase = .scanning
         case "results", "review", "running", "done":
             for cleanUp in cleanUps { loadDemo(screen: "summary", into: cleanUp) }
             apps.showDemo("summary")
             performance.showDemo("summary")
+            protection.showDemo("results")
             included = Set(overviewParts.filter(hasWork))
             overviewPhase = .results
             switch screen {

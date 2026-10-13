@@ -82,6 +82,13 @@ struct OverviewTile: View {
             let count = performance.recommended.count
             if performance.phase == .done { return ("Ran", "the tasks that were due") }
             return count == 0 ? ("Nothing", "to run today") : ("\(count) \(count == 1 ? "task" : "tasks")", "to run")
+        case .protection:
+            let protection = model.protection
+            let count = protection.toLookAt.count
+            let inPlace = protection.inPlace.count
+            return count == 0
+                ? ("In place", "\(inPlace) of \(protection.findings.count) defences are on")
+                : ("\(count) \(count == 1 ? "setting" : "settings")", "worth a look in System Settings")
         case .apps:
             let apps = model.apps
             if !apps.updates.isEmpty {

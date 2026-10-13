@@ -50,6 +50,7 @@ extension SidebarItem {
         case .duplicates: .glyphDuplicates
         case .apps: .glyphApps
         case .performance: .glyphPerformance
+        case .protection: .glyphProtection
         }
     }
 }

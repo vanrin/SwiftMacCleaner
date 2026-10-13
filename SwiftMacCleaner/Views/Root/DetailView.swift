@@ -28,6 +28,8 @@ struct DetailView: View {
                 AppsView()
             case .performance:
                 PerformanceView()
+            case .protection:
+                ProtectionView()
             }
         }
         .navigationTitle(title ?? "SwiftMacCleaner")
@@ -55,6 +57,7 @@ struct DetailView: View {
         case .apps: model.apps.phase != .done
         case .performance: model.performance.phase != .done
         case .duplicates: model.duplicates.phase != .done
+        case .protection: true
         case .space: false
         }
     }
@@ -80,6 +83,8 @@ struct DetailView: View {
             return model.apps.phase == .idle ? nil : item.title
         case .performance:
             return model.performance.phase == .idle ? nil : item.title
+        case .protection:
+            return model.protection.phase == .idle ? nil : item.title
         }
     }
 }

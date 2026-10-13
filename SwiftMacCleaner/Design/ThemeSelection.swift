@@ -59,6 +59,7 @@ extension SidebarItem {
         case .duplicates: .magenta
         case .apps: .blue
         case .performance: .orange
+        case .protection: .green
         }
     }
 }
@@ -68,7 +69,7 @@ extension AppModel {
     var theme: Theme {
         let item = sidebarSelection
         return switch item {
-        case .space: item.theme
+        case .space, .protection: item.theme
         case .duplicates: duplicates.phase == .done ? .green : item.theme
         case .apps: apps.phase == .done ? .green : item.theme
         case .performance: performance.phase == .done ? .green : item.theme

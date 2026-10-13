@@ -250,7 +250,7 @@ final class CleanUpModel {
     func state(of item: SidebarItem) -> AreaState {
         switch item {
         case .group(let group): state(of: group)
-        case .overview, .space, .duplicates, .apps, .performance: .idle
+        case .overview, .space, .duplicates, .apps, .performance, .protection: .idle
         }
     }
 

@@ -426,7 +426,7 @@ struct AreaGroupTests {
         #expect(filed.count == Area.cleanUp.count)
         #expect(Area.largeFiles.group == .largeFiles)
         #expect(Area.leftovers.group == nil)
-        #expect(SidebarItem.parts == [.group(.system), .group(.developer), .group(.largeFiles), .performance, .apps])
+        #expect(SidebarItem.parts == [.group(.system), .group(.developer), .group(.largeFiles), .protection, .performance, .apps])
     }
 
     @Test func eachCleanUpKeepsItsOwnFindingsAndTheOverviewAddsThemUp() throws {

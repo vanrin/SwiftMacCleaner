@@ -58,6 +58,11 @@ enum Launcher {
             ScanReportPrinter.printPerformance()
             return
         }
+        // `SwiftMacCleaner --print-protection` prints how this Mac's own defences are set and exits. Nothing is changed.
+        if CommandLine.arguments.contains("--print-protection") {
+            ScanReportPrinter.printProtection()
+            return
+        }
         #endif
         // `SwiftMacCleaner --free-purgeable` is how the Free Up Purgeable Space task runs: the app starts
         // itself without a window, reserves the disk's free space for a moment, and reports what macOS gave back.
@@ -412,6 +417,30 @@ nonisolated enum ScanReportPrinter {
     }
 
     /// Prints the maintenance checks, the login items and the launch agents and daemons. Nothing is run.
+    static func printProtection() {
+        let finished = DispatchSemaphore(value: 0)
+        Task.detached {
+            defer {
+                fflush(stdout)
+                finished.signal()
+            }
+            let started = Date()
+            let facts = await ProtectionScanner.gather()
+            for finding in ProtectionScanner.findings(from: facts) {
+                let mark = switch finding.state {
+                case .inPlace: " "
+                case .needsLook: "!"
+                case .unknown: "?"
+                }
+                print(" \(mark) \(finding.check.title): \(finding.status)")
+                if let advice = finding.advice { print("      \(advice)") }
+                if finding.state != .inPlace, let settings = finding.settings { print("      \(settings.absoluteString)") }
+            }
+            print("\nDone in \(String(format: "%.1f", Date().timeIntervalSince(started))) s")
+        }
+        finished.wait()
+    }
+
     static func printPerformance() {
         let settings = AppSettings()
         let home = FileManager.default.homeDirectoryForCurrentUser

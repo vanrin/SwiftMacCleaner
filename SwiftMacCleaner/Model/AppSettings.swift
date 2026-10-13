@@ -47,6 +47,12 @@ final class AppSettings {
         didSet { defaults.set(try? JSONEncoder().encode(neverSuggest), forKey: "neverSuggest") }
     }
 
+    /// The protection checks the user said to leave as they are, by name. One that is off stops
+    /// counting among what needs a look, and is still listed.
+    var acceptedProtection: [String] {
+        didSet { defaults.set(acceptedProtection, forKey: "acceptedProtection") }
+    }
+
     /// Whether Xcode versions other than the selected one may be offered from /Applications.
     var offersOldXcodes: Bool {
         didSet { defaults.set(offersOldXcodes, forKey: "offersOldXcodes") }
@@ -104,6 +110,7 @@ final class AppSettings {
         largeFileMegabytes = Self.largeFileSizeChoices.contains(storedSize) ? storedSize : 100
         projectRoots = defaults.stringArray(forKey: "projectRoots") ?? Self.detectedRoots()
         neverSuggest = defaults.data(forKey: "neverSuggest").flatMap { try? JSONDecoder().decode([NeverSuggestEntry].self, from: $0) } ?? []
+        acceptedProtection = defaults.stringArray(forKey: "acceptedProtection") ?? []
         offersOldXcodes = defaults.object(forKey: "offersOldXcodes") as? Bool ?? true
         offersSnapshots = defaults.object(forKey: "offersSnapshots") as? Bool ?? true
         checksAppUpdates = defaults.object(forKey: "checksAppUpdates") as? Bool ?? true

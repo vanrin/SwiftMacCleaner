@@ -47,6 +47,16 @@ extension AppModel {
                 let count = performance.recommended.count
                 return count > 0 ? SidebarStatus(badge: "\(count) to run", hasFindings: true) : SidebarStatus(badge: "Fine")
             }
+        case .protection:
+            switch protection.phase {
+            case .idle:
+                return SidebarStatus()
+            case .scanning:
+                return SidebarStatus(badge: "Scanning")
+            case .results:
+                let count = protection.toLookAt.count
+                return count > 0 ? SidebarStatus(badge: "\(count) to check", hasFindings: true) : SidebarStatus(badge: "Fine")
+            }
         case .apps:
             switch apps.phase {
             case .idle:
