@@ -124,31 +124,6 @@ struct LeftoverScannerTests {
     }
 }
 
-struct LargeDownloadsTests {
-    @Test func offersBigOldFilesButNotInstallersOrFreshOnes() async throws {
-        let sandbox = try Sandbox()
-        defer { sandbox.remove() }
-        try sandbox.file("Downloads/dataset.zip", bytes: 101_000_000, age: 200)
-        try sandbox.file("Downloads/fresh.zip", bytes: 101_000_000, age: 3)
-        try sandbox.file("Downloads/Installer.dmg", bytes: 101_000_000, age: 200)
-        try sandbox.file("Downloads/small.zip", bytes: 1_000, age: 200)
-
-        let context = ScanContext(home: sandbox.root, largeFileDays: 90)
-        let result = await LargeFileScanner.scan(context)
-        #expect(result.findings.map(\.id) == ["largeFiles.downloads"])
-        let large = try #require(result.findings.first)
-        #expect(large.area == .largeFiles)
-        #expect(large.items.map(\.title) == ["dataset.zip"])
-        #expect(large.items.first?.detail.hasPrefix("Archive, last changed") == true)
-        #expect(large.method == .trash)
-        // The installer is Applications' to offer, whatever its age.
-        let installers = try #require(await InstallerScanner.scan(context).findings.first)
-        #expect(installers.id == AppsModel.installersFindingID)
-        #expect(installers.area == .installers)
-        #expect(installers.items.map(\.title) == ["Installer.dmg"])
-    }
-}
-
 struct ContainerCachesTests {
     @Test func offersCachesInsideAppContainersButNotApplesOwn() async throws {
         let sandbox = try Sandbox()

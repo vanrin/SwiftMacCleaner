@@ -35,7 +35,7 @@ extension AreaGroup {
         switch self {
         case .system: .glyphSystem
         case .developer: .glyphDeveloper
-        case .downloads: .glyphLargeFiles
+        case .largeFiles: .glyphLargeFiles
         }
     }
 }

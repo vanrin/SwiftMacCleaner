@@ -378,8 +378,8 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSAppleEventsUsageDescription = "SwiftMacCleaner asks System Events for your login items, and asks Finder to move an app to the Trash when macOS will not let it move the app itself.";
-				INFOPLIST_KEY_NSDesktopFolderUsageDescription = "SwiftMacCleaner looks for build folders in the project folders you chose, and for duplicate files when you ask it to.";
-				INFOPLIST_KEY_NSDocumentsFolderUsageDescription = "SwiftMacCleaner looks for build folders in the project folders you chose, and for duplicate files when you ask it to.";
+				INFOPLIST_KEY_NSDesktopFolderUsageDescription = "SwiftMacCleaner looks for large old files on your Desktop, for build folders in the project folders you chose, and for duplicate files when you ask it to.";
+				INFOPLIST_KEY_NSDocumentsFolderUsageDescription = "SwiftMacCleaner looks for large old files in your Documents folder, for build folders in the project folders you chose, and for duplicate files when you ask it to.";
 				INFOPLIST_KEY_NSDownloadsFolderUsageDescription = "SwiftMacCleaner looks for old installers and large old files in your Downloads folder, and for duplicate files when you ask it to.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -414,8 +414,8 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSAppleEventsUsageDescription = "SwiftMacCleaner asks System Events for your login items, and asks Finder to move an app to the Trash when macOS will not let it move the app itself.";
-				INFOPLIST_KEY_NSDesktopFolderUsageDescription = "SwiftMacCleaner looks for build folders in the project folders you chose, and for duplicate files when you ask it to.";
-				INFOPLIST_KEY_NSDocumentsFolderUsageDescription = "SwiftMacCleaner looks for build folders in the project folders you chose, and for duplicate files when you ask it to.";
+				INFOPLIST_KEY_NSDesktopFolderUsageDescription = "SwiftMacCleaner looks for large old files on your Desktop, for build folders in the project folders you chose, and for duplicate files when you ask it to.";
+				INFOPLIST_KEY_NSDocumentsFolderUsageDescription = "SwiftMacCleaner looks for large old files in your Documents folder, for build folders in the project folders you chose, and for duplicate files when you ask it to.";
 				INFOPLIST_KEY_NSDownloadsFolderUsageDescription = "SwiftMacCleaner looks for old installers and large old files in your Downloads folder, and for duplicate files when you ask it to.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (

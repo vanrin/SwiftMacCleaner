@@ -11,7 +11,7 @@ import UserNotifications
 enum SidebarItem: Hashable {
     /// The overview: one scan that runs every part below and shows what each found, with one Run for all of it.
     case overview
-    /// A clean-up with a scan of its own: System Clean Up, Developer Clean Up or Large old downloads.
+    /// A clean-up with a scan of its own: System Clean Up, Developer Clean Up or Large old files.
     case group(AreaGroup)
     /// Largest Folders, which the overview leaves alone: it measures rather than finds.
     case space
@@ -630,7 +630,7 @@ final class AppModel {
             // `--demo performance [intro|scanning|summary|manager|login|background|review|running|done]`
             sidebarSelection = .performance
             performance.showDemo(arguments.first ?? "summary")
-        case "system", "developer", "downloads":
+        case "system", "developer", "largeFiles":
             // `--demo <group> [intro|scanning|summary|quiet|manager|review|cleaning|done|scan]`
             guard let group = AreaGroup(rawValue: screen) else { return }
             sidebarSelection = .group(group)
@@ -641,7 +641,7 @@ final class AppModel {
             // Two parts are done, two are under way, and the clean-ups say so area by area.
             loadDemo(screen: "summary", into: cleanUp(.system))
             loadDemo(screen: "scanning", into: cleanUp(.developer))
-            loadDemo(screen: "queued", into: cleanUp(.downloads))
+            loadDemo(screen: "queued", into: cleanUp(.largeFiles))
             apps.showDemo("scanning")
             performance.showDemo("summary")
             overviewPhase = .scanning

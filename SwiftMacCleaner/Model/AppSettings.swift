@@ -19,15 +19,22 @@ nonisolated struct NeverSuggestEntry: Codable, Identifiable, Hashable, Sendable 
 final class AppSettings {
     static let staleChoices = [30, 60, 90, 180]
     static let largeFileChoices = [30, 90, 180, 365]
+    /// How big a file may have to be to count as large, in megabytes.
+    static let largeFileSizeChoices = [50, 100, 500, 1_000]
 
     /// How long a project must sit untouched before its build folders are offered.
     var staleDays: Int {
         didSet { defaults.set(staleDays, forKey: "staleDays") }
     }
 
-    /// How long a large file in Downloads must sit untouched before it is offered.
+    /// How long a large file in Downloads, Documents or Desktop must sit untouched before it is offered.
     var largeFileDays: Int {
         didSet { defaults.set(largeFileDays, forKey: "largeFileDays") }
+    }
+
+    /// How big, in megabytes, a file has to be to be offered as a large one.
+    var largeFileMegabytes: Int {
+        didSet { defaults.set(largeFileMegabytes, forKey: "largeFileMegabytes") }
     }
 
     /// Folders that hold the user's projects.
@@ -93,6 +100,8 @@ final class AppSettings {
         staleDays = Self.staleChoices.contains(storedDays) ? storedDays : 60
         let storedLarge = defaults.integer(forKey: "largeFileDays")
         largeFileDays = Self.largeFileChoices.contains(storedLarge) ? storedLarge : 90
+        let storedSize = defaults.integer(forKey: "largeFileMegabytes")
+        largeFileMegabytes = Self.largeFileSizeChoices.contains(storedSize) ? storedSize : 100
         projectRoots = defaults.stringArray(forKey: "projectRoots") ?? Self.detectedRoots()
         neverSuggest = defaults.data(forKey: "neverSuggest").flatMap { try? JSONDecoder().decode([NeverSuggestEntry].self, from: $0) } ?? []
         offersOldXcodes = defaults.object(forKey: "offersOldXcodes") as? Bool ?? true
@@ -139,6 +148,7 @@ final class AppSettings {
             home: home,
             staleDays: staleDays,
             largeFileDays: largeFileDays,
+            largeFileSize: Int64(largeFileMegabytes) * 1_000_000,
             projectRoots: projectRoots.map { URL(fileURLWithPath: $0, isDirectory: true) },
             excluded: neverSuggest.map(\.path)
         )

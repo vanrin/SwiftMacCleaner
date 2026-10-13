@@ -8,7 +8,7 @@ import Observation
 import SwiftUI
 
 /// One clean-up from start to finish: a scan over its group's areas, what it found, what is ticked, the
-/// confirmation, the clean and its receipt. System Clean Up, Developer Clean Up and Large old downloads
+/// confirmation, the clean and its receipt. System Clean Up, Developer Clean Up and Large old files
 /// are one each; the overview runs them all together and reads their results.
 @Observable
 final class CleanUpModel {
@@ -353,6 +353,22 @@ final class CleanUpModel {
             guard candidate.id == finding.id else { return candidate }
             var candidate = candidate
             candidate.items.removeAll { $0.id == item.id }
+            return candidate.items.isEmpty ? nil : candidate
+        }
+    }
+
+    /// Leaves everything in the item's folder alone from now on. What the folder holds comes off the
+    /// list, and the folder is listed under Protected instead, the way the next scan will list it.
+    func neverSuggest(folderOf item: FindingItem, in finding: Finding) {
+        guard let folder = item.paths.first?.deletingLastPathComponent().standardizedFileURL else { return }
+        settings.addNeverSuggest(path: folder.path, title: folder.lastPathComponent)
+        let prefix = folder.path + "/"
+        let isInside = { (item: FindingItem) in item.paths.contains { $0.standardizedFileURL.path.hasPrefix(prefix) } }
+        selection.subtract(findings.flatMap(\.items).filter(isInside).map(\.id))
+        protected.insert(LargeFileScanner.leftOut(folder, context: settings.scanContext(home: home)), at: 0)
+        findings = findings.compactMap { candidate in
+            var candidate = candidate
+            candidate.items.removeAll(where: isInside)
             return candidate.items.isEmpty ? nil : candidate
         }
     }

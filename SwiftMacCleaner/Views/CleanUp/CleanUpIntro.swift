@@ -22,7 +22,14 @@ struct CleanUpIntro: View {
         } details: {
             IntroHeading(title: group.title, detail: group.intro)
             // A few areas stand in a list; the developer areas, up to eight, share two columns.
-            if areas.count > 4 {
+            if group == .largeFiles {
+                // One area, whose name is the title already: what is listed is where it looks.
+                VStack(alignment: .leading, spacing: Design.Spacing.large) {
+                    ForEach(LargeFileScanner.folders, id: \.name) { folder in
+                        FeatureBullet(glyph: Image(systemName: folder.symbol), text: folder.name)
+                    }
+                }
+            } else if areas.count > 4 {
                 LazyVGrid(columns: [GridItem(.flexible(), alignment: .leading), GridItem(.flexible(), alignment: .leading)],
                           alignment: .leading, spacing: Design.Spacing.medium) {
                     ForEach(areas) { area in

@@ -36,13 +36,18 @@ private struct GeneralSettings: View {
                 Text("A project counts as stale when none of its files have changed for this long.")
             }
             Section {
-                Picker("Offer large Downloads after", selection: $settings.largeFileDays) {
+                Picker("Large files start at", selection: $settings.largeFileMegabytes) {
+                    ForEach(AppSettings.largeFileSizeChoices, id: \.self) { megabytes in
+                        Text(ByteFormat.string(Int64(megabytes) * 1_000_000)).tag(megabytes)
+                    }
+                }
+                Picker("Offer large files after", selection: $settings.largeFileDays) {
                     ForEach(AppSettings.largeFileChoices, id: \.self) { days in
                         Text(days == 365 ? "1 year untouched" : "\(days) days untouched").tag(days)
                     }
                 }
             } footer: {
-                Text("Files of 100 MB and up in Downloads are offered once they have sat untouched for this long.")
+                Text("Files this big in Downloads, Documents and Desktop are offered once they have sat untouched for this long: not changed, moved or opened. To leave a folder out, choose Never Suggest Files in it from a row's menu.")
             }
             Section {
                 LabeledContent("Recent builds") {

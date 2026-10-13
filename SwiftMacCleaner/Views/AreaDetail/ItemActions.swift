@@ -19,9 +19,17 @@ struct ItemActions: View {
             Divider()
         }
         Button("Never Suggest This", action: neverSuggest)
+        // A large file sits in a folder of the user's own, which may hold more they would rather not be asked about.
+        if finding.area == .largeFiles, let folder = item.paths.first?.deletingLastPathComponent() {
+            Button("Never Suggest Files in “\(folder.lastPathComponent)”", action: neverSuggestFolder)
+        }
     }
 
     private func neverSuggest() {
         cleanUp.neverSuggest(item, in: finding)
+    }
+
+    private func neverSuggestFolder() {
+        cleanUp.neverSuggest(folderOf: item, in: finding)
     }
 }

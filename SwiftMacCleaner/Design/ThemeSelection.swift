@@ -44,7 +44,7 @@ extension AreaGroup {
         switch self {
         case .system: .teal
         case .developer: .indigo
-        case .downloads: .amber
+        case .largeFiles: .amber
         }
     }
 }

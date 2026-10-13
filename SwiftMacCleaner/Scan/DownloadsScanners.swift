@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// The Downloads folder, which two scanners sort through: one for installers, one for large old files.
+/// The Downloads folder, where installers pile up.
 nonisolated enum DownloadsFolder {
     static let name = "Downloads"
 
@@ -56,53 +56,5 @@ nonisolated enum InstallerScanner {
             actionTarget: context.tilde(DownloadsFolder.url(context)),
             items: items
         )])
-    }
-}
-
-/// Big files that have sat in Downloads untouched for longer than the user's limit.
-nonisolated enum LargeFileScanner {
-    static let minimumSize: Int64 = 100_000_000
-
-    static func scan(_ context: ScanContext) async -> AreaScanResult {
-        guard let files = DownloadsFolder.files(context) else { return .unreadable(DownloadsFolder.name) }
-        var candidates: [PathCandidate] = []
-        // Installers are Applications' to offer, however old they are.
-        for file in files where !InstallerScanner.isInstaller(file) {
-            guard let values = try? file.resourceValues(forKeys: [.isRegularFileKey, .contentModificationDateKey]),
-                  values.isRegularFile == true,
-                  let modified = values.contentModificationDate, modified < context.largeFileCutoff else { continue }
-            candidates.append(PathCandidate(
-                title: file.lastPathComponent,
-                detail: "\(kind(of: file)), last changed \(context.relative(modified))",
-                url: file
-            ))
-        }
-        let items = await Sizing.items(prefix: "largeFiles.downloads", from: candidates, minimumSize: minimumSize)
-        guard !items.isEmpty else { return AreaScanResult() }
-        return AreaScanResult(findings: [Finding(
-            id: "largeFiles.downloads",
-            area: .largeFiles,
-            tier: .review,
-            title: "Large files in Downloads",
-            summary: "\(items.count) \(items.count == 1 ? "file" : "files") of \(ByteFormat.string(minimumSize)) or more untouched for \(context.largeFileDays)+ days",
-            explanation: "Big downloads you have not opened in a while. They go to the Trash, so they can be put back if one turns out to matter.",
-            method: .trash,
-            actionTarget: context.tilde(DownloadsFolder.url(context)),
-            items: items
-        )])
-    }
-
-    /// A plain word for what a file is, from its extension.
-    static func kind(of file: URL) -> String {
-        switch file.pathExtension.lowercased() {
-        case "zip", "tar", "gz", "tgz", "bz2", "xz", "7z", "rar": "Archive"
-        case "mov", "mp4", "m4v", "mkv", "avi", "webm": "Video"
-        case "mp3", "m4a", "wav", "aac", "flac": "Audio"
-        case "pdf": "PDF"
-        case "jpg", "jpeg", "png", "heic", "gif", "tiff", "psd", "raw": "Image"
-        case "app": "App"
-        case "": "File"
-        default: file.pathExtension.uppercased() + " file"
-        }
     }
 }

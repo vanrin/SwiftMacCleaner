@@ -26,7 +26,7 @@ struct NoticeToolbar: ToolbarContent {
             ToolbarItem {
                 NoticePill(
                     title: "Full Disk Access is off", symbol: "lock.fill",
-                    text: "Downloads, the Trash, Mail and app containers stay private without it, so those areas are skipped and show as unreadable in Largest Folders. Everything else is scanned either way. The app checks again each time it opens."
+                    text: "Downloads, Documents, Desktop, the Trash, Mail and app containers stay private without it, so those areas are skipped and show as unreadable in Largest Folders. Everything else is scanned either way. The app checks again each time it opens."
                 ) {
                     Button("Open Privacy Settings", action: model.openFullDiskAccessSettings)
                 }

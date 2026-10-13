@@ -214,12 +214,32 @@ nonisolated enum DemoData {
             Finding(
                 id: "largeFiles.downloads", area: .largeFiles, tier: .review, title: "Large files in Downloads",
                 summary: "3 files of 100 MB or more untouched for 90+ days",
-                explanation: "Big downloads you have not opened in a while. They go to the Trash, so they can be put back if one turns out to matter.",
+                explanation: "Big files in Downloads that have not been changed, moved or opened in a while. Projects are left out. They go to the Trash, so they can be put back if one turns out to matter.",
                 method: .trash, actionTarget: "~/Downloads",
                 items: [
-                    item("largeFiles.downloads", "conference-recording.mov", "Video, last changed 7 months ago", 1.3),
-                    item("largeFiles.downloads", "survey-export.zip", "Archive, last changed 5 months ago", 0.9),
-                    item("largeFiles.downloads", "design-handoff.zip", "Archive, last changed 1 year ago", 0.6),
+                    item("largeFiles.downloads", "conference-recording.mov", "Video, last opened 7 months ago", 1.3),
+                    item("largeFiles.downloads", "survey-export.zip", "Archive, added 5 months ago", 0.9),
+                    item("largeFiles.downloads", "design-handoff.zip", "Archive, added 1 year ago", 0.6),
+                ]
+            ),
+            Finding(
+                id: "largeFiles.documents", area: .largeFiles, tier: .review, title: "Large files in Documents",
+                summary: "3 files of 100 MB or more untouched for 90+ days",
+                explanation: "Big files in Documents that have not been changed, moved or opened in a while. Projects are left out. They go to the Trash, so they can be put back if one turns out to matter.",
+                method: .trash, actionTarget: "~/Documents",
+                items: [
+                    item("largeFiles.documents", "Windows 11.pvm", "Virtual machine in Parallels, last opened 1 year ago", 18.4),
+                    item("largeFiles.documents", "offsite-2024.mov", "Video in Recordings/2024, last opened 1 year ago", 2.2),
+                    item("largeFiles.documents", "ledger-backup.sql", "SQL file in Exports, last changed 8 months ago", 0.7),
+                ]
+            ),
+            Finding(
+                id: "largeFiles.desktop", area: .largeFiles, tier: .review, title: "Large files on the Desktop",
+                summary: "1 file of 100 MB or more untouched for 90+ days",
+                explanation: "Big files on the Desktop that have not been changed, moved or opened in a while. Projects are left out. They go to the Trash, so they can be put back if one turns out to matter.",
+                method: .trash, actionTarget: "~/Desktop",
+                items: [
+                    item("largeFiles.desktop", "screen-recording.mov", "Video, last changed 4 months ago", 0.4),
                 ]
             ),
             Finding(

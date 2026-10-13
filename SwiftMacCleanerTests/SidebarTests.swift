@@ -57,8 +57,8 @@ struct SidebarTests {
         #expect(found.hasFindings)
 
         // A scan that found nothing says so, and leaves the rail's glyph without a dot.
-        model.cleanUp(.downloads).show(findings: [])
-        #expect(model.sidebarStatus(of: .group(.downloads)) == SidebarStatus(badge: "Clean"))
+        model.cleanUp(.largeFiles).show(findings: [])
+        #expect(model.sidebarStatus(of: .group(.largeFiles)) == SidebarStatus(badge: "Clean"))
         // The clean-up nobody has looked at stays silent.
         #expect(model.sidebarStatus(of: .group(.developer)) == SidebarStatus())
     }

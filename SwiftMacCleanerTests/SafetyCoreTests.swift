@@ -424,9 +424,9 @@ struct AreaGroupTests {
         let filed = AreaGroup.allCases.flatMap(\.areas)
         #expect(Set(filed) == Set(Area.cleanUp))
         #expect(filed.count == Area.cleanUp.count)
-        #expect(Area.largeFiles.group == .downloads)
+        #expect(Area.largeFiles.group == .largeFiles)
         #expect(Area.leftovers.group == nil)
-        #expect(SidebarItem.parts == [.group(.system), .group(.developer), .group(.downloads), .performance, .apps])
+        #expect(SidebarItem.parts == [.group(.system), .group(.developer), .group(.largeFiles), .performance, .apps])
     }
 
     @Test func eachCleanUpKeepsItsOwnFindingsAndTheOverviewAddsThemUp() throws {
@@ -441,7 +441,7 @@ struct AreaGroupTests {
             finding(id: "logs", area: .cachesLogs, items: [item("c/1", 50)]),
             finding(id: "bin", area: .trash, tier: .review, items: [item("t/1", 20)]),
         ])
-        model.cleanUp(.downloads).show(findings: [
+        model.cleanUp(.largeFiles).show(findings: [
             finding(id: "zip", area: .largeFiles, tier: .review, method: .trash, items: [item("l/1", 5)]),
         ])
         #expect(model.cleanUp(.developer).foundSize == 40)
@@ -453,9 +453,9 @@ struct AreaGroupTests {
         #expect(model.largestAreas(2).map(\.area) == [.cachesLogs, .xcode])
         #expect(model.areas(in: .developer) == AreaGroup.developer.areas)
         #expect(model.areas(in: .system) == [.cachesLogs, .trash, .snapshots])
-        #expect(model.areas(in: .downloads) == [.largeFiles])
+        #expect(model.areas(in: .largeFiles) == [.largeFiles])
         // Not ticked anywhere, so nothing for Run to do there; the others have.
-        #expect(!model.hasWork(.group(.downloads)))
+        #expect(!model.hasWork(.group(.largeFiles)))
         #expect(model.hasWork(.group(.developer)))
         #expect(model.hasWork(.group(.system)))
         #expect(!model.hasWork(.apps))
@@ -468,8 +468,8 @@ struct AreaGroupTests {
         model.select(.group(.developer))
         #expect(model.sidebarSelection == .group(.developer))
         #expect(model.theme == AreaGroup.developer.theme)
-        model.select(.group(.downloads))
-        #expect(model.theme == AreaGroup.downloads.theme)
+        model.select(.group(.largeFiles))
+        #expect(model.theme == AreaGroup.largeFiles.theme)
         model.select(.overview)
         #expect(model.theme == SidebarItem.overview.theme)
         #expect(model.overviewPhase == .home)
@@ -620,10 +620,10 @@ struct OverviewRunTests {
         model.cleanUp(.system).show(findings: [
             finding(id: "logs", area: .cachesLogs, items: [FindingItem(id: "l/app", title: "", detail: "", size: 10, paths: [logs])]),
         ])
-        model.cleanUp(.downloads).show(findings: [
+        model.cleanUp(.largeFiles).show(findings: [
             finding(id: "zip", area: .largeFiles, tier: .review, method: .trash, items: [FindingItem(id: "z/1", title: "", detail: "", size: 10, paths: [zip])]),
         ])
-        model.cleanUp(.downloads).binding(for: FindingItem(id: "z/1", title: "", detail: "", size: 10)).wrappedValue = true
+        model.cleanUp(.largeFiles).binding(for: FindingItem(id: "z/1", title: "", detail: "", size: 10)).wrappedValue = true
         model.reviewSafe()
         // Safe only: the ticked download is left alone, and so is the part that is unticked on the overview.
         #expect(model.included == [.group(.developer), .group(.system)])

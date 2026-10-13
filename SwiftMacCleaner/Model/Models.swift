@@ -27,7 +27,7 @@ nonisolated enum Area: String, CaseIterable, Identifiable, Sendable {
         case .cachesLogs: "Caches and logs"
         case .trash: "Trash"
         case .snapshots: "Snapshots and backups"
-        case .largeFiles: "Large old downloads"
+        case .largeFiles: "Large old files"
         case .leftovers: "App leftovers"
         case .installers: "Installers"
         }
@@ -46,7 +46,7 @@ nonisolated enum Area: String, CaseIterable, Identifiable, Sendable {
         case .cachesLogs: "~/Library/Caches, app containers, temp folders, logs and crash reports"
         case .trash: "Items in the Trash that are waiting to be emptied"
         case .snapshots: "Time Machine local snapshots, iPhone backups"
-        case .largeFiles: "Big files in Downloads that have sat untouched for months"
+        case .largeFiles: "Big files in Downloads, Documents and Desktop that have sat untouched for months"
         case .leftovers: "Support files of apps that are no longer installed"
         case .installers: "Disk images and installer packages in Downloads"
         }
@@ -58,7 +58,7 @@ nonisolated enum Area: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .xcode, .projects, .android, .containers, .packageCaches, .toolchains, .ides, .models: .developer
         case .cachesLogs, .trash, .snapshots: .system
-        case .largeFiles: .downloads
+        case .largeFiles: .largeFiles
         case .leftovers, .installers: nil
         }
     }
@@ -97,7 +97,7 @@ nonisolated enum Area: String, CaseIterable, Identifiable, Sendable {
 /// A clean-up: areas that share one sidebar entry, a scan of their own, a summary with a tile for each
 /// area, and a manager. The overview runs every one of them together.
 nonisolated enum AreaGroup: String, CaseIterable, Identifiable, Sendable {
-    case system, developer, downloads
+    case system, developer, largeFiles
 
     var id: String { rawValue }
 
@@ -105,16 +105,16 @@ nonisolated enum AreaGroup: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .system: "System Clean Up"
         case .developer: "Developer Clean Up"
-        case .downloads: "Large old downloads"
+        case .largeFiles: "Large old files"
         }
     }
 
-    /// What the clean-up looks at, for a sentence: "Scanning the system areas", "2.1 GB found in Downloads".
+    /// What the clean-up looks at, for a sentence: "Scanning the system areas", "2.1 GB found in Downloads, Documents and Desktop".
     var scope: String {
         switch self {
         case .system: "the system areas"
         case .developer: "the developer areas"
-        case .downloads: "Downloads"
+        case .largeFiles: "Downloads, Documents and Desktop"
         }
     }
 
@@ -123,7 +123,7 @@ nonisolated enum AreaGroup: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .system: "Clear out what macOS and your apps leave behind as you use your Mac, and get the space back."
         case .developer: "Build output, caches, old toolchains, images and models that developer tools pile up. Source files are never touched."
-        case .downloads: "Big files sitting in Downloads that you have not opened for months. They go to the Trash, so they can be put back."
+        case .largeFiles: "Big files sitting in Downloads, Documents and Desktop that you have not opened, changed or moved for months. They go to the Trash, so they can be put back."
         }
     }
 
@@ -132,7 +132,7 @@ nonisolated enum AreaGroup: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .system: "Scanning only measures. Nothing is removed until you confirm: caches are deleted right away, and everything else goes to the Trash first, where it can be put back."
         case .developer: "Scanning only measures. Nothing is removed until you confirm: build output and caches are deleted right away, and everything that would need setting up again goes to the Trash first."
-        case .downloads: "Scanning only measures. Nothing is removed until you confirm, and everything goes to the Trash first, where it can be put back."
+        case .largeFiles: "Scanning only measures. Nothing is removed until you confirm, and everything goes to the Trash first, where it can be put back."
         }
     }
 
@@ -313,8 +313,10 @@ nonisolated struct ScanContext: Sendable {
     var now = Date()
     var staleDays = 60
     var recentBuildDays = 7
-    /// How old a large file in Downloads must be before it is offered.
+    /// How long a large file must have sat untouched before it is offered.
     var largeFileDays = 90
+    /// How big a file has to be to count as large, in bytes.
+    var largeFileSize = LargeFileScanner.minimumSize
     var projectRoots: [URL] = []
     /// Paths the user never wants to see again, as the Never Suggest list stores them.
     var excluded: [String] = []
