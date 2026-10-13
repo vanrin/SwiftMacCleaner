@@ -10,15 +10,15 @@
       <stop offset="1" stop-color="#A3ABBF"/>
     </linearGradient>
     <linearGradient id="display" gradientUnits="userSpaceOnUse" x1="188" y1="304" x2="836" y2="718">
-      <stop offset="0" stop-color="#22346E"/>
-      <stop offset="1" stop-color="#080D1F"/>
+      <stop offset="0" stop-color="#2E3342"/>
+      <stop offset="1" stop-color="#0B0D12"/>
     </linearGradient>
   </defs>
   <path d="M202,288 H822 A30,30 0 0 1 852,318 V724 A10,10 0 0 1 842,734 H182 A10,10 0 0 1 172,724 V318 A30,30 0 0 1 202,288 Z" fill="url(#lid)"/>
   <path d="M202,294 H822 A24,24 0 0 1 846,318 V722 A6,6 0 0 1 840,728 H184 A6,6 0 0 1 178,722 V318 A24,24 0 0 1 202,294 Z" fill="#05070D"/>
   <rect x="188" y="304" width="648" height="414" rx="16" fill="url(#display)"/>
   <circle cx="512" cy="321" r="7" fill="#030509"/>
-  <circle cx="512" cy="321" r="2.5" fill="#1C2A55"/>
+  <circle cx="512" cy="321" r="2.5" fill="#2A3042"/>
   <path d="M118,730 H906 A6,6 0 0 1 912,736 V738 A24,24 0 0 1 888,762 H136 A24,24 0 0 1 112,738 V736 A6,6 0 0 1 118,730 Z" fill="url(#base)"/>
   <path d="M442,730 H582 V733 A12,12 0 0 1 570,745 H454 A12,12 0 0 1 442,733 Z" fill="#A3ABBF"/>
 </svg>

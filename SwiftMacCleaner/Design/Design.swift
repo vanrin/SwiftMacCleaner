@@ -270,10 +270,10 @@ enum Design {
         /// The line round the lid and the base, which keeps the pale metal apart from the pale ground.
         static let edge = Color(hue: 0.625, saturation: 0.400, brightness: 0.392).opacity(0.3)
         static let bezel = Color(hue: 0.625, saturation: 0.615, brightness: 0.051)
-        static let screenLight = Color(hue: 0.627, saturation: 0.691, brightness: 0.431)
-        static let screenDeep = Color(hue: 0.630, saturation: 0.742, brightness: 0.122)
+        static let screenLight = Color(hue: 0.625, saturation: 0.300, brightness: 0.260)
+        static let screenDeep = Color(hue: 0.622, saturation: 0.400, brightness: 0.070)
         /// The trail the swift leaves across the display.
-        static let bloom = Color(hue: 0.072, saturation: 0.624, brightness: 1)
+        static let bloom = Color(hue: 0.615, saturation: 0.116, brightness: 0.878)
         /// What is written on the display, which stays dark in the light window, and the empty part of a bar there.
         static let screenText = Color.white
         static let screenTrack = Color.white.opacity(0.2)
