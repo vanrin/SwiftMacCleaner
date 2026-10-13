@@ -10,6 +10,7 @@ import SwiftUI
 /// it finds is changed in System Settings, by the user.
 struct ProtectionView: View {
     @Environment(AppModel.self) private var model
+    @State private var isStartingOver = false
 
     var body: some View {
         let protection = model.protection
@@ -27,12 +28,12 @@ struct ProtectionView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             protection.refresh()
         }
+        .confirmsStartingOver($isStartingOver, message: "What this check found is forgotten. Nothing on your Mac is changed.", perform: protection.reset)
         .toolbar {
             if protection.phase == .results {
                 ToolbarItem {
-                    Button("Rescan", systemImage: "arrow.clockwise", action: protection.startScan)
-                        .labelStyle(.titleBar)
-                        .help("Read the settings again, after changing one")
+                    StartOverButton(isAsking: $isStartingOver)
+                        .help("Forget this check and go back to the start of Protection")
                 }
             }
         }

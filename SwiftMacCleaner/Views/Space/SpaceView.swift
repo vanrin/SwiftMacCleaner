@@ -9,6 +9,7 @@ import SwiftUI
 /// It only reads. Removing things stays with the clean-up scans, which know what each thing is.
 struct SpaceView: View {
     @Environment(AppModel.self) private var model
+    @State private var isStartingOver = false
 
     var body: some View {
         let space = model.space
@@ -24,11 +25,11 @@ struct SpaceView: View {
                 }
             }
         }
+        .confirmsStartingOver($isStartingOver, message: "What was measured is forgotten, and you choose again what to measure. Nothing on your Mac is removed or changed.", perform: space.reset)
         .toolbar {
             if space.phase == .done {
                 ToolbarItem {
-                    Button("Start Over", systemImage: "arrow.counterclockwise", action: space.reset)
-                        .labelStyle(.titleBar)
+                    StartOverButton(isAsking: $isStartingOver)
                         .help("Choose what to measure again")
                 }
             }

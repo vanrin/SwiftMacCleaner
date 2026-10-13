@@ -479,6 +479,15 @@ final class AppModel {
         overviewPhase = overviewParts.contains(where: hasResults) ? .results : .home
     }
 
+    /// Leaves what the overview's scan showed and goes back to its opening screen. Each part keeps
+    /// what it found, until it is scanned again or started over itself.
+    func startOver() {
+        guard overviewPhase == .results || overviewPhase == .done else { return }
+        showingOverviewReview = false
+        overviewOutcome = nil
+        overviewPhase = .home
+    }
+
     /// The menu bar's one-click path: put the ticks back to the Smart selection from the last scans
     /// and confirm, or scan first. Results from a part's own scan count: the overview needs no scan of
     /// its own for this.

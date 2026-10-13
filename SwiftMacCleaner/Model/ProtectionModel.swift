@@ -75,6 +75,13 @@ final class ProtectionModel {
         didScan()
     }
 
+    /// Forgets the check and goes back to the opening screen.
+    func reset() {
+        task?.cancel()
+        findings = []
+        phase = .idle
+    }
+
     // MARK: What was found
 
     /// Whether the user said to leave this one as it is. It only counts while the check is not in place.

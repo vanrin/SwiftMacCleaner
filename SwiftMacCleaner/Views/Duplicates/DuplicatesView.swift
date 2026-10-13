@@ -10,6 +10,7 @@ import UniformTypeIdentifiers
 /// scan of its own, which the overview leaves alone: reading files to compare them takes a while.
 struct DuplicatesView: View {
     @Environment(AppModel.self) private var model
+    @State private var isStartingOver = false
 
     var body: some View {
         @Bindable var duplicates = model.duplicates
@@ -31,11 +32,11 @@ struct DuplicatesView: View {
             DuplicatesReviewSheet()
         }
         .fileImporter(isPresented: $duplicates.showingFolderPicker, allowedContentTypes: [.folder], onCompletion: choose)
+        .confirmsStartingOver($isStartingOver, message: "The duplicates this scan found, and what you ticked among them, are forgotten. Nothing on your Mac is removed or changed.", perform: duplicates.reset)
         .toolbar {
             if duplicates.phase == .results || duplicates.phase == .done {
                 ToolbarItem {
-                    Button("Start Over", systemImage: "arrow.counterclockwise", action: duplicates.reset)
-                        .labelStyle(.titleBar)
+                    StartOverButton(isAsking: $isStartingOver)
                         .help("Choose where to look again")
                 }
             }

@@ -9,8 +9,8 @@ import SwiftUI
 /// found with a manager for the details, the confirmation, the clean and its receipt. It reads its
 /// clean-up from the environment, where the detail view puts it, so the same screens serve every group.
 struct CleanUpView: View {
-    @Environment(AppModel.self) private var model
     @Environment(CleanUpModel.self) private var cleanUp
+    @State private var isStartingOver = false
 
     var body: some View {
         @Bindable var cleanUp = cleanUp
@@ -42,6 +42,11 @@ struct CleanUpView: View {
                 clean: cleanUp.clean, copyScript: cleanUp.copyShellScript
             )
         }
+        .confirmsStartingOver(
+            $isStartingOver,
+            message: "What this scan found in \(cleanUp.group.title), and what you ticked there, is forgotten. Nothing on your Mac is removed or changed.",
+            perform: cleanUp.reset
+        )
         .toolbar {
             if cleanUp.phase == .results, cleanUp.openArea != nil {
                 ToolbarItem(placement: .navigation) {
@@ -52,15 +57,10 @@ struct CleanUpView: View {
             }
             if cleanUp.phase == .results || cleanUp.phase == .done {
                 ToolbarItem {
-                    Button("Rescan", systemImage: "arrow.clockwise", action: rescan)
-                        .labelStyle(.titleBar)
-                        .help("Look at \(cleanUp.group.scope) again")
+                    StartOverButton(isAsking: $isStartingOver)
+                        .help("Forget what this scan found and go back to the start of \(cleanUp.group.title)")
                 }
             }
         }
-    }
-
-    private func rescan() {
-        model.scan(cleanUp.group)
     }
 }

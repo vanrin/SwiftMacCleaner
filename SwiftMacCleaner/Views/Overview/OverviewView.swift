@@ -9,6 +9,7 @@ import SwiftUI
 /// found side by side, and one run through the ticked ones with its receipt.
 struct OverviewView: View {
     @Environment(AppModel.self) private var model
+    @State private var isStartingOver = false
 
     var body: some View {
         @Bindable var model = model
@@ -38,12 +39,16 @@ struct OverviewView: View {
                 clean: { model.run() }, copyScript: model.copyRunScript
             )
         }
+        .confirmsStartingOver(
+            $isStartingOver,
+            message: "The overview goes back to its start. Each part keeps what it found, and nothing on your Mac is removed or changed.",
+            perform: model.startOver
+        )
         .toolbar {
             if model.overviewPhase == .results || model.overviewPhase == .done {
                 ToolbarItem {
-                    Button("Rescan", systemImage: "arrow.clockwise", action: model.startScan)
-                        .labelStyle(.titleBar)
-                        .help("Run every part's scan again")
+                    StartOverButton(isAsking: $isStartingOver)
+                        .help("Go back to the start of the overview. Each part keeps what it found.")
                 }
             }
         }

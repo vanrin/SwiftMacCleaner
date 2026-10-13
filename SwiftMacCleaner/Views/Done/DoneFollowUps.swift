@@ -28,7 +28,7 @@ struct DoneFollowUps: View {
                 Notice(
                     symbol: "clock.arrow.circlepath",
                     title: "Snapshots are gone, but macOS returns their space gradually",
-                    text: "The space held by local snapshots comes back over the next minutes as APFS reclaims it. The number above will catch up on the next rescan."
+                    text: "The space held by local snapshots comes back over the next minutes as APFS reclaims it. The number above will catch up on the next scan."
                 )
             }
             if outcome.reclaimed < estimate / 2, estimate > 500_000_000 {

@@ -9,6 +9,7 @@ import SwiftUI
 /// and daemons that run on their own. It has a scan of its own, apart from the clean-up.
 struct PerformanceView: View {
     @Environment(AppModel.self) private var model
+    @State private var isStartingOver = false
 
     var body: some View {
         @Bindable var performance = model.performance
@@ -31,6 +32,7 @@ struct PerformanceView: View {
         .sheet(isPresented: $performance.showingReview) {
             PerformanceReviewSheet()
         }
+        .confirmsStartingOver($isStartingOver, message: "What this scan found in Performance, and what you ticked there, is forgotten. Nothing on your Mac is removed or changed.", perform: performance.reset)
         .toolbar {
             if performance.phase == .managing {
                 ToolbarItem(placement: .navigation) {
@@ -41,9 +43,8 @@ struct PerformanceView: View {
             }
             if performance.phase == .summary || performance.phase == .managing || performance.phase == .done {
                 ToolbarItem {
-                    Button("Rescan", systemImage: "arrow.clockwise", action: performance.startScan)
-                        .labelStyle(.titleBar)
-                        .help("Look at the tasks, login items and background items again")
+                    StartOverButton(isAsking: $isStartingOver)
+                        .help("Forget what this scan found and go back to the start of Performance")
                 }
             }
         }

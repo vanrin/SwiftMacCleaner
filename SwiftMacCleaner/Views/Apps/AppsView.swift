@@ -9,6 +9,7 @@ import SwiftUI
 /// clear out the installers and files they left behind. It has a scan of its own, apart from the clean-up.
 struct AppsView: View {
     @Environment(AppModel.self) private var model
+    @State private var isStartingOver = false
 
     var body: some View {
         @Bindable var apps = model.apps
@@ -31,6 +32,7 @@ struct AppsView: View {
         .sheet(isPresented: $apps.showingReview) {
             AppsReviewSheet()
         }
+        .confirmsStartingOver($isStartingOver, message: "What this scan found in Applications, and what you ticked there, is forgotten. Nothing on your Mac is removed or changed.", perform: apps.reset)
         .toolbar {
             if apps.phase == .managing {
                 ToolbarItem(placement: .navigation) {
@@ -41,10 +43,9 @@ struct AppsView: View {
             }
             if apps.phase == .summary || apps.phase == .managing || apps.phase == .done {
                 ToolbarItem {
-                    Button("Rescan", systemImage: "arrow.clockwise", action: apps.startScan)
-                        .labelStyle(.titleBar)
+                    StartOverButton(isAsking: $isStartingOver)
                         .disabled(!apps.installing.isEmpty)
-                        .help(apps.installing.isEmpty ? "Look at the installed apps again" : "Homebrew is installing an update")
+                        .help(apps.installing.isEmpty ? "Forget what this scan found and go back to the start of Applications" : "Homebrew is installing an update")
                 }
             }
         }
