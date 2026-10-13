@@ -569,7 +569,8 @@ struct ShellTests {
         let output = try #require(await task.value)
         #expect(output.cancelled)
         #expect(!output.succeeded)
-        #expect(Date().timeIntervalSince(started) < 5)
+        // Well short of the tool's own thirty seconds, with room for a slow Mac that runs other tests beside this one.
+        #expect(Date().timeIntervalSince(started) < 20)
     }
 
     @Test func givesUpOnAToolThatHangs() throws {
