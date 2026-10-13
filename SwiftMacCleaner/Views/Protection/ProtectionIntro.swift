@@ -12,11 +12,7 @@ struct ProtectionIntro: View {
     var body: some View {
         let protection = model.protection
         IntroLayout {
-            HeroOrb {
-                Image(systemName: "checkmark.shield.fill")
-                    .font(Design.Typeface.orbFigure)
-                    .accessibilityHidden(true)
-            }
+            ModuleHero(.protection)
         } details: {
             IntroHeading(
                 title: "Protection",

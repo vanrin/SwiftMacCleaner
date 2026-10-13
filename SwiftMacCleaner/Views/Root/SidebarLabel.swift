@@ -8,10 +8,12 @@ import SwiftUI
 /// What a sidebar entry looks like: its icon, its name, and what the scan found there. On the rail
 /// only the icon shows, with a dot on it when the scan found something.
 struct SidebarLabel: View {
-    /// The palette of the screen in view, for the dot. The entry's own palette colours its glyph.
+    /// The palette of the screen in view, for the dot. The entry's own palette colours its icon.
     @Environment(\.theme) private var screen
+    /// The entry is being pressed, which its button's style passes down.
+    @Environment(\.isHeldDown) private var isHeldDown
     let title: String
-    let glyph: ImageResource
+    let symbol: ImageResource
     let theme: Theme
     var badge: String?
     var isSelected = false
@@ -26,7 +28,8 @@ struct SidebarLabel: View {
     var body: some View {
         let inset = Design.Spacing.small + Design.Spacing.tight / 2
         HStack(spacing: Design.Spacing.medium) {
-            SidebarGlyph(glyph: glyph, theme: theme, isSelected: isSelected, isBusy: isBusy)
+            SidebarGlyph(symbol: symbol, theme: theme, isSelected: isSelected, isHovered: isHovered,
+                         isPressed: isHeldDown, isBusy: isBusy)
                 .overlay(alignment: .topTrailing) {
                     Circle()
                         .fill(screen.accent)
@@ -61,10 +64,13 @@ struct SidebarLabel: View {
         .frame(maxWidth: isCollapsed ? Design.Size.sidebarGlyph + inset * 2 : .infinity, alignment: .leading)
         .clipped()
         .background {
+            // Under the pointer the entry stands on the chip the chosen entry has, fainter.
+            let isRaised = isSelected || isHovered
             RoundedRectangle(cornerRadius: Design.Radius.control)
-                .fill(isSelected ? Design.Surface.selected : isHovered ? Design.Surface.hover : .clear)
-                .strokeBorder(isSelected ? Design.Surface.panelBorder : .clear)
-                .shadow(color: isSelected ? Design.Surface.shadow : .clear, radius: 6, y: 3)
+                .fill(isSelected ? Design.Surface.selected : isHovered ? Design.Surface.hoverChip : .clear)
+                .strokeBorder(isRaised ? Design.Surface.panelBorder : .clear)
+                .shadow(color: isRaised ? Design.Surface.shadow : .clear, radius: 6, y: 3)
+                .animation(Design.Motion.iconTint, value: isRaised)
         }
         .contentShape(.rect(cornerRadius: Design.Radius.control))
     }

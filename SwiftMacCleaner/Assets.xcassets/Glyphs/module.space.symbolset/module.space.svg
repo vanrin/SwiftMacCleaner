@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="3300" height="2200">
+ <!--Written by Tools/make-glyphs.swift. Change the drawing there, not here.-->
+ <style>.monochrome-0 {fill:#000000}
+
+.multicolor-0:tintColor {fill:#007AFF}
+
+.hierarchical-0:secondary {fill:#8E8E8E}
+</style>
+ <g id="Notes">
+  <rect height="2200" id="artboard" style="fill:white;opacity:1" width="3300" x="0" y="0"/>
+  <text id="template-version" style="stroke:none;fill:black;font-family:sans-serif;font-size:13;text-anchor:end;" transform="matrix(1 0 0 1 3036 1933)">Template v.4.0</text>
+  <text style="stroke:none;fill:black;font-family:sans-serif;font-size:13;text-anchor:end;" transform="matrix(1 0 0 1 3036 1951)">Requires Xcode 14 or greater</text>
+  <text id="descriptive-name" style="stroke:none;fill:black;font-family:sans-serif;font-size:13;text-anchor:end;" transform="matrix(1 0 0 1 3036 1969)">module.space</text>
+  <text style="stroke:none;fill:black;font-family:sans-serif;font-size:13;text-anchor:end;" transform="matrix(1 0 0 1 3036 1987)">Typeset at 100 points</text>
+ </g>
+ <g id="Guides">
+  <line id="Baseline-S" style="fill:none;stroke:#27AAE1;opacity:1;stroke-width:0.5;" x1="263" x2="3036" y1="696.0" y2="696.0"/>
+  <line id="Capline-S" style="fill:none;stroke:#27AAE1;opacity:1;stroke-width:0.5;" x1="263" x2="3036" y1="625.5409999999999" y2="625.5409999999999"/>
+  <line id="Baseline-M" style="fill:none;stroke:#27AAE1;opacity:1;stroke-width:0.5;" x1="263" x2="3036" y1="1126.0" y2="1126.0"/>
+  <line id="Capline-M" style="fill:none;stroke:#27AAE1;opacity:1;stroke-width:0.5;" x1="263" x2="3036" y1="1055.541" y2="1055.541"/>
+  <line id="Baseline-L" style="fill:none;stroke:#27AAE1;opacity:1;stroke-width:0.5;" x1="263" x2="3036" y1="1556.0" y2="1556.0"/>
+  <line id="Capline-L" style="fill:none;stroke:#27AAE1;opacity:1;stroke-width:0.5;" x1="263" x2="3036" y1="1485.541" y2="1485.541"/>
+  <line id="left-margin-Ultralight-S" style="fill:none;stroke:#00AEEF;stroke-width:0.5;opacity:1.0;" x1="510.0" x2="510.0" y1="600.785" y2="720.121"/>
+  <line id="right-margin-Ultralight-S" style="fill:none;stroke:#00AEEF;stroke-width:0.5;opacity:1.0;" x1="610.0" x2="610.0" y1="600.785" y2="720.121"/>
+  <line id="left-margin-Regular-S" style="fill:none;stroke:#00AEEF;stroke-width:0.5;opacity:1.0;" x1="1400.0" x2="1400.0" y1="600.785" y2="720.121"/>
+  <line id="right-margin-Regular-S" style="fill:none;stroke:#00AEEF;stroke-width:0.5;opacity:1.0;" x1="1500.0" x2="1500.0" y1="600.785" y2="720.121"/>
+  <line id="left-margin-Black-S" style="fill:none;stroke:#00AEEF;stroke-width:0.5;opacity:1.0;" x1="2860.0" x2="2860.0" y1="600.785" y2="720.121"/>
+  <line id="right-margin-Black-S" style="fill:none;stroke:#00AEEF;stroke-width:0.5;opacity:1.0;" x1="2960.0" x2="2960.0" y1="600.785" y2="720.121"/>
+ </g>
+ <g id="Symbols">
+  <g id="Black-S" transform="matrix(1 0 0 1 2860.0 696.0)">
+   <path class="monochrome-0 multicolor-0:tintColor hierarchical-0:secondary" d="M51.875 -60.230L51.875 -10.230C51.875 -4.592 47.305 -0.021 41.667 -0.021L25.000 -0.021C19.362 -0.021 14.792 -4.592 14.792 -10.230L14.792 -60.230C14.792 -65.867 19.362 -70.438 25.000 -70.438L41.667 -70.438C47.305 -70.438 51.875 -65.867 51.875 -60.230ZM85.208 -15.438L85.208 -9.188C85.208 -4.125 81.104 -0.021 76.042 -0.021L67.708 -0.021C62.646 -0.021 58.542 -4.125 58.542 -9.188L58.542 -15.438C58.542 -20.500 62.646 -24.604 67.708 -24.604L76.042 -24.604C81.104 -24.604 85.208 -20.500 85.208 -15.438ZM85.208 -61.271L85.208 -38.355C85.208 -33.292 81.104 -29.188 76.042 -29.188L67.708 -29.188C62.646 -29.188 58.542 -33.292 58.542 -38.355L58.542 -61.271C58.542 -66.334 62.646 -70.438 67.708 -70.438L76.042 -70.438C81.104 -70.438 85.208 -66.334 85.208 -61.271Z"/>
+  </g>
+  <g id="Regular-S" transform="matrix(1 0 0 1 1400.0 696.0)">
+   <path class="monochrome-0 multicolor-0:tintColor hierarchical-0:secondary" d="M51.875 -60.230L51.875 -10.230C51.875 -4.592 47.305 -0.021 41.667 -0.021L25.000 -0.021C19.362 -0.021 14.792 -4.592 14.792 -10.230L14.792 -60.230C14.792 -65.867 19.362 -70.438 25.000 -70.438L41.667 -70.438C47.305 -70.438 51.875 -65.867 51.875 -60.230ZM85.208 -15.438L85.208 -9.188C85.208 -4.125 81.104 -0.021 76.042 -0.021L67.708 -0.021C62.646 -0.021 58.542 -4.125 58.542 -9.188L58.542 -15.438C58.542 -20.500 62.646 -24.604 67.708 -24.604L76.042 -24.604C81.104 -24.604 85.208 -20.500 85.208 -15.438ZM85.208 -61.271L85.208 -38.355C85.208 -33.292 81.104 -29.188 76.042 -29.188L67.708 -29.188C62.646 -29.188 58.542 -33.292 58.542 -38.355L58.542 -61.271C58.542 -66.334 62.646 -70.438 67.708 -70.438L76.042 -70.438C81.104 -70.438 85.208 -66.334 85.208 -61.271Z"/>
+  </g>
+  <g id="Ultralight-S" transform="matrix(1 0 0 1 510.0 696.0)">
+   <path class="monochrome-0 multicolor-0:tintColor hierarchical-0:secondary" d="M51.875 -60.230L51.875 -10.230C51.875 -4.592 47.305 -0.021 41.667 -0.021L25.000 -0.021C19.362 -0.021 14.792 -4.592 14.792 -10.230L14.792 -60.230C14.792 -65.867 19.362 -70.438 25.000 -70.438L41.667 -70.438C47.305 -70.438 51.875 -65.867 51.875 -60.230ZM85.208 -15.438L85.208 -9.188C85.208 -4.125 81.104 -0.021 76.042 -0.021L67.708 -0.021C62.646 -0.021 58.542 -4.125 58.542 -9.188L58.542 -15.438C58.542 -20.500 62.646 -24.604 67.708 -24.604L76.042 -24.604C81.104 -24.604 85.208 -20.500 85.208 -15.438ZM85.208 -61.271L85.208 -38.355C85.208 -33.292 81.104 -29.188 76.042 -29.188L67.708 -29.188C62.646 -29.188 58.542 -33.292 58.542 -38.355L58.542 -61.271C58.542 -66.334 62.646 -70.438 67.708 -70.438L76.042 -70.438C81.104 -70.438 85.208 -66.334 85.208 -61.271Z"/>
+  </g>
+ </g>
+</svg>

@@ -14,11 +14,7 @@ struct CleanUpIntro: View {
         let group = cleanUp.group
         let areas = model.areas(in: group)
         IntroLayout {
-            HeroOrb {
-                Image(group.glyph)
-                    .font(Design.Typeface.orbFigure)
-                    .accessibilityHidden(true)
-            }
+            ModuleHero(.group(group))
         } details: {
             IntroHeading(title: group.title, detail: group.intro)
             // A few areas stand in a list; the developer areas, up to eight, share two columns.

@@ -19,6 +19,25 @@ nonisolated struct Theme: Hashable, Sendable {
     /// The accent held back, for what was found but is not ticked.
     var faintAccent: Color { accent.opacity(0.45) }
 
+    /// The face of this part's icon: one smooth run from the light at the top to a slightly deeper
+    /// tone at the bottom, with the lens itself a little past the middle.
+    var face: Gradient {
+        Gradient(stops: [
+            .init(color: lens.mix(with: .white, by: 0.34, in: .device), location: 0),
+            .init(color: lens, location: 0.55),
+            .init(color: lens.mix(with: lensShade, by: 0.4, in: .device), location: 1),
+        ])
+    }
+
+    /// The face of the object that stands behind, in an icon made of two.
+    var backFace: Gradient {
+        let tone = lens.mix(with: lensShade, by: 0.45, in: .device)
+        return Gradient(colors: [tone.mix(with: .white, by: 0.22, in: .device), tone])
+    }
+
+    /// The soft copy under the face. It is shown at low strength, which leaves it paler than the face.
+    var faceCopy: Color { lens.mix(with: lensShade, by: 0.35, in: .device) }
+
     /// Mid enough to show on the light ground and on the Mac's dark display alike.
     private static let steel = Color(hue: 0.622, saturation: 0.436, brightness: 0.639)
 

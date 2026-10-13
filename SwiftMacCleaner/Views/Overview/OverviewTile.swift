@@ -9,7 +9,9 @@ import SwiftUI
 /// matters, and a way into the part itself.
 struct OverviewTile: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let part: SidebarItem
+    @State private var isHovered = false
 
     var body: some View {
         let figure = figure
@@ -30,7 +32,10 @@ struct OverviewTile: View {
                             .lineLimit(1)
                     }
                     Spacer(minLength: 0)
-                    FeatureIcon(Image(part.glyph), theme: part.theme, size: Design.Size.tileIcon)
+                    // The part's icon lifts a little while the pointer is over its tile.
+                    ModuleIcon(symbol: part.icon, theme: part.theme, size: Design.Size.tileIcon,
+                               depth: isHovered && !reduceMotion ? Design.Depth.hover : Design.Depth.tile)
+                        .animation(Design.Motion.iconLift, value: isHovered)
                 }
                 Spacer(minLength: 0)
                 // The figure and its line sit at the bottom left, the way in at the bottom right.
@@ -66,7 +71,12 @@ struct OverviewTile: View {
             .padding(Design.Spacing.large)
             .frame(height: Design.Size.tileHeight, alignment: .topLeading)
         }
+        .onHover(perform: hover)
         .accessibilityElement(children: .contain)
+    }
+
+    private func hover(_ isInside: Bool) {
+        isHovered = isInside
     }
 
     /// What a tile says under its name: the figure that matters, the line under it, and for a clean-up

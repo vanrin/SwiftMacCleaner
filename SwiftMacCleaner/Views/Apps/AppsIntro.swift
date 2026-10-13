@@ -8,21 +8,11 @@ import SwiftUI
 /// Applications before a scan: what it covers, and the button that starts it.
 struct AppsIntro: View {
     @Environment(AppModel.self) private var model
-    /// How many apps sit in the Applications folders, which listing them is enough to know.
-    @State private var count: Int?
 
     var body: some View {
         let apps = model.apps
         IntroLayout {
-            HeroOrb {
-                if let count {
-                    OrbFigure(value: count.formatted(), caption: count == 1 ? "app" : "apps")
-                } else {
-                    Image(systemName: "square.grid.2x2.fill")
-                        .font(Design.Typeface.orbFigure)
-                        .accessibilityHidden(true)
-                }
-            }
+            ModuleHero(.apps)
         } details: {
             IntroHeading(
                 title: "Applications",
@@ -43,9 +33,6 @@ struct AppsIntro: View {
                 .keyboardShortcut(.defaultAction)
                 .accessibilityLabel("Scan applications")
                 .help("Look at the installed apps, their updates and leftovers")
-        }
-        .task {
-            count = AppScanner.bundles(in: AppScanner.applicationRoots(home: apps.home)).count
         }
     }
 }

@@ -13,9 +13,9 @@ struct SidebarSettingsLink: View {
 
     var body: some View {
         SettingsLink {
-            SidebarLabel(title: "Settings", glyph: .glyphSettings, theme: .graphite, isHovered: isHovered, isCollapsed: isCollapsed)
+            SidebarLabel(title: "Settings", symbol: .moduleSettings, theme: .graphite, isHovered: isHovered, isCollapsed: isCollapsed)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.sidebarEntry)
         .focused($isFocused)
         .onHover(perform: hover)
         .sidebarHint("Settings", isShown: isCollapsed && (isHovered || isFocused))

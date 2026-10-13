@@ -8,14 +8,14 @@
 .multicolor-0:tintColor {fill:#007AFF}
 .multicolor-1:tintColor {fill:#007AFF}
 
-.hierarchical-0:secondary {fill:#8E8E8E}
-.hierarchical-1:primary {fill:#212121}
+.hierarchical-0:tertiary {fill:#D8D8D8}
+.hierarchical-1:secondary {fill:#8E8E8E}
 </style>
  <g id="Notes">
   <rect height="2200" id="artboard" style="fill:white;opacity:1" width="3300" x="0" y="0"/>
   <text id="template-version" style="stroke:none;fill:black;font-family:sans-serif;font-size:13;text-anchor:end;" transform="matrix(1 0 0 1 3036 1933)">Template v.4.0</text>
   <text style="stroke:none;fill:black;font-family:sans-serif;font-size:13;text-anchor:end;" transform="matrix(1 0 0 1 3036 1951)">Requires Xcode 14 or greater</text>
-  <text id="descriptive-name" style="stroke:none;fill:black;font-family:sans-serif;font-size:13;text-anchor:end;" transform="matrix(1 0 0 1 3036 1969)">glyph.space</text>
+  <text id="descriptive-name" style="stroke:none;fill:black;font-family:sans-serif;font-size:13;text-anchor:end;" transform="matrix(1 0 0 1 3036 1969)">module.duplicates</text>
   <text style="stroke:none;fill:black;font-family:sans-serif;font-size:13;text-anchor:end;" transform="matrix(1 0 0 1 3036 1987)">Typeset at 100 points</text>
  </g>
  <g id="Guides">
@@ -34,16 +34,16 @@
  </g>
  <g id="Symbols">
   <g id="Black-S" transform="matrix(1 0 0 1 2860.0 696.0)">
-   <path class="monochrome-0 multicolor-0:tintColor hierarchical-0:secondary" d="M85.208 -15.438L85.208 -9.188C85.208 -4.125 81.104 -0.021 76.042 -0.021L67.708 -0.021C62.646 -0.021 58.542 -4.125 58.542 -9.188L58.542 -15.438C58.542 -20.500 62.646 -24.604 67.708 -24.604L76.042 -24.604C81.104 -24.604 85.208 -20.500 85.208 -15.438ZM85.208 -61.271L85.208 -38.355C85.208 -33.292 81.104 -29.188 76.042 -29.188L67.708 -29.188C62.646 -29.188 58.542 -33.292 58.542 -38.355L58.542 -61.271C58.542 -66.334 62.646 -70.438 67.708 -70.438L76.042 -70.438C81.104 -70.438 85.208 -66.334 85.208 -61.271Z"/>
-   <path class="monochrome-1 multicolor-1:tintColor hierarchical-1:primary" d="M51.875 -60.230L51.875 -10.230C51.875 -4.592 47.305 -0.021 41.667 -0.021L25.000 -0.021C19.362 -0.021 14.792 -4.592 14.792 -10.230L14.792 -60.230C14.792 -65.867 19.362 -70.438 25.000 -70.438L41.667 -70.438C47.305 -70.438 51.875 -65.867 51.875 -60.230Z"/>
+   <path class="monochrome-0 multicolor-0:tintColor hierarchical-0:tertiary" d="M61.250 -61.271L61.250 -27.938C61.250 -22.300 56.680 -17.730 51.042 -17.730L25.000 -17.730C19.362 -17.730 14.792 -22.300 14.792 -27.938L14.792 -61.271C14.792 -66.909 19.362 -71.480 25.000 -71.480L51.042 -71.480C56.680 -71.480 61.250 -66.909 61.250 -61.271Z"/>
+   <path class="monochrome-1 multicolor-1:tintColor hierarchical-1:secondary" d="M85.208 -42.521L85.208 -9.188C85.208 -3.550 80.638 1.020 75.000 1.020L48.958 1.020C43.320 1.020 38.750 -3.550 38.750 -9.188L38.750 -42.521C38.750 -48.159 43.320 -52.730 48.958 -52.730L75.000 -52.730C80.638 -52.730 85.208 -48.159 85.208 -42.521Z"/>
   </g>
   <g id="Regular-S" transform="matrix(1 0 0 1 1400.0 696.0)">
-   <path class="monochrome-0 multicolor-0:tintColor hierarchical-0:secondary" d="M85.208 -15.438L85.208 -9.188C85.208 -4.125 81.104 -0.021 76.042 -0.021L67.708 -0.021C62.646 -0.021 58.542 -4.125 58.542 -9.188L58.542 -15.438C58.542 -20.500 62.646 -24.604 67.708 -24.604L76.042 -24.604C81.104 -24.604 85.208 -20.500 85.208 -15.438ZM85.208 -61.271L85.208 -38.355C85.208 -33.292 81.104 -29.188 76.042 -29.188L67.708 -29.188C62.646 -29.188 58.542 -33.292 58.542 -38.355L58.542 -61.271C58.542 -66.334 62.646 -70.438 67.708 -70.438L76.042 -70.438C81.104 -70.438 85.208 -66.334 85.208 -61.271Z"/>
-   <path class="monochrome-1 multicolor-1:tintColor hierarchical-1:primary" d="M51.875 -60.230L51.875 -10.230C51.875 -4.592 47.305 -0.021 41.667 -0.021L25.000 -0.021C19.362 -0.021 14.792 -4.592 14.792 -10.230L14.792 -60.230C14.792 -65.867 19.362 -70.438 25.000 -70.438L41.667 -70.438C47.305 -70.438 51.875 -65.867 51.875 -60.230Z"/>
+   <path class="monochrome-0 multicolor-0:tintColor hierarchical-0:tertiary" d="M61.250 -61.271L61.250 -27.938C61.250 -22.300 56.680 -17.730 51.042 -17.730L25.000 -17.730C19.362 -17.730 14.792 -22.300 14.792 -27.938L14.792 -61.271C14.792 -66.909 19.362 -71.480 25.000 -71.480L51.042 -71.480C56.680 -71.480 61.250 -66.909 61.250 -61.271Z"/>
+   <path class="monochrome-1 multicolor-1:tintColor hierarchical-1:secondary" d="M85.208 -42.521L85.208 -9.188C85.208 -3.550 80.638 1.020 75.000 1.020L48.958 1.020C43.320 1.020 38.750 -3.550 38.750 -9.188L38.750 -42.521C38.750 -48.159 43.320 -52.730 48.958 -52.730L75.000 -52.730C80.638 -52.730 85.208 -48.159 85.208 -42.521Z"/>
   </g>
   <g id="Ultralight-S" transform="matrix(1 0 0 1 510.0 696.0)">
-   <path class="monochrome-0 multicolor-0:tintColor hierarchical-0:secondary" d="M85.208 -15.438L85.208 -9.188C85.208 -4.125 81.104 -0.021 76.042 -0.021L67.708 -0.021C62.646 -0.021 58.542 -4.125 58.542 -9.188L58.542 -15.438C58.542 -20.500 62.646 -24.604 67.708 -24.604L76.042 -24.604C81.104 -24.604 85.208 -20.500 85.208 -15.438ZM85.208 -61.271L85.208 -38.355C85.208 -33.292 81.104 -29.188 76.042 -29.188L67.708 -29.188C62.646 -29.188 58.542 -33.292 58.542 -38.355L58.542 -61.271C58.542 -66.334 62.646 -70.438 67.708 -70.438L76.042 -70.438C81.104 -70.438 85.208 -66.334 85.208 -61.271Z"/>
-   <path class="monochrome-1 multicolor-1:tintColor hierarchical-1:primary" d="M51.875 -60.230L51.875 -10.230C51.875 -4.592 47.305 -0.021 41.667 -0.021L25.000 -0.021C19.362 -0.021 14.792 -4.592 14.792 -10.230L14.792 -60.230C14.792 -65.867 19.362 -70.438 25.000 -70.438L41.667 -70.438C47.305 -70.438 51.875 -65.867 51.875 -60.230Z"/>
+   <path class="monochrome-0 multicolor-0:tintColor hierarchical-0:tertiary" d="M61.250 -61.271L61.250 -27.938C61.250 -22.300 56.680 -17.730 51.042 -17.730L25.000 -17.730C19.362 -17.730 14.792 -22.300 14.792 -27.938L14.792 -61.271C14.792 -66.909 19.362 -71.480 25.000 -71.480L51.042 -71.480C56.680 -71.480 61.250 -66.909 61.250 -61.271Z"/>
+   <path class="monochrome-1 multicolor-1:tintColor hierarchical-1:secondary" d="M85.208 -42.521L85.208 -9.188C85.208 -3.550 80.638 1.020 75.000 1.020L48.958 1.020C43.320 1.020 38.750 -3.550 38.750 -9.188L38.750 -42.521C38.750 -48.159 43.320 -52.730 48.958 -52.730L75.000 -52.730C80.638 -52.730 85.208 -48.159 85.208 -42.521Z"/>
   </g>
  </g>
 </svg>

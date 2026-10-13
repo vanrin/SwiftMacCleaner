@@ -5,7 +5,8 @@
 
 import SwiftUI
 
-// The glyphs are custom symbols in the asset catalog, under Glyphs. `Tools/make-glyphs.swift` draws them.
+// The glyphs are custom symbols in the asset catalog, under Glyphs. `Tools/make-glyphs.swift` draws them,
+// and with them the icon of each part of the app, which `ModuleIcon` shows as an object.
 
 extension Area {
     /// The glyph that pictures this area.
@@ -30,27 +31,27 @@ extension Area {
 }
 
 extension AreaGroup {
-    /// The glyph that pictures this group.
-    var glyph: ImageResource {
+    /// The icon of this clean-up.
+    var icon: ImageResource {
         switch self {
-        case .system: .glyphSystem
-        case .developer: .glyphDeveloper
-        case .largeFiles: .glyphLargeFiles
+        case .system: .moduleSystem
+        case .developer: .moduleDeveloper
+        case .largeFiles: .moduleLargeFiles
         }
     }
 }
 
 extension SidebarItem {
-    /// The glyph of this entry in the sidebar and on its tile.
-    var glyph: ImageResource {
+    /// The icon of this entry in the sidebar, on its tile and on its own screens.
+    var icon: ImageResource {
         switch self {
-        case .overview: .glyphOverview
-        case .group(let group): group.glyph
-        case .space: .glyphSpace
-        case .duplicates: .glyphDuplicates
-        case .apps: .glyphApps
-        case .performance: .glyphPerformance
-        case .protection: .glyphProtection
+        case .overview: .moduleOverview
+        case .group(let group): group.icon
+        case .space: .moduleSpace
+        case .duplicates: .moduleDuplicates
+        case .apps: .moduleApps
+        case .performance: .modulePerformance
+        case .protection: .moduleProtection
         }
     }
 }

@@ -12,12 +12,7 @@ struct DuplicatesIntro: View {
     var body: some View {
         @Bindable var duplicates = model.duplicates
         IntroLayout {
-            HeroOrb {
-                Image(.glyphDuplicates)
-                    .font(Design.Typeface.orbFigure.scaled(by: 1.6))
-                    .symbolRenderingMode(.hierarchical)
-                    .accessibilityHidden(true)
-            }
+            ModuleHero(.duplicates)
         } details: {
             IntroHeading(
                 title: "Duplicates",

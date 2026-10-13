@@ -49,6 +49,10 @@ enum Design {
         static let sidebarRail: Double = 84
         static let sidebarRow: Double = 40
         static let sidebarGlyph: Double = 24
+        /// A part's icon on the glass disc of its opening screen.
+        static let heroIcon: Double = 140
+        /// How far from the middle of the disc the pointer has its full pull on that icon.
+        static let heroReach: Double = 280
         /// The dot on a rail glyph whose part has something to do.
         static let sidebarDot: Double = 7
         /// The icon in front of a line of an intro's list.
@@ -147,6 +151,24 @@ enum Design {
         static let code = Font.system(.callout, design: .monospaced)
     }
 
+    /// How far the soft copy of a part's icon sits below its face, in units of the icon's 24-unit grid,
+    /// so the depth grows with the icon. Kept shallow: the copy is a hint of thickness, not a side.
+    enum Depth {
+        static let rest: Double = 1.2
+        static let hover: Double = 1.7
+        static let pressed: Double = 0.4
+        static let selected: Double = 1.4
+        /// On a tile of the overview, where the icon wears its own colours at all times.
+        static let tile: Double = 1.4
+        /// On the glass disc of an opening screen: standing, and with the pointer near.
+        static let hero: Double = 1.6
+        static let heroNear: Double = 1.9
+        /// How strong the copy is. It comes out paler than the face, never darker.
+        static let copyOpacity: Double = 0.42
+        /// How far the icon on an opening screen turns towards the pointer, in degrees.
+        static let turn: Double = 11
+    }
+
     /// The interface is written in English, so it is set with English line heights. Without this, a Mac
     /// whose language list includes a tall script such as Khmer or Thai spaces every line far apart.
     static let language = Locale.Language(identifier: "en")
@@ -160,6 +182,14 @@ enum Design {
         static let sidebarHint = Animation.easeOut(duration: 0.12)
         /// One breath of the orb's glow while work is under way.
         static let pulse = Animation.easeInOut(duration: 1.5)
+        /// A part's icon lifting off its copy under the pointer, and settling back.
+        static let iconLift = Animation.spring(duration: 0.26, bounce: 0.35)
+        /// The icon taking its own colours, and giving them up.
+        static let iconTint = Animation.easeOut(duration: 0.18)
+        /// The icon on an opening screen turning to follow the pointer.
+        static let iconTurn = Animation.easeOut(duration: 0.16)
+        /// Half of one breath of an icon whose part is being scanned.
+        static let iconBusy = Animation.easeInOut(duration: 0.6)
     }
 
     /// Text, and the solid dark tone of what stands out on the ground: the chosen tick, a main pill.
@@ -201,6 +231,8 @@ enum Design {
         /// The chosen row of a list: a chip of the same glass as a panel.
         static let selected = Color.white.opacity(0.8)
         static let hover = Ink.primary.opacity(0.04)
+        /// A sidebar entry under the pointer: the chip of the chosen entry, fainter.
+        static let hoverChip = Color.white.opacity(0.6)
         /// The part of a ring or bar that is in use and staying.
         static let keeping = Ink.primary.opacity(0.24)
         /// The second part of a ring or bar whose first part is in the accent.

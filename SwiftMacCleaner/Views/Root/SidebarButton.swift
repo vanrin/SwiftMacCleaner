@@ -18,11 +18,11 @@ struct SidebarButton: View {
         let isSelected = model.sidebarSelection == item
         let isBusy = item == .overview ? model.overviewPhase == .scanning : model.isScanning(item)
         Button(action: select) {
-            SidebarLabel(title: item.title, glyph: item.glyph, theme: item.theme, badge: status.badge,
+            SidebarLabel(title: item.title, symbol: item.icon, theme: item.theme, badge: status.badge,
                          isSelected: isSelected, isHovered: isHovered, isBusy: isBusy,
                          isCollapsed: isCollapsed, hasFindings: status.hasFindings)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.sidebarEntry)
         .focused($isFocused)
         .onHover(perform: hover)
         .sidebarHint(item.title, detail: status.hint, isShown: isCollapsed && (isHovered || isFocused))

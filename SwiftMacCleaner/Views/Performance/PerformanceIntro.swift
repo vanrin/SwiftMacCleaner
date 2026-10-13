@@ -12,11 +12,7 @@ struct PerformanceIntro: View {
     var body: some View {
         let performance = model.performance
         IntroLayout {
-            HeroOrb {
-                Image(systemName: "bolt.fill")
-                    .font(Design.Typeface.orbFigure)
-                    .accessibilityHidden(true)
-            }
+            ModuleHero(.performance)
         } details: {
             IntroHeading(
                 title: "Performance",

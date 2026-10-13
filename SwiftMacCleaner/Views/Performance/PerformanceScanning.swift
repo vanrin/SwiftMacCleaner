@@ -12,11 +12,7 @@ struct PerformanceScanning: View {
     var body: some View {
         let performance = model.performance
         ActivityScreen(title: "Examining your Mac", detail: performance.progress) {
-            HeroOrb(isBusy: true) {
-                Image(systemName: "bolt.fill")
-                    .font(Design.Typeface.orbFigure)
-                    .accessibilityHidden(true)
-            }
+            ModuleHero(.performance, isBusy: true)
         }
         .orbAction {
             Button("Stop", action: performance.stop)

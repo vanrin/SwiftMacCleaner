@@ -11,11 +11,7 @@ struct ProtectionScanning: View {
 
     var body: some View {
         ActivityScreen(title: "Checking your Mac's protection", detail: "Reading how its defences are set") {
-            HeroOrb(isBusy: true) {
-                Image(systemName: "checkmark.shield.fill")
-                    .font(Design.Typeface.orbFigure)
-                    .accessibilityHidden(true)
-            }
+            ModuleHero(.protection, isBusy: true)
         }
         .orbAction {
             Button("Stop", action: model.protection.stop)
