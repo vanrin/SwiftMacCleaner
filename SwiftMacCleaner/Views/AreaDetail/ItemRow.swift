@@ -34,6 +34,10 @@ struct ItemRow: View {
             }
             .toggleStyle(.check)
             Spacer(minLength: Design.Spacing.medium)
+            if let keeper = cleanUp.keepers(of: item).first {
+                Badge(text: "\(keeper.name) is open", style: .waits)
+                    .help("Its cache waits until \(keeper.name) has quit. The confirmation offers to ask it to")
+            }
             SizeLabel(bytes: item.size, unknown: item.sizeUnknown)
             if item.paths.first != nil {
                 Button("Show \(item.title) in Finder", systemImage: "magnifyingglass", action: showInFinder)

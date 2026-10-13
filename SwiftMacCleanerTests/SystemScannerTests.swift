@@ -61,7 +61,7 @@ struct SnapshotScannerTests {
 
         let result = await SnapshotScanner.scan(ScanContext(home: sandbox.root, excluded: [SnapshotScanner.snapshotsItemID]))
         let finding = try #require(result.findings.first { $0.id == "snapshots.backups" })
-        #expect(finding.tier == .careful)
+        #expect(finding.aftermath == .irreplaceable)
         #expect(finding.method == .trash)
         #expect(finding.items.map(\.title) == ["Vanrin's iPhone"])
         #expect(finding.items.first?.detail.hasPrefix("Backed up") == true)

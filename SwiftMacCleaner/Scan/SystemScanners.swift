@@ -5,8 +5,8 @@
 
 import Foundation
 
-/// App caches and logs in the user's Library, app container caches, the per-user temp folders, and
-/// what is this user's in the temp folder every program shares.
+/// App caches and logs in the user's Library, app container caches, the per-user temp folders, what
+/// is this user's in the temp folder every program shares, and the old logs that belong to root.
 nonisolated enum CachesLogsScanner {
     /// System caches that are not named com.apple.* but are still best left to macOS.
     static let systemCacheFolders: Set<String> = [
@@ -33,6 +33,7 @@ nonisolated enum CachesLogsScanner {
         if let finding = await temporaryFolders(context, openFiles: openFiles, settled: shared.settled) { findings.append(finding) }
         if let finding = SharedTempScanner.finding(for: shared.idle) { findings.append(finding) }
         if let finding = await logs(context) { findings.append(finding) }
+        if let roots = context.systemLogRoots, let finding = await SystemLogs.finding(context, roots: roots) { findings.append(finding) }
         return AreaScanResult(findings: findings, protected: shared.protected)
     }
 
@@ -44,19 +45,21 @@ nonisolated enum CachesLogsScanner {
                 let name = url.lastPathComponent
                 return !name.hasPrefix("com.apple.") && !name.hasPrefix(".") && !claimed.contains(name) && !Files.isSymlink(url)
             }
-            .map { PathCandidate(title: displayName($0.lastPathComponent), detail: $0.lastPathComponent, url: $0) }
+            .map { PathCandidate(title: displayName($0.lastPathComponent), detail: $0.lastPathComponent, url: $0,
+                                 keptBy: $0.lastPathComponent) }
         let items = await Sizing.items(prefix: "caches.apps", from: candidates, minimumSize: 10_000_000)
         guard !items.isEmpty else { return nil }
         return Finding(
             id: "caches.apps",
             area: .cachesLogs,
-            tier: .safe,
+            aftermath: .rebuilds,
             title: "App caches",
             summary: "\(context.tilde(cacheRoot)) for \(items.count) \(items.count == 1 ? "app" : "apps")",
             explanation: "Temporary files apps keep to start faster. Each app recreates its cache as it runs. macOS's own caches are left alone.",
             method: .delete,
             actionTarget: context.tilde(cacheRoot),
-            items: items
+            items: items,
+            keepsChanging: true
         )
     }
 
@@ -69,7 +72,8 @@ nonisolated enum CachesLogsScanner {
                 PathCandidate(
                     title: displayName(container.lastPathComponent),
                     detail: "Container cache for \(container.lastPathComponent)",
-                    url: container.appending(path: "Data/Library/Caches")
+                    url: container.appending(path: "Data/Library/Caches"),
+                    keptBy: container.lastPathComponent
                 )
             }
         let items = await Sizing.items(prefix: "caches.containers", from: candidates, minimumSize: 10_000_000)
@@ -77,13 +81,14 @@ nonisolated enum CachesLogsScanner {
         return Finding(
             id: "caches.containers",
             area: .cachesLogs,
-            tier: .safe,
+            aftermath: .rebuilds,
             title: "App container caches",
             summary: "\(items.count) sandboxed \(items.count == 1 ? "app" : "apps") in \(context.tilde(containers))",
             explanation: "Caches kept by sandboxed apps inside their own containers. Each app recreates its cache as it runs. Settings and documents in the containers are left alone.",
             method: .delete,
             actionTarget: "~/Library/Containers/*/Data/Library/Caches",
-            items: items
+            items: items,
+            keepsChanging: true
         )
     }
 
@@ -110,7 +115,7 @@ nonisolated enum CachesLogsScanner {
         return Finding(
             id: "caches.temp",
             area: .cachesLogs,
-            tier: .safe,
+            aftermath: .rebuilds,
             title: "Your temp and cache folders",
             summary: "\(items.count) \(items.count == 1 ? "item" : "items") untouched for \(Int(tempIdleDays))+ days under /var/folders and \(shared)",
             explanation: "Files apps left in the per-user temp and cache folders macOS gives you under /var/folders, and what is yours in \(shared), the temp folder every program shares. Only items untouched for a week, with nothing in them open in a running program, are offered; macOS clears the rest on reboot.",
@@ -124,19 +129,21 @@ nonisolated enum CachesLogsScanner {
         let logRoot = context.home.appending(path: "Library/Logs")
         let candidates = Files.children(of: logRoot)
             .filter { !$0.lastPathComponent.hasPrefix(".") && $0.lastPathComponent != CleanLog.folderName && !Files.isSymlink($0) }
-            .map { PathCandidate(title: displayName($0.lastPathComponent), detail: $0.lastPathComponent, url: $0) }
+            .map { PathCandidate(title: displayName($0.lastPathComponent), detail: $0.lastPathComponent, url: $0,
+                                 keptBy: $0.lastPathComponent) }
         let items = await Sizing.items(prefix: "caches.logs", from: candidates, minimumSize: 5_000_000)
         guard !items.isEmpty else { return nil }
         return Finding(
             id: "caches.logs",
             area: .cachesLogs,
-            tier: .safe,
+            aftermath: .rebuilds,
             title: "Logs and crash reports",
             summary: "\(context.tilde(logRoot)), \(items.count) \(items.count == 1 ? "item" : "items")",
             explanation: "Log files and crash reports apps have written. Apps start new logs as they run.",
             method: .delete,
             actionTarget: context.tilde(logRoot),
-            items: items
+            items: items,
+            keepsChanging: true
         )
     }
 
@@ -156,24 +163,43 @@ nonisolated enum CachesLogsScanner {
 nonisolated enum TrashScanner {
     static let minimumSize: Int64 = 5_000_000
 
-    static func scan(_ context: ScanContext) async -> AreaScanResult {
+    /// Whether the item belongs to the user the app runs as. Something root or another user owns can
+    /// sit in the Trash too, such as an app an installer put in /Applications, and only Finder can
+    /// empty that, with a password.
+    static func isOwn(_ url: URL) -> Bool {
+        var status = stat()
+        return lstat(url.path, &status) == 0 && status.st_uid == getuid()
+    }
+
+    static func scan(_ context: ScanContext, isOwn: @Sendable (URL) -> Bool = isOwn) async -> AreaScanResult {
         let trash = context.home.appending(path: ".Trash")
-        let entries: [URL]
+        let everything: [URL]
         do {
-            entries = try FileManager.default.contentsOfDirectory(at: trash, includingPropertiesForKeys: nil, options: [])
+            everything = try FileManager.default.contentsOfDirectory(at: trash, includingPropertiesForKeys: nil, options: [])
                 .filter { $0.lastPathComponent != ".DS_Store" }
         } catch where Files.isPermissionError(error) {
             return .unreadable("the Trash")
         } catch {
             return AreaScanResult()
         }
-        let sizes = await Sizing.sizes(of: entries)
-        let size = sizes.values.reduce(0, +)
-        guard size >= minimumSize else { return AreaScanResult() }
+        let (entries, foreign) = everything.partitioned(by: isOwn)
+        let sizes = await Sizing.sizes(of: everything)
+        // What the app could not delete is shown and left out, so the figure is one it can keep.
+        var protected: [ProtectedItem] = []
+        if !foreign.isEmpty {
+            let names = ListFormat.string(foreign.map(\.lastPathComponent).sorted())
+            protected.append(ProtectedItem(
+                id: "trash.foreign", area: .trash, title: "\(names) in the Trash",
+                why: "\(foreign.count == 1 ? "It belongs" : "They belong") to root or another user. Empty the Trash in Finder, which asks for your password",
+                rule: .notYours, size: foreign.reduce(0) { $0 + (sizes[$1] ?? 0) }
+            ))
+        }
+        let size = entries.reduce(Int64(0)) { $0 + (sizes[$1] ?? 0) }
+        guard size >= minimumSize else { return AreaScanResult(protected: protected) }
         return AreaScanResult(findings: [Finding(
             id: "trash.items",
             area: .trash,
-            tier: .review,
+            aftermath: .discarded,
             title: "Items in the Trash",
             summary: "\(entries.count) \(entries.count == 1 ? "item" : "items") waiting to be emptied",
             explanation: "Things you already threw away. Emptying the Trash removes them for good.",
@@ -181,12 +207,12 @@ nonisolated enum TrashScanner {
             actionTarget: context.tilde(trash),
             items: [FindingItem(
                 id: "trash.items/all",
-                title: "Everything in the Trash",
+                title: foreign.isEmpty ? "Everything in the Trash" : "Everything in the Trash that is yours",
                 detail: "\(entries.count) \(entries.count == 1 ? "item" : "items")",
                 size: size,
                 paths: entries
             )]
-        )])
+        )], protected: protected)
     }
 }
 

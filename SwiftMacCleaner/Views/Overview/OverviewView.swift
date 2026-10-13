@@ -32,8 +32,10 @@ struct OverviewView: View {
         .sheet(isPresented: $model.showingOverviewReview) {
             ReviewSheet(
                 verb: "Run",
-                plan: model.runPlan, blocked: model.runBlockedSteps, hasUnknownSize: model.runHasUnknownSize,
-                clean: model.run, copyScript: model.copyRunScript
+                plan: model.runPlan, blocked: model.runBlockedSteps,
+                waiting: model.runWaitingItems, blockingApps: model.runBlockingApps, quit: model.openApps.quit,
+                hasUnknownSize: model.runHasUnknownSize,
+                clean: { model.run() }, copyScript: model.copyRunScript
             )
         }
         .toolbar {

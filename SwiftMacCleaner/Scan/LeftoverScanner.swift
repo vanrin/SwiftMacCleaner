@@ -87,7 +87,7 @@ nonisolated enum LeftoverScanner {
             result.findings.append(Finding(
                 id: "leftovers.apps",
                 area: .leftovers,
-                tier: .review,
+                aftermath: .irreplaceable,
                 title: "Support files of apps that are no longer installed",
                 summary: "\(items.count) \(items.count == 1 ? "app" : "apps") that \(items.count == 1 ? "is" : "are") no longer installed",
                 explanation: "Folders in your Library that belong to a bundle identifier no installed app claims. An app is counted as gone only when Launch Services knows nothing with that identifier, the folder is 10 MB or more, and nothing in it changed for 30 days. Reinstalling the app recreates what it needs; settings and documents kept in these folders would be gone.",

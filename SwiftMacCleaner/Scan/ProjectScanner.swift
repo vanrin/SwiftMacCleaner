@@ -102,7 +102,7 @@ nonisolated enum ProjectScanner {
         result.findings.append(Finding(
             id: "projects.stale",
             area: .projects,
-            tier: .safe,
+            aftermath: .rebuilds,
             title: "Stale project dependencies",
             summary: "node_modules, Pods and build folders in \(items.count) \(items.count == 1 ? "project" : "projects") untouched for \(context.staleDays)+ days",
             explanation: "Dependency and build folders inside projects you have stopped touching. Source files are never touched, and each project comes back with the command shown in its row.",

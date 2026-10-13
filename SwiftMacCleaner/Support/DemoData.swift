@@ -14,16 +14,24 @@ import Foundation
 nonisolated enum DemoData {
     private static func item(_ prefix: String, _ title: String, _ detail: String, _ gigabytes: Double,
                              hint: String? = nil, command: [String]? = nil, preselected: Bool? = nil,
-                             sizeUnknown: Bool = false) -> FindingItem {
+                             sizeUnknown: Bool = false, keptBy: String? = nil) -> FindingItem {
         FindingItem(id: "\(prefix)/\(title)", title: title, detail: detail, size: Int64(gigabytes * 1e9),
                     paths: command == nil ? [URL(fileURLWithPath: "/Users/demo/\(prefix)/\(title)")] : [],
-                    command: command, preselected: preselected, hint: hint, sizeUnknown: sizeUnknown)
+                    command: command, preselected: preselected, hint: hint, sizeUnknown: sizeUnknown, keptBy: keptBy)
+    }
+
+    /// A row of the root-owned logs, which names a folder for root to reach into.
+    private static func systemItem(_ folder: String, files: Int, _ gigabytes: Double, in root: String) -> FindingItem {
+        let target = SystemLogs.Target(root: URL(fileURLWithPath: root, isDirectory: true), folder: folder)
+        return FindingItem(id: "\(SystemLogs.findingID)/\(target.path)", title: folder,
+                           detail: "\(target.path), \(files) files untouched for 7+ days", size: Int64(gigabytes * 1e9),
+                           paths: [target.url], systemTarget: target)
     }
 
     static func findings() -> [Finding] {
         [
             Finding(
-                id: "projects.stale", area: .projects, tier: .safe, title: "Stale project dependencies",
+                id: "projects.stale", area: .projects, aftermath: .rebuilds, title: "Stale project dependencies",
                 summary: "node_modules, Pods and build folders in 9 projects untouched for 60+ days",
                 explanation: "Dependency and build folders inside projects you have stopped touching. Source files are never touched, and each project comes back with the command shown in its row.",
                 method: .delete, actionTarget: "Generated folders only, in ~/Code",
@@ -41,7 +49,7 @@ nonisolated enum DemoData {
                 note: "Left out on purpose: 6 projects touched in the last 60 days."
             ),
             Finding(
-                id: "xcode.derivedData", area: .xcode, tier: .safe, title: "Xcode DerivedData",
+                id: "xcode.derivedData", area: .xcode, aftermath: .rebuilds, title: "Xcode DerivedData",
                 summary: "~/Library/Developer/Xcode/DerivedData, 6 folders",
                 explanation: "Build products and indexes. Xcode recreates them on the next build, which will take longer than usual.",
                 method: .delete, actionTarget: "~/Library/Developer/Xcode/DerivedData",
@@ -57,7 +65,7 @@ nonisolated enum DemoData {
                 waitsFor: .xcode
             ),
             Finding(
-                id: "xcode.deviceSupport", area: .xcode, tier: .safe, title: "Device support",
+                id: "xcode.deviceSupport", area: .xcode, aftermath: .rebuilds, title: "Device support",
                 summary: "Debug symbols for 4 OS versions copied from your devices",
                 explanation: "Debug symbols copied from devices you plugged in. They are copied again the next time that OS version connects.",
                 method: .delete, actionTarget: "~/Library/Developer/Xcode/iOS DeviceSupport",
@@ -69,7 +77,7 @@ nonisolated enum DemoData {
                 ]
             ),
             Finding(
-                id: "xcode.leftovers", area: .xcode, tier: .safe, title: "Preview simulators, device logs and test devices",
+                id: "xcode.leftovers", area: .xcode, aftermath: .rebuilds, title: "Preview simulators, device logs and test devices",
                 summary: "Preview simulators, iOS device logs",
                 explanation: "Simulators Xcode Previews boot on their own, logs copied from devices, and devices cloned for tests. Xcode makes new ones as it needs them.",
                 method: .delete, actionTarget: "~/Library/Developer/Xcode/UserData/Previews, iOS Device Logs, XCTestDevices",
@@ -80,7 +88,7 @@ nonisolated enum DemoData {
                 waitsFor: .xcode
             ),
             Finding(
-                id: "packages.caches", area: .packageCaches, tier: .safe, title: "Package manager caches",
+                id: "packages.caches", area: .packageCaches, aftermath: .rebuilds, title: "Package manager caches",
                 summary: "npm cache, pnpm store, Homebrew downloads, CocoaPods cache and 2 more",
                 explanation: "Copies of packages your package managers have already downloaded. Anything a project needs is fetched again the next time you install.",
                 method: .delete, actionTarget: "Each package manager's cache folder",
@@ -94,7 +102,7 @@ nonisolated enum DemoData {
                 ]
             ),
             Finding(
-                id: "packages.homebrew", area: .packageCaches, tier: .safe, title: "Old Homebrew versions",
+                id: "packages.homebrew", area: .packageCaches, aftermath: .rebuilds, title: "Old Homebrew versions",
                 summary: "38 outdated formula versions and downloads",
                 explanation: "Older versions of formulae Homebrew keeps after an upgrade, and downloads it no longer needs.",
                 method: .command, actionTarget: "brew cleanup --prune=all",
@@ -103,7 +111,7 @@ nonisolated enum DemoData {
                 ]
             ),
             Finding(
-                id: "android.gradle", area: .android, tier: .safe, title: "Gradle caches",
+                id: "android.gradle", area: .android, aftermath: .rebuilds, title: "Gradle caches",
                 summary: "~/.gradle/caches, wrapper distributions and build cache",
                 explanation: "Dependencies and build output Gradle has downloaded or produced. The next Gradle sync fetches what it needs again, which makes that first build slower.",
                 method: .delete, actionTarget: "~/.gradle/caches, ~/.gradle/wrapper/dists",
@@ -114,7 +122,7 @@ nonisolated enum DemoData {
                 waitsFor: .gradleDaemon
             ),
             Finding(
-                id: "ides.vscode", area: .ides, tier: .safe, title: "VS Code caches and logs",
+                id: "ides.vscode", area: .ides, aftermath: .rebuilds, title: "VS Code caches and logs",
                 summary: "Compiled code, Extension downloads, Cache, Logs",
                 explanation: "Caches, compiled extension bundles and logs VS Code rebuilds as it runs. Settings and extensions are left alone.",
                 method: .delete, actionTarget: "~/Library/Application Support/Code",
@@ -127,18 +135,30 @@ nonisolated enum DemoData {
                 waitsFor: .app(bundleID: "com.microsoft.VSCode", name: "VS Code")
             ),
             Finding(
-                id: "caches.apps", area: .cachesLogs, tier: .safe, title: "App caches",
+                id: "caches.apps", area: .cachesLogs, aftermath: .rebuilds, title: "App caches",
                 summary: "~/Library/Caches for 3 apps",
                 explanation: "Temporary files apps keep to start faster. Each app recreates its cache as it runs. macOS's own caches are left alone.",
                 method: .delete, actionTarget: "~/Library/Caches",
                 items: [
-                    item("caches.apps", "JetBrains", "JetBrains", 2.2),
-                    item("caches.apps", "Chrome", "com.google.Chrome", 1.5),
-                    item("caches.apps", "Spotify", "com.spotify.client", 0.9),
+                    item("caches.apps", "JetBrains", "JetBrains", 2.2, keptBy: "JetBrains"),
+                    item("caches.apps", "Chrome", "com.google.Chrome", 1.5, keptBy: "com.google.Chrome"),
+                    item("caches.apps", "Spotify", "com.spotify.client", 0.9, keptBy: "com.spotify.client"),
+                ],
+                keepsChanging: true
+            ),
+            Finding(
+                id: SystemLogs.findingID, area: .cachesLogs, aftermath: .rebuilds, title: "System logs",
+                summary: "3 places in /Library/Logs and /private/var/log",
+                explanation: "Logs macOS and its services have not written to for 7 days. They belong to root, so macOS asks for your password. Newer logs stay, and so does every folder.",
+                method: .adminDelete, actionTarget: "/Library/Logs, /private/var/log",
+                items: [
+                    systemItem("CrashReporter", files: 212, 0.3, in: "/Library/Logs"),
+                    systemItem("powermanagement", files: 31, 0.2, in: "/private/var/log"),
+                    systemItem("DiagnosticReports", files: 48, 0.1, in: "/Library/Logs"),
                 ]
             ),
             Finding(
-                id: "snapshots.local", area: .snapshots, tier: .review, title: "Time Machine local snapshots",
+                id: "snapshots.local", area: .snapshots, aftermath: .irreplaceable, title: "Time Machine local snapshots",
                 summary: "6 snapshots from the last 3 days",
                 explanation: "Copies Time Machine keeps on this disk between backups. macOS thins them itself when space runs short, but it waits until the disk is nearly full to do so. This is the only step that asks for your password.",
                 method: .adminCommand, actionTarget: "tmutil deletelocalsnapshots",
@@ -147,7 +167,7 @@ nonisolated enum DemoData {
                 ]
             ),
             Finding(
-                id: "containers.docker", area: .containers, tier: .review, title: "Docker images and build cache",
+                id: "containers.docker", area: .containers, aftermath: .downloadsAgain, title: "Docker images and build cache",
                 summary: "Unused images, build cache, stopped containers",
                 explanation: "Images no container uses, layers kept from earlier builds, and stopped containers. Images are pulled or built again when you need them. Volumes are left alone because they can hold data.",
                 method: .command, actionTarget: "docker image prune, docker builder prune, docker container prune",
@@ -158,7 +178,7 @@ nonisolated enum DemoData {
                 ]
             ),
             Finding(
-                id: "xcode.simulators", area: .xcode, tier: .review, title: "Simulator runtimes and devices",
+                id: "xcode.simulators", area: .xcode, aftermath: .downloadsAgain, title: "Simulator runtimes and devices",
                 summary: "4 items you have not used in 60+ days",
                 explanation: "Runtimes and devices you have not used in a while. A runtime is a multi-gigabyte download from Xcode if you need it back, and a deleted device loses its installed apps and data.",
                 method: .command, actionTarget: "xcrun simctl delete, xcrun simctl runtime delete",
@@ -170,7 +190,7 @@ nonisolated enum DemoData {
                 ]
             ),
             Finding(
-                id: "models.downloads", area: .models, tier: .review, title: "Model and dataset downloads",
+                id: "models.downloads", area: .models, aftermath: .downloadsAgain, title: "Model and dataset downloads",
                 summary: "Hugging Face hub cache, PyTorch hub",
                 explanation: "Models and datasets your tools fetched from a hub. Each one is downloaded again on first use, and some are tens of gigabytes. Nothing here is ticked for you.",
                 method: .trash, actionTarget: "~/.cache/huggingface, ~/.cache/torch",
@@ -180,7 +200,7 @@ nonisolated enum DemoData {
                 ]
             ),
             Finding(
-                id: "android.emulators", area: .android, tier: .review, title: "Android emulators and system images",
+                id: "android.emulators", area: .android, aftermath: .downloadsAgain, title: "Android emulators and system images",
                 summary: "~/.android/avd, 3 items",
                 explanation: "An emulator loses its installed apps and data when removed. System images can be downloaded again from the SDK Manager.",
                 method: .trash, actionTarget: "~/.android/avd, ~/Library/Android/sdk/system-images",
@@ -191,7 +211,7 @@ nonisolated enum DemoData {
                 ]
             ),
             Finding(
-                id: "toolchains.unused", area: .toolchains, tier: .review, title: "Unused toolchain versions",
+                id: "toolchains.unused", area: .toolchains, aftermath: .downloadsAgain, title: "Unused toolchain versions",
                 summary: "4 installed versions that are not your default",
                 explanation: "Older JDKs, Node versions and SDKs installed by version managers. A project pinned to one of them would need it installed again.",
                 method: .trash, actionTarget: "The version folder shown in each row",
@@ -203,7 +223,7 @@ nonisolated enum DemoData {
                 ]
             ),
             Finding(
-                id: "ides.oldVersions", area: .ides, tier: .review, title: "Old IDE versions",
+                id: "ides.oldVersions", area: .ides, aftermath: .downloadsAgain, title: "Old IDE versions",
                 summary: "Settings and caches for IntelliJ IDEA 2024.3",
                 explanation: "Settings, caches and logs left by IDE versions you have upgraded past. The current version keeps its own copy.",
                 method: .trash, actionTarget: "~/Library/Application Support/JetBrains, ~/Library/Caches/JetBrains",
@@ -212,7 +232,7 @@ nonisolated enum DemoData {
                 ]
             ),
             Finding(
-                id: "largeFiles.downloads", area: .largeFiles, tier: .review, title: "Large files in Downloads",
+                id: "largeFiles.downloads", area: .largeFiles, aftermath: .irreplaceable, title: "Large files in Downloads",
                 summary: "3 files of 100 MB or more untouched for 90+ days",
                 explanation: "Big files in Downloads that have not been changed, moved or opened in a while. Projects are left out. They go to the Trash, so they can be put back if one turns out to matter.",
                 method: .trash, actionTarget: "~/Downloads",
@@ -223,7 +243,7 @@ nonisolated enum DemoData {
                 ]
             ),
             Finding(
-                id: "largeFiles.documents", area: .largeFiles, tier: .review, title: "Large files in Documents",
+                id: "largeFiles.documents", area: .largeFiles, aftermath: .irreplaceable, title: "Large files in Documents",
                 summary: "3 files of 100 MB or more untouched for 90+ days",
                 explanation: "Big files in Documents that have not been changed, moved or opened in a while. Projects are left out. They go to the Trash, so they can be put back if one turns out to matter.",
                 method: .trash, actionTarget: "~/Documents",
@@ -234,7 +254,7 @@ nonisolated enum DemoData {
                 ]
             ),
             Finding(
-                id: "largeFiles.desktop", area: .largeFiles, tier: .review, title: "Large files on the Desktop",
+                id: "largeFiles.desktop", area: .largeFiles, aftermath: .irreplaceable, title: "Large files on the Desktop",
                 summary: "1 file of 100 MB or more untouched for 90+ days",
                 explanation: "Big files on the Desktop that have not been changed, moved or opened in a while. Projects are left out. They go to the Trash, so they can be put back if one turns out to matter.",
                 method: .trash, actionTarget: "~/Desktop",
@@ -243,7 +263,7 @@ nonisolated enum DemoData {
                 ]
             ),
             Finding(
-                id: "trash.items", area: .trash, tier: .review, title: "Items in the Trash",
+                id: "trash.items", area: .trash, aftermath: .discarded, title: "Items in the Trash",
                 summary: "14 items waiting to be emptied",
                 explanation: "Things you already threw away. Emptying the Trash removes them for good.",
                 method: .delete, actionTarget: "~/.Trash",
@@ -252,7 +272,7 @@ nonisolated enum DemoData {
                 ]
             ),
             Finding(
-                id: "xcode.oldXcodes", area: .xcode, tier: .careful, title: "Older Xcode versions in Applications",
+                id: "xcode.oldXcodes", area: .xcode, aftermath: .irreplaceable, title: "Older Xcode versions in Applications",
                 summary: "Xcode 16.4 is not the selected version",
                 explanation: "Xcode versions other than the one xcode-select points at. A project pinned to an older toolchain would need it installed again from the developer site.",
                 method: .trash, actionTarget: "/Applications",
@@ -261,7 +281,7 @@ nonisolated enum DemoData {
                 ]
             ),
             Finding(
-                id: "snapshots.backups", area: .snapshots, tier: .careful, title: "iPhone and iPad backups",
+                id: "snapshots.backups", area: .snapshots, aftermath: .irreplaceable, title: "iPhone and iPad backups",
                 summary: "2 device backups",
                 explanation: "Local backups of devices synced with this Mac. Removing one loses everything in it that is not also backed up to iCloud.",
                 method: .trash, actionTarget: "~/Library/Application Support/MobileSync/Backup",
@@ -271,7 +291,7 @@ nonisolated enum DemoData {
                 ]
             ),
             Finding(
-                id: "xcode.archives", area: .xcode, tier: .careful, title: "Xcode Archives",
+                id: "xcode.archives", area: .xcode, aftermath: .irreplaceable, title: "Xcode Archives",
                 summary: "3 archives, needed to symbolicate crashes from builds you shipped",
                 explanation: "Archives hold the dSYMs for builds you shipped. Without them, crash logs from those builds cannot be symbolicated.",
                 method: .trash, actionTarget: "~/Library/Developer/Xcode/Archives",
@@ -302,16 +322,27 @@ nonisolated enum DemoData {
         ]
     }
 
-    /// The result of cleaning every safe finding in `findings`, with one group moved to the Trash.
+    /// The apps the demo takes to be open, so its screens look the same whatever is open on this Mac:
+    /// Chrome keeps one of the caches, and Xcode holds DerivedData back.
+    static let openApps = [
+        OpenApp(bundleID: "com.google.Chrome", name: "Google Chrome"),
+        OpenApp(bundleID: "com.apple.dt.Xcode", name: "Xcode"),
+    ]
+
+    /// The result of cleaning the Smart selection in `findings`, with one group moved to the Trash as well.
     static func outcome(for findings: [Finding], freeBefore: Int64) -> CleanOutcome {
         let started = Date().addingTimeInterval(-134)
-        var steps: [StepOutcome] = findings.filter { $0.tier == .safe }.map { finding in
-            var step = StepOutcome(id: finding.id, title: finding.title, method: finding.method, size: finding.size,
-                                   cleanedItemIDs: finding.items.map(\.id), failures: [], skippedReason: nil)
-            if finding.id == "caches.apps", let last = finding.items.last {
-                step.cleanedItemIDs.removeAll { $0 == last.id }
-                step.skippedItems[last.id] = "/Users/demo/Library/Caches/com.spotify.client: changed since the scan, so it was left alone"
-                step.size -= last.size
+        var steps: [StepOutcome] = CleanPlan.make(
+            findings: findings, selection: Set(findings.smartSelection(SmartKind.standard).map(\.id))
+        ).steps.map { planned in
+            let finding = findings.first { $0.id == planned.id } ?? findings[0]
+            var step = StepOutcome(id: finding.id, title: finding.title, method: finding.method, size: planned.size,
+                                   cleanedItemIDs: planned.operations.map(\.itemID), failures: [], skippedReason: nil,
+                                   fate: planned.fate)
+            if finding.id == "caches.apps", let chrome = finding.items.first(where: { $0.keptBy == "com.google.Chrome" }) {
+                step.cleanedItemIDs.removeAll { $0 == chrome.id }
+                step.skippedItems[chrome.id] = Cleaner.waitingReason("/Users/demo/Library/Caches/com.google.Chrome", for: [openApps[0]])
+                step.size -= chrome.size
             }
             if finding.id == "xcode.derivedData" {
                 step.cleanedItemIDs = []

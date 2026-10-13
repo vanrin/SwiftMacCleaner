@@ -78,9 +78,20 @@ final class AppSettings {
         didSet { defaults.set(isSidebarCollapsed, forKey: "sidebarCollapsed") }
     }
 
-    /// Whether the app scans on its own once a week and says what it found. Nothing is ever removed by it.
+    /// The kinds of thing Smart selection ticks after a scan.
+    var smartKinds: Set<SmartKind> {
+        didSet { defaults.set(smartKinds.map(\.rawValue).sorted(), forKey: "smartKinds") }
+    }
+
+    /// Whether the app scans on its own once a week and says what it found.
     var weeklyCheck: Bool {
         didSet { defaults.set(weeklyCheck, forKey: "weeklyCheck") }
+    }
+
+    /// Whether the weekly check goes on to clean the Smart selection by itself. Off unless asked for:
+    /// it is the one place the app removes anything without the confirmation.
+    var weeklyCheckCleans: Bool {
+        didSet { defaults.set(weeklyCheckCleans, forKey: "weeklyCheckCleans") }
     }
 
     /// When the last scan finished, for the menu bar and the weekly check.
@@ -99,7 +110,9 @@ final class AppSettings {
         self.defaults = defaults
         showsMenuBarItem = defaults.object(forKey: "showsMenuBarItem") as? Bool ?? true
         isSidebarCollapsed = defaults.bool(forKey: "sidebarCollapsed")
+        smartKinds = SmartKind.stored(forKey: "smartKinds", in: defaults)
         weeklyCheck = defaults.object(forKey: "weeklyCheck") as? Bool ?? true
+        weeklyCheckCleans = defaults.bool(forKey: "weeklyCheckCleans")
         lastScanDate = defaults.object(forKey: "lastScanDate") as? Date
         maintenanceRuns = defaults.dictionary(forKey: "maintenanceRuns") as? [String: Date] ?? [:]
         let storedDays = defaults.integer(forKey: "staleDays")
@@ -157,7 +170,8 @@ final class AppSettings {
             largeFileDays: largeFileDays,
             largeFileSize: Int64(largeFileMegabytes) * 1_000_000,
             projectRoots: projectRoots.map { URL(fileURLWithPath: $0, isDirectory: true) },
-            excluded: neverSuggest.map(\.path)
+            excluded: neverSuggest.map(\.path),
+            systemLogRoots: SystemLogs.roots
         )
     }
 }

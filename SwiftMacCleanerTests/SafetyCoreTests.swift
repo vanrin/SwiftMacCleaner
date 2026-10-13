@@ -10,9 +10,10 @@ import SwiftUI
 import Testing
 @testable import SwiftMacCleaner
 
-/// A throwaway folder that stands in for a home directory.
+/// A throwaway folder that stands in for a home directory, with a store of its own for settings.
 private struct Sandbox {
     let root: URL
+    private let defaults = MemoryDefaults()
 
     init() throws {
         root = FileManager.default.temporaryDirectory.appending(path: "mdc-core-\(UUID().uuidString)")
@@ -20,6 +21,11 @@ private struct Sandbox {
     }
 
     func remove() { try? FileManager.default.removeItem(at: root) }
+
+    /// Settings as they are on a Mac that has changed none, so a test sees the standard Smart
+    /// selection whatever this Mac's own settings say, and writes to none of them.
+    @MainActor
+    func settings() -> AppSettings { AppSettings(defaults: defaults) }
 
     @discardableResult
     func file(_ path: String, bytes: Int = 16, age days: Double = 0) throws -> URL {
@@ -36,9 +42,9 @@ private struct Sandbox {
     }
 }
 
-private func finding(id: String = "f", area: Area = .packageCaches, tier: SafetyTier = .safe,
+private func finding(id: String = "f", area: Area = .packageCaches, aftermath: Aftermath = .rebuilds,
                      method: CleanMethod = .delete, items: [FindingItem]) -> Finding {
-    Finding(id: id, area: area, tier: tier, title: id, summary: "", explanation: "",
+    Finding(id: id, area: area, aftermath: aftermath, title: id, summary: "", explanation: "",
             method: method, actionTarget: "", items: items)
 }
 
@@ -61,7 +67,7 @@ struct CatalogTests {
         #expect(Set(ids).count == ids.count)
         for group in Catalog.allGroups {
             #expect(group.method == .delete || group.method == .trash, "\(group.id) is a folder group")
-            #expect(group.tier == .safe || group.method == .trash, "Review and Careful groups must go to the Trash")
+            #expect(group.aftermath == .rebuilds || group.method == .trash, "A group that does not rebuild itself must go to the Trash")
         }
     }
 
@@ -171,7 +177,7 @@ struct FreshnessTests {
         let scannedAt = Date().addingTimeInterval(-60)
         try sandbox.file("Library/Application Support/com.x.app/new.sqlite")
 
-        let plan = CleanPlan.make(findings: [finding(tier: .review, method: .trash, items: [
+        let plan = CleanPlan.make(findings: [finding(aftermath: .downloadsAgain, method: .trash, items: [
             FindingItem(id: "l/app", title: "app", detail: "", size: 10, paths: [support, caches]),
         ])], selection: ["l/app"])
         let outcome = await Cleaner.run(plan: plan, safety: SafetyGuard(root: sandbox.root), scannedAt: scannedAt) { _ in }
@@ -220,7 +226,7 @@ struct PutBackTests {
         defer { sandbox.remove() }
         let installer = try sandbox.file("Downloads/Tool.dmg", bytes: 1000)
         let item = FindingItem(id: "f/dmg", title: "Tool.dmg", detail: "", size: 1000, paths: [installer])
-        let plan = CleanPlan.make(findings: [finding(tier: .review, method: .trash, items: [item])], selection: ["f/dmg"])
+        let plan = CleanPlan.make(findings: [finding(aftermath: .downloadsAgain, method: .trash, items: [item])], selection: ["f/dmg"])
 
         let outcome = await Cleaner.run(plan: plan, safety: SafetyGuard(root: sandbox.root)) { _ in }
         let trashed = try #require(outcome.trashed.first)
@@ -274,7 +280,7 @@ struct PutBackTests {
 struct PasswordStepTests {
     /// Rule 7: only an admin command asks for a password, and the script shows it as sudo.
     @Test func adminCommandsAreMarkedAndScriptedWithSudo() {
-        let snapshots = finding(id: "snapshots.local", area: .snapshots, tier: .review, method: .adminCommand, items: [
+        let snapshots = finding(id: "snapshots.local", area: .snapshots, aftermath: .downloadsAgain, method: .adminCommand, items: [
             FindingItem(id: "snapshots.local", title: "3 local snapshots", detail: "", size: 0,
                         command: ["/usr/bin/tmutil", "deletelocalsnapshots", "/"], sizeUnknown: true),
         ])
@@ -292,7 +298,7 @@ struct NeverSuggestScanTests {
     @Test func excludedItemsMoveToTheProtectedList() {
         let home = URL(fileURLWithPath: "/Users/me")
         let models = home.appending(path: ".ollama/models")
-        let result = AreaScanResult(findings: [finding(area: .models, tier: .review, items: [
+        let result = AreaScanResult(findings: [finding(area: .models, aftermath: .downloadsAgain, items: [
             FindingItem(id: "m/ollama", title: "Ollama models", detail: "Models pulled with ollama", size: 12, paths: [models]),
             FindingItem(id: "m/hf", title: "Hugging Face", detail: "", size: 9, paths: [home.appending(path: ".cache/huggingface/hub")]),
         ])])
@@ -353,7 +359,7 @@ struct MenuBarTests {
     @Test func theWeeklyCheckIsDueAfterSevenDays() throws {
         let sandbox = try Sandbox()
         defer { sandbox.remove() }
-        let model = AppModel(home: sandbox.root)
+        let model = AppModel(home: sandbox.root, settings: sandbox.settings())
         model.settings.lastScanDate = Date()
         #expect(!model.isWeeklyCheckDue)
         model.settings.lastScanDate = Date().addingTimeInterval(-8 * 86_400)
@@ -362,55 +368,58 @@ struct MenuBarTests {
         #expect(model.isWeeklyCheckDue)
     }
 
-    @Test func cleanSafeTicksOnlyTheSafeTierEverywhereAndOpensTheOverviewsConfirmation() throws {
+    @Test func cleanSmartPutsTheSmartSelectionBackEverywhereAndOpensTheOverviewsConfirmation() throws {
         let sandbox = try Sandbox()
         defer { sandbox.remove() }
-        let model = AppModel(home: sandbox.root)
+        let model = AppModel(home: sandbox.root, settings: sandbox.settings())
         let developer = model.cleanUp(.developer)
         let system = model.cleanUp(.system)
-        let safe = finding(id: "safe", items: [FindingItem(id: "s/1", title: "", detail: "", size: 10, paths: [sandbox.root.appending(path: ".npm/_cacache")])])
-        let review = finding(id: "review", tier: .review, method: .trash, items: [FindingItem(id: "r/1", title: "", detail: "", size: 20, paths: [sandbox.root.appending(path: "Downloads/x.dmg")])])
+        let rebuilt = finding(id: "rebuilt", items: [FindingItem(id: "s/1", title: "", detail: "", size: 10, paths: [sandbox.root.appending(path: ".npm/_cacache")])])
+        let fetched = finding(id: "fetched", aftermath: .downloadsAgain, method: .trash, items: [FindingItem(id: "r/1", title: "", detail: "", size: 20, paths: [sandbox.root.appending(path: "Downloads/x.dmg")])])
         let logs = finding(id: "logs", area: .cachesLogs, items: [FindingItem(id: "c/1", title: "", detail: "", size: 5, paths: [sandbox.root.appending(path: "Library/Logs/x")])])
-        developer.show(findings: [safe, review])
+        developer.show(findings: [rebuilt, fetched])
         system.show(findings: [logs])
-        developer.binding(for: review.items[0]).wrappedValue = true
+        #expect(developer.preset() == .smart)
+        developer.binding(for: fetched.items[0]).wrappedValue = true
         #expect(developer.selection == ["s/1", "r/1"])
-        #expect(model.safeSize == 15)
+        #expect(developer.preset() == .everything)
+        #expect(model.smartSize == 15)
         #expect(model.largestAreas(1).first?.size == 30)
 
         // Results from the parts' own scans count: the overview needs no scan of its own first.
         model.sidebarSelection = .apps
-        model.cleanSafe()
+        model.cleanSmart()
         #expect(model.overviewPhase == .results)
         #expect(model.sidebarSelection == .overview)
         #expect(developer.selection == ["s/1"])
         #expect(model.included == [.group(.developer), .group(.system)])
         #expect(model.showingOverviewReview)
-        #expect(model.runPlan.steps.map(\.id) == ["logs", "safe"])
+        #expect(model.runPlan.steps.map(\.id) == ["logs", "rebuilt"])
         #expect(model.runSize == 15)
     }
 
-    /// The menu bar once offered the whole Safe tier, 25.8 GB, while its button and the overview
-    /// agreed on 8.4 GB: the newest device support is Safe, and kept unless the user ticks it.
+    /// The menu bar once offered everything that rebuilds itself, 25.8 GB, while its button and the
+    /// overview agreed on 8.4 GB: the newest device support rebuilds itself too, and is kept unless
+    /// the user ticks it.
     @Test func theMenuBarOffersOnlyWhatItsButtonRemoves() throws {
         let sandbox = try Sandbox()
         defer { sandbox.remove() }
-        let model = AppModel(home: sandbox.root)
+        let model = AppModel(home: sandbox.root, settings: sandbox.settings())
         let developer = model.cleanUp(.developer)
         let caches = sandbox.root.appending(path: "Library/Caches")
-        let safe = finding(items: [
+        let rebuilt = finding(items: [
             FindingItem(id: "s/old", title: "", detail: "", size: 10, paths: [caches.appending(path: "old")]),
             FindingItem(id: "s/newest", title: "", detail: "", size: 40, paths: [caches.appending(path: "newest")], preselected: false),
         ])
-        developer.show(findings: [safe])
+        developer.show(findings: [rebuilt])
         #expect(model.foundSize == 50)
         #expect(developer.selectedSize == 10)
-        #expect(model.safeSize == 10)
+        #expect(model.smartSize == 10)
 
-        developer.binding(for: safe.items[1]).wrappedValue = true
-        model.cleanSafe()
+        developer.binding(for: rebuilt.items[1]).wrappedValue = true
+        model.cleanSmart()
         #expect(developer.selection == ["s/old"])
-        #expect(model.runSize == model.safeSize)
+        #expect(model.runSize == model.smartSize)
     }
 }
 
@@ -432,24 +441,26 @@ struct AreaGroupTests {
     @Test func eachCleanUpKeepsItsOwnFindingsAndTheOverviewAddsThemUp() throws {
         let sandbox = try Sandbox()
         defer { sandbox.remove() }
-        let model = AppModel(home: sandbox.root)
+        let model = AppModel(home: sandbox.root, settings: sandbox.settings())
         model.cleanUp(.developer).show(findings: [
             finding(id: "derived", area: .xcode, items: [item("x/1", 30)]),
-            finding(id: "caches", area: .packageCaches, tier: .review, method: .trash, items: [item("p/1", 10)]),
+            finding(id: "caches", area: .packageCaches, aftermath: .downloadsAgain, method: .trash, items: [item("p/1", 10)]),
         ])
         model.cleanUp(.system).show(findings: [
             finding(id: "logs", area: .cachesLogs, items: [item("c/1", 50)]),
-            finding(id: "bin", area: .trash, tier: .review, items: [item("t/1", 20)]),
+            finding(id: "bin", area: .trash, aftermath: .discarded, items: [item("t/1", 20)]),
         ])
         model.cleanUp(.largeFiles).show(findings: [
-            finding(id: "zip", area: .largeFiles, tier: .review, method: .trash, items: [item("l/1", 5)]),
+            finding(id: "zip", area: .largeFiles, aftermath: .irreplaceable, method: .trash, items: [item("l/1", 5)]),
         ])
         #expect(model.cleanUp(.developer).foundSize == 40)
         #expect(model.cleanUp(.developer).selectedSize == 30)
         #expect(model.cleanUp(.system).foundSize == 70)
-        #expect(model.cleanUp(.system).selectedSize == 50)
+        // The Trash is part of the Smart selection, beside what rebuilds itself.
+        #expect(model.cleanUp(.system).selectedSize == 70)
         #expect(model.foundSize == 115)
-        #expect(model.safeSize == 80)
+        #expect(model.smartSize == 100)
+        #expect(model.selectedSize == 100)
         #expect(model.largestAreas(2).map(\.area) == [.cachesLogs, .xcode])
         #expect(model.areas(in: .developer) == AreaGroup.developer.areas)
         #expect(model.areas(in: .system) == [.cachesLogs, .trash, .snapshots])
@@ -464,7 +475,7 @@ struct AreaGroupTests {
     @Test func everyEntryLeadsSomewhereAtAnyTime() throws {
         let sandbox = try Sandbox()
         defer { sandbox.remove() }
-        let model = AppModel(home: sandbox.root)
+        let model = AppModel(home: sandbox.root, settings: sandbox.settings())
         model.select(.group(.developer))
         #expect(model.sidebarSelection == .group(.developer))
         #expect(model.theme == AreaGroup.developer.theme)
@@ -478,7 +489,7 @@ struct AreaGroupTests {
     @Test func leftoversAndInstallersBelongToApplicationsNotTheCleanUp() throws {
         let sandbox = try Sandbox()
         defer { sandbox.remove() }
-        let model = AppModel(home: sandbox.root)
+        let model = AppModel(home: sandbox.root, settings: sandbox.settings())
         #expect(!Area.cleanUp.contains(.leftovers))
         #expect(!Area.cleanUp.contains(.installers))
         #expect(!model.listedAreas.contains(.leftovers))
@@ -517,7 +528,7 @@ struct SystemCleanUpTests {
     @Test func systemCleanUpLooksAtTheSystemAreasOnItsOwn() throws {
         let sandbox = try Sandbox()
         defer { sandbox.remove() }
-        let model = AppModel(home: sandbox.root)
+        let model = AppModel(home: sandbox.root, settings: sandbox.settings())
         let system = model.cleanUp(.system)
         #expect(system.areas == AreaGroup.system.areas)
         #expect(model.cleanUp(.developer).areas == AreaGroup.developer.areas)
@@ -532,11 +543,11 @@ struct SystemCleanUpTests {
         // Results on one side leave the others alone.
         system.show(findings: [
             finding(id: "logs", area: .cachesLogs, items: [item("c/1", 50)]),
-            finding(id: "bin", area: .trash, tier: .review, items: [item("t/1", 20)]),
+            finding(id: "bin", area: .trash, aftermath: .discarded, items: [item("t/1", 20)]),
         ])
         #expect(system.phase == .results)
         #expect(system.foundSize == 70)
-        #expect(system.selectedSize == 50)
+        #expect(system.selectedSize == 70)
         #expect(model.cleanUp(.developer).phase == .home)
         #expect(model.cleanUp(.developer).findings.isEmpty)
         #expect(system.largestAreas(3).map(\.area) == [.cachesLogs, .trash])
@@ -545,18 +556,19 @@ struct SystemCleanUpTests {
     @Test func aTileCleansItsAreaAloneAndTheRoundButtonEverything() throws {
         let sandbox = try Sandbox()
         defer { sandbox.remove() }
-        let model = AppModel(home: sandbox.root)
+        let model = AppModel(home: sandbox.root, settings: sandbox.settings())
         let system = model.cleanUp(.system)
         let logs = finding(id: "logs", area: .cachesLogs, items: [
             FindingItem(id: "c/1", title: "", detail: "", size: 50, paths: [sandbox.root.appending(path: "Library/Caches/x")]),
         ])
-        let bin = finding(id: "bin", area: .trash, tier: .review, items: [
+        let bin = finding(id: "bin", area: .trash, aftermath: .discarded, items: [
             FindingItem(id: "t/1", title: "", detail: "", size: 20, paths: [sandbox.root.appending(path: ".Trash/x")]),
         ])
-        let snapshots = finding(id: "snap", area: .snapshots, tier: .review, method: .adminCommand,
+        let snapshots = finding(id: "snap", area: .snapshots, aftermath: .irreplaceable, method: .adminCommand,
                                 items: [FindingItem(id: "s/1", title: "", detail: "", size: 0, command: ["/usr/bin/tmutil"], sizeUnknown: true)])
         system.show(findings: [logs, bin, snapshots])
-        system.binding(for: bin.items[0]).wrappedValue = true
+        // The Trash is ticked by the scan; the snapshots never are.
+        #expect(system.selection == ["c/1", "t/1"])
         system.binding(for: snapshots.items[0]).wrappedValue = true
 
         system.review(area: .trash)
@@ -576,21 +588,39 @@ struct SystemCleanUpTests {
     @Test func theManagerOpensOneAreaAndTicksItAsAWhole() throws {
         let sandbox = try Sandbox()
         defer { sandbox.remove() }
-        let model = AppModel(home: sandbox.root)
+        let model = AppModel(home: sandbox.root, settings: sandbox.settings())
         let system = model.cleanUp(.system)
-        let backups = finding(id: "backups", area: .snapshots, tier: .careful, method: .trash, items: [item("b/1", 30), item("b/2", 10)])
+        let backups = finding(id: "backups", area: .snapshots, aftermath: .irreplaceable, method: .trash, items: [item("b/1", 30), item("b/2", 10)])
         let logs = finding(id: "logs", area: .cachesLogs, items: [item("c/1", 50), FindingItem(id: "c/kept", title: "", detail: "", size: 5, preselected: false)])
         system.show(findings: [logs, backups])
         #expect(system.selection == ["c/1"])
 
         system.open(.snapshots)
         #expect(system.openArea == .snapshots)
-        system.selectAll(in: .snapshots)
+        // Smart ticks nothing among the backups, which is also what Nothing stands for; Smart is named first.
+        #expect(system.preset(in: .snapshots) == .smart)
+        system.select(.everything, in: .snapshots)
         #expect(system.selection == ["c/1", "b/1", "b/2"])
-        system.selectNone(in: .snapshots)
-        system.selectAll(in: .cachesLogs)
+        #expect(system.preset(in: .snapshots) == .everything)
+        #expect(system.preset() == nil)
+        system.select(.nothing, in: .snapshots)
+        system.select(.everything, in: .cachesLogs)
         #expect(system.selection == ["c/1", "c/kept"])
-        system.selectSafe(in: .cachesLogs)
+        #expect(system.preset(in: .cachesLogs) == .everything)
+        system.select(.smart, in: .cachesLogs)
+        #expect(system.selection == ["c/1"])
+        #expect(system.preset(in: .cachesLogs) == .smart)
+        #expect(system.preset() == .smart)
+
+        // One row ticked by hand is something no preset describes.
+        system.binding(for: backups.items[0]).wrappedValue = true
+        #expect(system.preset(in: .snapshots) == nil)
+        system.select(.everything)
+        #expect(system.selection == ["c/1", "c/kept", "b/1", "b/2"])
+        system.select(.nothing)
+        #expect(system.selection.isEmpty)
+        #expect(system.preset() == .nothing)
+        system.select(.smart)
         #expect(system.selection == ["c/1"])
         system.showResults()
         #expect(system.openArea == nil)
@@ -613,7 +643,7 @@ struct OverviewRunTests {
         let logs = try sandbox.file("Library/Logs/app/out.log").deletingLastPathComponent()
         let zip = try sandbox.file("Downloads/big.zip")
 
-        let model = AppModel(home: sandbox.root)
+        let model = AppModel(home: sandbox.root, settings: sandbox.settings())
         model.cleanUp(.developer).show(findings: [
             finding(id: "caches", items: [FindingItem(id: "c/npm", title: "", detail: "", size: 10, paths: [npm])]),
         ])
@@ -621,11 +651,11 @@ struct OverviewRunTests {
             finding(id: "logs", area: .cachesLogs, items: [FindingItem(id: "l/app", title: "", detail: "", size: 10, paths: [logs])]),
         ])
         model.cleanUp(.largeFiles).show(findings: [
-            finding(id: "zip", area: .largeFiles, tier: .review, method: .trash, items: [FindingItem(id: "z/1", title: "", detail: "", size: 10, paths: [zip])]),
+            finding(id: "zip", area: .largeFiles, aftermath: .irreplaceable, method: .trash, items: [FindingItem(id: "z/1", title: "", detail: "", size: 10, paths: [zip])]),
         ])
         model.cleanUp(.largeFiles).binding(for: FindingItem(id: "z/1", title: "", detail: "", size: 10)).wrappedValue = true
-        model.reviewSafe()
-        // Safe only: the ticked download is left alone, and so is the part that is unticked on the overview.
+        model.reviewSmart()
+        // The Smart selection: the ticked download is left alone, and so is the part that is unticked on the overview.
         #expect(model.included == [.group(.developer), .group(.system)])
         #expect(model.runPlan.steps.map(\.id) == ["logs", "caches"])
         model.inclusion(of: .group(.system)).wrappedValue = false

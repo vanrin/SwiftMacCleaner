@@ -14,7 +14,7 @@ struct FindingBadges: View {
         if let active {
             Badge(text: active.badge, style: .waits)
         }
-        if finding.method == .adminCommand {
+        if finding.method.needsPassword {
             Badge(text: "Asks for your password", style: .password)
         }
     }

@@ -12,6 +12,7 @@ struct SettingsView: View {
     var body: some View {
         TabView {
             Tab("General", systemImage: "gearshape") { GeneralSettings() }
+            Tab("Cleaning", systemImage: "sparkles") { CleaningSettings() }
             Tab("Project Folders", systemImage: "folder") { ProjectFolderSettings() }
             Tab("Never Suggest", systemImage: "eye.slash") { NeverSuggestSettings() }
             Tab("Advanced", systemImage: "slider.horizontal.3") { AdvancedSettings() }
@@ -60,7 +61,7 @@ private struct GeneralSettings: View {
                 Toggle("Check once a week", isOn: $settings.weeklyCheck)
                 OpenAtLoginToggle(openAtLogin: model.openAtLogin)
             } footer: {
-                Text("The weekly check scans on its own while the app is open and idle, then tells you what it found. It never removes anything. Opened at login, the app starts without its window, so the menu bar item is there and the check keeps running from one restart to the next.")
+                Text("The weekly check scans on its own while the app is open and idle, then tells you what it found. It removes nothing unless Cleaning is set to let it. Opened at login, the app starts without its window, so the menu bar item is there and the check keeps running from one restart to the next.")
             }
             Section {
                 Toggle("Look for app updates", isOn: $settings.checksAppUpdates)
@@ -70,6 +71,51 @@ private struct GeneralSettings: View {
         }
         .formStyle(.grouped)
         .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// What a scan ticks by itself, kind by kind, and whether the weekly check may go on to clean it.
+private struct CleaningSettings: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        @Bindable var settings = model.settings
+        Form {
+            Section {
+                ForEach(SmartKind.allCases) { kind in
+                    Toggle(isOn: binding(for: kind)) {
+                        Text(kind.title)
+                        if let note = kind.note {
+                            Text(note)
+                        }
+                    }
+                }
+            } header: {
+                Text("Smart selection")
+            } footer: {
+                Text("What is ticked for you after a scan, and what Scan and Clean and the menu bar offer. Backups, archives, snapshots, models and your own files are never ticked for you, whatever is switched on here.")
+            }
+            Section {
+                Picker("When the check finishes", selection: $settings.weeklyCheckCleans) {
+                    Text("Tell me what it found").tag(false)
+                    Text("Clean the Smart selection").tag(true)
+                }
+                .disabled(!settings.weeklyCheck)
+            } header: {
+                Text("Weekly check")
+            } footer: {
+                Text("Cleaning on its own is the one time nothing asks you first. It leaves out anything that needs your password and anything an open app is using, and a notification says what it removed.")
+            }
+        }
+        .formStyle(.grouped)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func binding(for kind: SmartKind) -> Binding<Bool> {
+        Binding(
+            get: { model.settings.smartKinds.contains(kind) },
+            set: { model.setSmart(kind, isOn: $0) }
+        )
     }
 }
 
@@ -223,7 +269,7 @@ private struct AdvancedSettings: View {
                 Toggle("Offer older Xcode versions in Applications", isOn: $settings.offersOldXcodes)
                 Toggle("Offer local snapshots (asks for your password)", isOn: $settings.offersSnapshots)
             } footer: {
-                Text("The selected Xcode is never offered. Removing local snapshots is the only step that needs a password; everything else runs as you.")
+                Text("The selected Xcode is never offered. Removing local snapshots asks for your password, as the system logs do; everything else runs as you.")
             }
             Section {
                 LabeledContent("Logs") {

@@ -41,8 +41,8 @@ struct DoneFollowUps: View {
             if remaining > 0 {
                 Notice(
                     symbol: "hand.raised.fill",
-                    title: "\(ByteFormat.string(remaining)) more needs your call",
-                    text: needsYourCallText
+                    title: "\(ByteFormat.string(remaining)) more found, not removed",
+                    text: remainingText
                 ) {
                     Button("Review Them", action: review)
                         .buttonStyle(.primaryPill)
@@ -51,7 +51,7 @@ struct DoneFollowUps: View {
         }
     }
 
-    private var needsYourCallText: String {
+    private var remainingText: String {
         var text = "These were not selected, or could not be removed this time."
         if outcome.skippedSize > 0 {
             text += " Quit what was open to include the \(ByteFormat.string(outcome.skippedSize)) that waited."

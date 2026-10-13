@@ -40,7 +40,7 @@ nonisolated enum PackageCacheScanner {
         return Finding(
             id: "packages.homebrew",
             area: .packageCaches,
-            tier: .safe,
+            aftermath: .rebuilds,
             title: "Old Homebrew versions and downloads",
             summary: "What brew cleanup would remove, \(removals == 1 ? "1 item" : "\(removals) items")",
             explanation: "Outdated versions of formulae and casks Homebrew keeps after upgrades, and downloads it has already installed. brew cleanup removes them; nothing you use goes away.",

@@ -9,6 +9,7 @@ import SwiftUI
 /// matters, and a way into the part itself.
 struct OverviewTile: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.theme) private var theme
     let part: SidebarItem
 
     var body: some View {
@@ -46,6 +47,14 @@ struct OverviewTile: View {
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
+                        if let selection = figure.selection {
+                            Text(selection)
+                                .font(Design.Typeface.tileBody)
+                                .bold(figure.isSelected)
+                                .foregroundStyle(figure.isSelected ? AnyShapeStyle(theme.accent) : AnyShapeStyle(.secondary))
+                                .lineLimit(1)
+                                .contentTransition(.numericText())
+                        }
                     }
                     Spacer(minLength: 0)
                     Button("Review", action: open)
@@ -61,46 +70,62 @@ struct OverviewTile: View {
         .accessibilityElement(children: .contain)
     }
 
-    /// The large figure and the line under it: what Run would do here, in the part's own terms.
-    private var figure: (value: String, caption: String) {
-        if model.isScanning(part) { return ("Scanning", "still looking") }
-        guard model.hasResults(part) else { return ("Not scanned", "open it to scan on its own") }
+    /// What a tile says under its name: the figure that matters, the line under it, and for a clean-up
+    /// how much of what was found is ticked.
+    private struct Figure {
+        var value: String
+        var caption: String
+        var selection: String? = nil
+        var isSelected = false
+
+        init(_ value: String, _ caption: String, selection: String? = nil, isSelected: Bool = false) {
+            self.value = value
+            self.caption = caption
+            self.selection = selection
+            self.isSelected = isSelected
+        }
+    }
+
+    /// The large figure and the lines under it. A clean-up shows everything it found, and then what
+    /// Run would take of it; the other parts say what Run would do in their own terms.
+    private var figure: Figure {
+        if model.isScanning(part) { return Figure("Scanning", "still looking") }
+        guard model.hasResults(part) else { return Figure("Not scanned", "open it to scan on its own") }
         switch part {
         case .group(let group):
             let cleanUp = model.cleanUp(group)
             let found = cleanUp.foundSize
-            if cleanUp.phase == .done { return ("Cleaned", found > 0 ? "\(ByteFormat.string(found)) more needs your call" : "nothing left to decide") }
-            if found == 0 { return ("Nothing", "to clean") }
+            if cleanUp.phase == .done { return Figure("Cleaned", found > 0 ? "\(ByteFormat.string(found)) more found, not selected" : "nothing left") }
+            if found == 0 { return Figure("Nothing", "to clean") }
             let selected = cleanUp.selectedSize
-            if selected == 0 && !cleanUp.selectionHasUnknownSize {
-                return ("Nothing ticked", "\(ByteFormat.string(found)) found needs your call")
-            }
-            let more = found - selected
-            return (ByteFormat.string(selected), more > 0 ? "to clean · \(ByteFormat.string(more)) more needs your call" : "to clean")
+            let isSelected = selected > 0 || cleanUp.selectionHasUnknownSize
+            return Figure(ByteFormat.string(found), group.holdsJunk ? "of junk found" : "found",
+                          selection: isSelected ? "\(ByteFormat.string(selected)) selected" : "Nothing selected",
+                          isSelected: isSelected)
         case .performance:
             let performance = model.performance
             let count = performance.recommended.count
-            if performance.phase == .done { return ("Ran", "the tasks that were due") }
-            return count == 0 ? ("Nothing", "to run today") : ("\(count) \(count == 1 ? "task" : "tasks")", "to run")
+            if performance.phase == .done { return Figure("Ran", "the tasks that were due") }
+            return count == 0 ? Figure("Nothing", "to run today") : Figure("\(count) \(count == 1 ? "task" : "tasks")", "to run")
         case .protection:
             let protection = model.protection
             let count = protection.toLookAt.count
             let inPlace = protection.inPlace.count
             return count == 0
-                ? ("In place", "\(inPlace) of \(protection.findings.count) defences are on")
-                : ("\(count) \(count == 1 ? "setting" : "settings")", "worth a look in System Settings")
+                ? Figure("In place", "\(inPlace) of \(protection.findings.count) defences are on")
+                : Figure("\(count) \(count == 1 ? "setting" : "settings")", "worth a look in System Settings")
         case .apps:
             let apps = model.apps
             if !apps.updates.isEmpty {
                 let count = apps.updates.count
-                return ("\(count) \(count == 1 ? "update" : "updates")", "to install from the store or the app")
+                return Figure("\(count) \(count == 1 ? "update" : "updates")", "to install from the store or the app")
             }
             let leftovers = apps.leftoverFileSize + apps.installerSize
-            if leftovers > 0 { return (ByteFormat.string(leftovers), "of leftovers and installers to review") }
+            if leftovers > 0 { return Figure(ByteFormat.string(leftovers), "of leftovers and installers to review") }
             let unused = apps.unusedApps.count
-            return unused > 0 ? ("\(unused) unused \(unused == 1 ? "app" : "apps")", "to review") : ("Up to date", "nothing to remove")
+            return unused > 0 ? Figure("\(unused) unused \(unused == 1 ? "app" : "apps")", "to review") : Figure("Up to date", "nothing to remove")
         case .overview, .space, .duplicates:
-            return ("", "")
+            return Figure("", "")
         }
     }
 

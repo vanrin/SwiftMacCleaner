@@ -127,7 +127,7 @@ nonisolated enum AppsDemoData {
         }
         return [
             Finding(
-                id: AppsModel.installersFindingID, area: .installers, tier: .review, title: "Installers in Downloads",
+                id: AppsModel.installersFindingID, area: .installers, aftermath: .downloadsAgain, title: "Installers in Downloads",
                 summary: "4 disk images and installers",
                 explanation: "Disk images and installer packages. Once the app is installed these are rarely needed, and they can be downloaded again.",
                 method: .trash, actionTarget: "~/Downloads",
@@ -139,7 +139,7 @@ nonisolated enum AppsDemoData {
                 ]
             ),
             Finding(
-                id: AppsModel.leftoverFilesFindingID, area: .leftovers, tier: .review,
+                id: AppsModel.leftoverFilesFindingID, area: .leftovers, aftermath: .irreplaceable,
                 title: "Support files of apps that are no longer installed", summary: "3 apps that are no longer installed",
                 explanation: "Folders in your Library that belong to a bundle identifier no installed app claims. Reinstalling the app recreates what it needs; settings and documents kept in these folders would be gone.",
                 method: .trash, actionTarget: "~/Library/Application Support, Containers, Caches, Preferences, Saved Application State",

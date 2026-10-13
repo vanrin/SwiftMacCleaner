@@ -18,7 +18,7 @@ struct SidebarTests {
     }
 
     private func finding(id: String, area: Area, size: Int64) -> Finding {
-        Finding(id: id, area: area, tier: .safe, title: id, summary: "", explanation: "", method: .delete, actionTarget: "",
+        Finding(id: id, area: area, aftermath: .rebuilds, title: id, summary: "", explanation: "", method: .delete, actionTarget: "",
                 items: [FindingItem(id: "\(id)/1", title: "", detail: "", size: size)])
     }
 

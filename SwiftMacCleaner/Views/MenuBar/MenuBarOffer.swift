@@ -12,15 +12,15 @@ struct MenuBarOffer: View {
     let open: () -> Void
 
     var body: some View {
-        let safe = model.safeSize
+        let smart = model.smartSize
         let isBusy = model.overviewPhase == .scanning || model.overviewPhase == .running
             || model.cleanUps.contains(where: \.isBusy)
         GlassPanel(cornerRadius: Design.Radius.tile) {
             VStack(alignment: .leading, spacing: Design.Spacing.medium) {
-                TitledDetail(title: title(safe: safe), detail: detail(safe: safe), detailLineLimit: nil)
+                TitledDetail(title: title(smart: smart), detail: detail(smart: smart), detailLineLimit: nil)
                 if !isBusy {
                     Button(action: act) {
-                        Text(safe > 0 ? "Clean \(ByteFormat.string(safe))" : "Scan \(model.disk.name)")
+                        Text(smart > 0 ? "Clean \(ByteFormat.string(smart))" : "Scan \(model.disk.name)")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.primaryPill)
@@ -32,39 +32,39 @@ struct MenuBarOffer: View {
 
     private func act() {
         open()
-        if model.safeSize > 0 {
-            model.cleanSafe()
+        if model.smartSize > 0 {
+            model.cleanSmart()
         } else {
             model.startScan()
         }
     }
 
-    private func title(safe: Int64) -> String {
+    private func title(smart: Int64) -> String {
         switch model.overviewPhase {
         case .scanning: "Scanning"
         case .running: "Cleaning"
         default:
-            if safe > 0 {
-                "\(ByteFormat.string(safe)) can go safely"
+            if smart > 0 {
+                "\(ByteFormat.string(smart)) ready to clean"
             } else if !model.hasFindings {
-                model.settings.lastScanDate == nil ? "Not scanned yet" : "Nothing safe to remove"
+                model.settings.lastScanDate == nil ? "Not scanned yet" : "Nothing to clean"
             } else {
-                "Nothing safe left to remove"
+                "Nothing selected to clean"
             }
         }
     }
 
-    private func detail(safe: Int64) -> String {
+    private func detail(smart: Int64) -> String {
         switch model.overviewPhase {
         case .scanning: "\(model.overviewParts.count - model.scanningParts.count) of \(model.overviewParts.count) parts done"
         case .running: model.runProgress.status
         default:
-            if safe > 0 {
-                "Build output and caches that rebuild themselves. You confirm before anything is removed."
+            if smart > 0 {
+                "\(ByteFormat.string(model.foundSize)) found in the last scan. The Smart selection is ticked, and you confirm before anything is removed."
             } else if !model.hasFindings {
-                "A scan only measures. Nothing is removed until you confirm."
+                "A scan shows everything that can go and ticks the part worth cleaning now."
             } else {
-                "\(ByteFormat.string(model.foundSize)) more needs your call in the app."
+                "\(ByteFormat.string(model.foundSize)) found, none of it in the Smart selection. Open the app to choose what goes."
             }
         }
     }

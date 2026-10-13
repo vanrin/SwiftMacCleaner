@@ -36,7 +36,9 @@ struct CleanUpView: View {
         }
         .sheet(isPresented: $cleanUp.showingReview) {
             ReviewSheet(
-                plan: cleanUp.plan, blocked: cleanUp.blockedSteps(in: cleanUp.plan), hasUnknownSize: cleanUp.planHasUnknownSize,
+                plan: cleanUp.plan, blocked: cleanUp.blockedSteps(in: cleanUp.plan),
+                waiting: cleanUp.waitingReasons(in: cleanUp.reviewArea), blockingApps: cleanUp.blockingApps(in: cleanUp.reviewArea),
+                quit: cleanUp.quit, hasUnknownSize: cleanUp.planHasUnknownSize,
                 clean: cleanUp.clean, copyScript: cleanUp.copyShellScript
             )
         }

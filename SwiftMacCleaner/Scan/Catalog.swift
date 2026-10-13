@@ -67,7 +67,7 @@ nonisolated struct MovedLocation: Sendable {
 nonisolated struct LocationGroup: Sendable {
     var id: String
     var area: Area
-    var tier: SafetyTier
+    var aftermath: Aftermath
     var method: CleanMethod
     var title: String
     var explanation: String
@@ -85,7 +85,7 @@ nonisolated struct LocationGroup: Sendable {
 
 nonisolated enum Catalog {
     static let packageCaches = LocationGroup(
-        id: "packages.caches", area: .packageCaches, tier: .safe, method: .delete,
+        id: "packages.caches", area: .packageCaches, aftermath: .rebuilds, method: .delete,
         title: "Package manager caches",
         explanation: "Copies of packages your package managers have already downloaded. Anything a project needs is fetched again the next time you install.",
         actionTarget: "Each package manager's cache folder",
@@ -169,7 +169,7 @@ nonisolated enum Catalog {
     }
 
     static let goModules = LocationGroup(
-        id: "packages.goModules", area: .packageCaches, tier: .review, method: .trash,
+        id: "packages.goModules", area: .packageCaches, aftermath: .downloadsAgain, method: .trash,
         title: "Go module cache",
         explanation: "Every Go module you have ever built against. The next go build downloads what the project needs again, which can take a while on a slow connection.",
         actionTarget: "~/go/pkg/mod",
@@ -181,7 +181,7 @@ nonisolated enum Catalog {
     )
 
     static let gradle = LocationGroup(
-        id: "android.gradle", area: .android, tier: .safe, method: .delete,
+        id: "android.gradle", area: .android, aftermath: .rebuilds, method: .delete,
         title: "Gradle caches",
         explanation: "Dependencies and build output Gradle has downloaded or produced. The next Gradle sync fetches what it needs again, which makes that first build slower.",
         actionTarget: "~/.gradle/caches, ~/.gradle/wrapper/dists",
@@ -202,7 +202,7 @@ nonisolated enum Catalog {
     )
 
     static let xcodeCaches = LocationGroup(
-        id: "xcode.caches", area: .xcode, tier: .safe, method: .delete,
+        id: "xcode.caches", area: .xcode, aftermath: .rebuilds, method: .delete,
         title: "Xcode caches",
         explanation: "Temporary files Xcode and the simulators recreate when they need them.",
         actionTarget: "~/Library/Caches/com.apple.dt.Xcode, ~/Library/Developer/CoreSimulator/Caches",
@@ -215,7 +215,7 @@ nonisolated enum Catalog {
     )
 
     static let xcodeLeftovers = LocationGroup(
-        id: "xcode.leftovers", area: .xcode, tier: .safe, method: .delete,
+        id: "xcode.leftovers", area: .xcode, aftermath: .rebuilds, method: .delete,
         title: "Preview simulators, device logs and test devices",
         explanation: "Simulators Xcode Previews boot on their own, logs copied from devices, and devices cloned for tests. Xcode makes new ones as it needs them.",
         actionTarget: "~/Library/Developer/Xcode/UserData/Previews, iOS Device Logs, XCTestDevices",
@@ -231,7 +231,7 @@ nonisolated enum Catalog {
     )
 
     static let modelDownloads = LocationGroup(
-        id: "models.downloads", area: .models, tier: .review, method: .trash,
+        id: "models.downloads", area: .models, aftermath: .downloadsAgain, method: .trash,
         title: "Model and dataset downloads",
         explanation: "Models and datasets your tools fetched from a hub. Each one is downloaded again on first use, and some are tens of gigabytes. Nothing here is ticked for you.",
         actionTarget: "~/.cache/huggingface, ~/.cache/torch, ~/.lmstudio and friends",
@@ -257,7 +257,7 @@ nonisolated enum Catalog {
 
     static let editorCaches: [LocationGroup] = [
         LocationGroup(
-            id: "ides.vscode", area: .ides, tier: .safe, method: .delete,
+            id: "ides.vscode", area: .ides, aftermath: .rebuilds, method: .delete,
             title: "VS Code caches and logs",
             explanation: "Caches, compiled extension bundles and logs VS Code rebuilds as it runs. Settings and extensions are left alone.",
             actionTarget: "~/Library/Application Support/Code",
@@ -265,7 +265,7 @@ nonisolated enum Catalog {
             locations: Self.electronEditor("Code")
         ),
         LocationGroup(
-            id: "ides.cursor", area: .ides, tier: .safe, method: .delete,
+            id: "ides.cursor", area: .ides, aftermath: .rebuilds, method: .delete,
             title: "Cursor caches and logs",
             explanation: "Caches, compiled extension bundles and logs Cursor rebuilds as it runs. Settings and extensions are left alone.",
             actionTarget: "~/Library/Application Support/Cursor",
@@ -273,7 +273,7 @@ nonisolated enum Catalog {
             locations: Self.electronEditor("Cursor")
         ),
         LocationGroup(
-            id: "ides.windsurf", area: .ides, tier: .safe, method: .delete,
+            id: "ides.windsurf", area: .ides, aftermath: .rebuilds, method: .delete,
             title: "Windsurf caches and logs",
             explanation: "Caches, compiled extension bundles and logs Windsurf rebuilds as it runs. Settings and extensions are left alone.",
             actionTarget: "~/Library/Application Support/Windsurf",
@@ -298,7 +298,7 @@ nonisolated enum Catalog {
     }
 
     static let containerCaches = LocationGroup(
-        id: "containers.caches", area: .containers, tier: .safe, method: .delete,
+        id: "containers.caches", area: .containers, aftermath: .rebuilds, method: .delete,
         title: "Kubernetes and VM tool caches",
         explanation: "Images and installers minikube, kind and Lima have downloaded. Fetched again the next time a cluster or machine starts.",
         actionTarget: "~/.minikube/cache, ~/.lima/_cache",
@@ -349,7 +349,7 @@ nonisolated enum CatalogScanner {
         let moved = await moved(in: group, context: context)
         var report = Report(protected: moved.protected)
         let elsewhere = moved.folders.map { candidate(for: $0, context: context) }
-        let together = group.tier != .safe
+        let together = group.aftermath != .rebuilds
 
         let candidates = usualCandidates(for: group, context: context) + (together ? elsewhere : [])
         let items = await Sizing.items(prefix: group.id, from: candidates, minimumSize: group.minimumSize)
@@ -365,7 +365,7 @@ nonisolated enum CatalogScanner {
         report.findings.append(Finding(
             id: "\(group.id).moved",
             area: group.area,
-            tier: .review,
+            aftermath: .downloadsAgain,
             title: "\(group.title) in other folders",
             summary: group.summary(of: movedItems),
             explanation: "The same kind of files, in folders your tools were set up to use instead of the usual ones. The app asked each tool where it keeps them. They go to the Trash rather than being deleted, and nothing here is ticked for you.",
@@ -382,7 +382,7 @@ nonisolated enum CatalogScanner {
         return Finding(
             id: group.id,
             area: group.area,
-            tier: group.tier,
+            aftermath: group.aftermath,
             title: group.title,
             summary: group.summary(of: items),
             explanation: group.explanation,

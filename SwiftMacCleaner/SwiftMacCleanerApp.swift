@@ -16,8 +16,8 @@ enum Launcher {
             ScanReportPrinter.run(areaNames: Array(CommandLine.arguments.dropFirst(flag + 1)))
             return
         }
-        // `SwiftMacCleaner --quick-clean` does what the Quick Clean button does, from the terminal:
-        // scans, ticks only the Safe tier, applies every check the app applies, cleans, prints the receipt.
+        // `SwiftMacCleaner --quick-clean` does what Scan and Clean does, from the terminal: scans, ticks
+        // the Smart selection, applies every check the app applies, cleans, prints the receipt.
         if CommandLine.arguments.contains("--quick-clean") {
             ScanReportPrinter.quickClean()
             return
@@ -168,7 +168,7 @@ nonisolated enum ScanReportPrinter {
                     total += finding.size
                     let size = finding.hasUnknownSize && finding.size == 0 ? "size unknown" : ByteFormat.string(finding.size)
                     let waits = finding.waitsFor.map { "  (waits for \($0.name))" } ?? ""
-                    print("   [\(finding.tier.label)] \(finding.title): \(size) in \(finding.items.count) items, \(finding.method.verb.lowercased())\(waits)")
+                    print("   [\(finding.aftermath.label)] \(finding.title): \(size) in \(finding.items.count) items, \(finding.method.verb.lowercased())\(waits)")
                     for item in finding.items.prefix(6) {
                         let itemSize = item.sizeUnknown ? "unknown" : ByteFormat.string(item.size)
                         print("      \(itemSize.padding(toLength: 9, withPad: " ", startingAt: 0)) \(item.title)  |  \(item.detail)")
@@ -216,9 +216,9 @@ nonisolated enum ScanReportPrinter {
         finished.wait()
     }
 
-    /// The Quick Clean path without the window: the same scan, the same Safe-only selection, the same
-    /// guard, in-use and freshness checks, the same log. Only the confirmation click is missing,
-    /// which is why this exists for the terminal alone.
+    /// Scan and Clean without the window: the same scan, the same Smart selection, the same guard,
+    /// in-use and freshness checks, the same log. Only the confirmation click is missing, which is
+    /// why this exists for the terminal alone, and why it leaves out what would ask for a password.
     static func quickClean() {
         let settings = AppSettings()
         let home = FileManager.default.homeDirectoryForCurrentUser
@@ -231,6 +231,7 @@ nonisolated enum ScanReportPrinter {
             neverSuggest: settings.neverSuggest.map(\.path),
             backupsAllowed: true
         )
+        let smartKinds = settings.smartKinds
         let disabled = Area.stored(forKey: "disabledAreas")
         let forced = Area.stored(forKey: "forcedAreas")
         let roots = context.projectRoots
@@ -250,28 +251,41 @@ nonisolated enum ScanReportPrinter {
                 }
             }
             let scannedAt = Date()
-            findings.sort { ($0.tier, -$0.size) < ($1.tier, -$1.size) }
-            let selection = Set(findings.safeDefaults.map(\.id))
-            let plan = CleanPlan.make(findings: findings, selection: selection)
+            findings.sort { ($0.aftermath, -$0.size) < ($1.aftermath, -$1.size) }
+            let selection = Set(findings.smartSelection(smartKinds).map(\.id))
+            let whole = CleanPlan.make(findings: findings, selection: selection)
+            let plan = whole.withoutPasswordSteps
             var skipping: [String: String] = [:]
             for step in plan.steps {
                 if let check = step.waitsFor, InUse.isActive(check) { skipping[step.id] = check.skipReason }
             }
+            // A cache waits while the app that keeps it is open. Nobody is here to be asked to quit it.
+            let ticked = findings.flatMap(\.items).filter { selection.contains($0.id) }
+            let keepers = ticked.waiting(for: RunningApps.open())
+            var waiting: [String: String] = [:]
+            for item in ticked {
+                if let apps = keepers[item.id] { waiting[item.id] = Cleaner.waitingReason(item.paths.first?.path ?? item.title, for: apps) }
+            }
 
-            print("\nPlan: Safe tier only, \(plan.steps.count) groups, \(ByteFormat.string(plan.totalSize))")
+            let cleanable = plan.size(leavingOut: Set(skipping.keys), waiting: Set(waiting.keys))
+            print("\nPlan: Smart selection, \(plan.steps.count) groups, \(ByteFormat.string(cleanable)) of \(ByteFormat.string(plan.totalSize)) now")
+            for reason in waiting.values.sorted() { print("   waits \(reason)") }
+            for step in whole.steps where step.method.needsPassword {
+                print("   left  \(ByteFormat.string(step.size).padding(toLength: 9, withPad: " ", startingAt: 0)) \(step.title)  |  needs your password, so it waits for the app")
+            }
             for step in plan.steps {
                 let state = skipping[step.id].map { _ in "WAITS " } ?? "clean "
                 print("   \(state)\(ByteFormat.string(step.size).padding(toLength: 9, withPad: " ", startingAt: 0)) \(step.title)  |  \(step.summary)")
             }
             guard !plan.isEmpty else {
-                print("\nNothing safe to remove.")
+                print("\nNothing in the Smart selection to remove.")
                 fflush(stdout)
                 finished.signal()
                 return
             }
 
             print("\nCleaning")
-            let outcome = await Cleaner.run(plan: plan, safety: safety, skipping: skipping, scannedAt: scannedAt) { _ in }
+            let outcome = await Cleaner.run(plan: plan, safety: safety, skipping: skipping, waiting: waiting, scannedAt: scannedAt) { _ in }
             print("\nReceipt")
             for step in outcome.steps {
                 let mark = step.skippedReason != nil ? "-" : step.failures.isEmpty && step.skippedItems.isEmpty ? "ok" : "!"

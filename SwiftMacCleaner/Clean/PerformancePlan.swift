@@ -27,7 +27,7 @@ nonisolated enum PerformancePlan {
             plan.steps.append(CleanStep(
                 id: adminTasksStepID,
                 title: titles(of: admin),
-                tier: .safe,
+                aftermath: .rebuilds,
                 method: .adminCommand,
                 summary: "Run \(admin.map(\.actionTarget).joined(separator: "; ")), with your password",
                 size: 0,
@@ -40,12 +40,13 @@ nonisolated enum PerformancePlan {
             plan.steps.append(CleanStep(
                 id: id,
                 title: check.task.title,
-                tier: .safe,
+                aftermath: .rebuilds,
                 method: .command,
                 summary: "Run \(check.task.actionTarget)",
                 size: check.size,
                 operations: [CleanOperation(itemID: id, kind: .run(command), size: check.size)],
-                waitsFor: check.task.waitsFor
+                waitsFor: check.task.waitsFor,
+                sizeIsEstimate: true
             ))
         }
         return plan
@@ -85,7 +86,7 @@ nonisolated enum PerformancePlan {
             plan.steps.append(CleanStep(
                 id: id,
                 title: item.name,
-                tier: .review,
+                aftermath: .downloadsAgain,
                 method: .command,
                 summary: "Take it off the Open at Login list. The app stays installed",
                 size: 0,
@@ -105,7 +106,7 @@ nonisolated enum PerformancePlan {
                 plan.steps.append(CleanStep(
                     id: id,
                     title: item.title,
-                    tier: .review,
+                    aftermath: .downloadsAgain,
                     method: .adminCommand,
                     summary: "Unload it and move \(item.plist.lastPathComponent) to the Trash, with your password",
                     size: 0,
@@ -120,7 +121,7 @@ nonisolated enum PerformancePlan {
                 plan.steps.append(CleanStep(
                     id: id,
                     title: item.title,
-                    tier: .review,
+                    aftermath: .downloadsAgain,
                     method: .trash,
                     summary: "Unload it and move \(item.plist.lastPathComponent) to the Trash",
                     size: 0,

@@ -74,24 +74,30 @@ struct ReceiptRow: View {
             let more = step.failures.count > 1 ? " (and \(step.failures.count - 1) more in the log)" : ""
             return first + more
         }
+        if step.fate == .trashEmptied { return "Emptied. What was in the Trash cannot be put back." }
         return switch step.method {
         case .delete: "Deleted. It is rebuilt or downloaded again when needed."
         case .trash: "Moved to the Trash. Put Back returns it until the Trash is emptied."
         case .command: "Removed by the tool that owns it."
         case .adminCommand: "Removed with your password. The space comes back over the next minutes."
+        case .adminDelete: "Deleted with your password. Newer logs, and the folders themselves, stayed."
         }
     }
 
     /// Why items were left alone: they changed after the scan, a running program had them open, or some of each.
     private var skippedWhy: String {
-        let inUse = step.skippedItems.values.count { $0.contains(Cleaner.inUseReason) }
-        if inUse == 0 { return "changed since the scan" }
-        return inUse == step.skippedItems.count ? "open in a running program" : "changed since the scan, or open in a running program"
+        let reasons = step.skippedItems.values
+        let appOpen = reasons.count { $0.contains(Cleaner.openAppReason) }
+        if appOpen == reasons.count { return appOpen == 1 ? "the app that keeps it was open" : "the apps that keep them were open" }
+        let inUse = reasons.count { $0.contains(Cleaner.inUseReason) }
+        if appOpen == 0, inUse == 0 { return "changed since the scan" }
+        if appOpen == 0 { return inUse == reasons.count ? "open in a running program" : "changed since the scan, or open in a running program" }
+        return "their app was open, or they changed since the scan"
     }
 
     private var verb: String {
         switch step.method {
-        case .delete: "Deleted"
+        case .delete, .adminDelete: "Deleted"
         case .trash: "Moved"
         case .command, .adminCommand: "Removed"
         }

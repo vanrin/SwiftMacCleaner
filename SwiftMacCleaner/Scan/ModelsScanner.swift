@@ -47,7 +47,7 @@ nonisolated enum ModelsScanner {
             result.findings.append(Finding(
                 id: group.id,
                 area: group.area,
-                tier: group.tier,
+                aftermath: group.aftermath,
                 title: group.title,
                 summary: group.summary(of: items),
                 explanation: group.explanation,
@@ -63,7 +63,7 @@ nonisolated enum ModelsScanner {
                 result.findings.append(Finding(
                     id: "models.ollama",
                     area: .models,
-                    tier: .review,
+                    aftermath: .downloadsAgain,
                     title: "Ollama models",
                     summary: "\(models.count) \(models.count == 1 ? "model" : "models") pulled with ollama",
                     explanation: "Models Ollama has pulled. Each one is downloaded again with ollama pull when you need it. Nothing here is ticked for you.",

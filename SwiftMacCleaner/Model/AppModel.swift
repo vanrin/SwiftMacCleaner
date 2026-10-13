@@ -65,6 +65,8 @@ final class AppModel {
     let apps: AppsModel
     let performance: PerformanceModel
     let protection: ProtectionModel
+    /// Which apps are open, shared by every clean-up: a cache waits while the app that keeps it is open.
+    let openApps = OpenApps()
     /// Whether macOS opens the app at login.
     let openAtLogin: OpenAtLogin
 
@@ -96,8 +98,8 @@ final class AppModel {
     private(set) var runningPart: SidebarItem?
     private(set) var runDone = 0
     private(set) var runTotal = 0
-    /// Set by Quick Clean: when the scan ends, tick the Safe tier everywhere and open the confirmation.
-    @ObservationIgnored private var reviewSafeWhenScanned = false
+    /// Set by Scan and Clean: when the scan ends, open the confirmation over the Smart selection.
+    @ObservationIgnored private var reviewWhenScanned = false
     /// Set by the weekly check: say what the scan found instead of showing it.
     @ObservationIgnored private var notifyWhenScanned = false
 
@@ -112,7 +114,8 @@ final class AppModel {
         self.home = home
         self.settings = settings
         self.openAtLogin = openAtLogin
-        cleanUps = AreaGroup.allCases.map { CleanUpModel(home: home, settings: settings, group: $0) }
+        let openApps = openApps
+        cleanUps = AreaGroup.allCases.map { CleanUpModel(home: home, settings: settings, group: $0, openApps: openApps) }
         space = SpaceModel(home: home)
         duplicates = DuplicatesModel(home: home, settings: settings)
         apps = AppsModel(home: home, settings: settings)
@@ -135,6 +138,7 @@ final class AppModel {
         #if DEBUG
         if let flag = CommandLine.arguments.firstIndex(of: "--demo") {
             isDemo = true
+            openApps.list = { DemoData.openApps }
             let arguments = Array(CommandLine.arguments.dropFirst(flag + 1))
             loadDemo(screen: arguments.first ?? "results", arguments: Array(arguments.dropFirst()))
         }
@@ -216,14 +220,14 @@ final class AppModel {
         beginOverviewScan()
     }
 
-    /// Scans everything, keeps only the Safe tier ticked, and goes straight to the confirmation.
-    func quickClean() {
+    /// Scans everything and goes straight to the confirmation, with the Smart selection ticked.
+    func scanAndClean() {
         notifyWhenScanned = false
-        beginOverviewScan(thenReviewSafe: true)
+        beginOverviewScan(thenReview: true)
     }
 
-    private func beginOverviewScan(thenReviewSafe: Bool = false) {
-        reviewSafeWhenScanned = thenReviewSafe
+    private func beginOverviewScan(thenReview: Bool = false) {
+        reviewWhenScanned = thenReview
         refreshStack()
         sidebarSelection = .overview
         showingOverviewReview = false
@@ -283,8 +287,10 @@ final class AppModel {
     /// What the clean-ups have found so far, together.
     var foundSize: Int64 { cleanUps.reduce(0) { $0 + $1.foundSize } }
     var hasFindings: Bool { cleanUps.contains { !$0.findings.isEmpty } }
-    /// What the menu bar offers: the Safe tier across every clean-up, less what the scanners keep by default.
-    var safeSize: Int64 { cleanUps.reduce(0) { $0 + $1.safeSize } }
+    /// What the menu bar offers: the Smart selection across every clean-up.
+    var smartSize: Int64 { cleanUps.reduce(0) { $0 + $1.smartSize } }
+    /// What is ticked across every clean-up, whether or not Run is set to act on it.
+    var selectedSize: Int64 { cleanUps.reduce(0) { $0 + $1.selectedSize } }
     /// Folders macOS would not let the last scans read, across every clean-up.
     var unreadableFolders: [String] {
         var seen: [String] = []
@@ -310,11 +316,15 @@ final class AppModel {
         included = Set(overviewParts.filter(hasWork))
         if notifyWhenScanned {
             notifyWhenScanned = false
-            notifyAboutScan()
+            if settings.weeklyCheckCleans, runSize > 0 {
+                run(unattended: true)
+            } else {
+                notifyAboutScan()
+            }
         }
-        if reviewSafeWhenScanned {
-            reviewSafeWhenScanned = false
-            reviewSafe()
+        if reviewWhenScanned {
+            reviewWhenScanned = false
+            reviewSmart()
         }
     }
 
@@ -357,9 +367,36 @@ final class AppModel {
         return blocked
     }
 
-    /// How much the run frees: what is ticked in the ticked clean-ups. Tasks free nothing that is measured.
+    /// How much the run frees: what is ticked in the ticked clean-ups, less what waits for something
+    /// that is open. Tasks free nothing that is measured. The confirmation shows the same figure.
     var runSize: Int64 {
-        cleanUps.filter { included.contains(.group($0.group)) }.reduce(0) { $0 + $1.selectedSize }
+        cleanUps.filter { included.contains(.group($0.group)) }.reduce(0) { $0 + $1.cleanableSize() }
+    }
+
+    /// How much of what Run would take waits for something that is open, and the apps it waits for.
+    var runWaitingSize: Int64 {
+        cleanUps.filter { included.contains(.group($0.group)) }.reduce(0) { $0 + $1.waitingSize() }
+    }
+
+    /// The items of the run that wait because an app that keeps them is open, with the sentence each
+    /// gets on the receipt.
+    var runWaitingItems: [String: String] {
+        var waiting: [String: String] = [:]
+        for cleanUp in cleanUps where included.contains(.group(cleanUp.group)) {
+            waiting.merge(cleanUp.waitingReasons()) { first, _ in first }
+        }
+        return waiting
+    }
+
+    /// The open apps the run waits for, across every ticked clean-up, the largest first.
+    var runBlockingApps: [BlockingApp] {
+        var blocking: [String: BlockingApp] = [:]
+        for cleanUp in cleanUps where included.contains(.group(cleanUp.group)) {
+            for entry in cleanUp.blockingApps() {
+                blocking[entry.id, default: BlockingApp(app: entry.app, size: 0)].size += entry.size
+            }
+        }
+        return blocking.values.sorted { ($0.size, $1.app.name) > ($1.size, $0.app.name) }
     }
 
     var runHasUnknownSize: Bool {
@@ -367,16 +404,22 @@ final class AppModel {
     }
 
     func reviewRun() {
+        openApps.refresh()
+        for cleanUp in cleanUps where cleanUp.phase == .results { cleanUp.refreshActiveChecks() }
         showingOverviewReview = true
     }
 
     /// Goes through the ticked parts in turn: each clean-up cleans what is ticked in it, then Performance
     /// runs its recommended tasks. Every part keeps its own receipt; the overview shows them as one.
-    func run() {
+    ///
+    /// `unattended` is the clean after the weekly check, which nobody confirmed and nobody is watching:
+    /// it leaves out the maintenance tasks and every step that would ask for a password, and says what
+    /// it did in a notification.
+    func run(unattended: Bool = false) {
         guard overviewPhase == .results, !runPlan.isEmpty else { return }
         showingOverviewReview = false
         let cleanUps = cleanUps.filter { included.contains(.group($0.group)) && !$0.plan(in: nil).isEmpty }
-        let runsTasks = included.contains(.performance) && hasWork(.performance)
+        let runsTasks = !unattended && included.contains(.performance) && hasWork(.performance)
         runTotal = cleanUps.count + (runsTasks ? 1 : 0)
         runDone = 0
         overviewPhase = .running
@@ -384,7 +427,7 @@ final class AppModel {
             var outcomes: [CleanOutcome] = []
             for cleanUp in cleanUps {
                 runningPart = .group(cleanUp.group)
-                if let outcome = await cleanUp.runClean(area: nil) { outcomes.append(outcome) }
+                if let outcome = await cleanUp.runClean(area: nil, unattended: unattended) { outcomes.append(outcome) }
                 runDone += 1
             }
             if runsTasks {
@@ -396,6 +439,10 @@ final class AppModel {
             overviewOutcome = CleanOutcome.merged(outcomes)
             sidebarSelection = .overview
             overviewPhase = overviewOutcome == nil ? .results : .done
+            if unattended {
+                // When everything ticked needed a password, nothing was cleaned and there is only the scan to report.
+                if let overviewOutcome { notifyAboutClean(overviewOutcome) } else { notifyAboutScan() }
+            }
         }
     }
 
@@ -419,23 +466,49 @@ final class AppModel {
         overviewPhase = overviewParts.contains(where: hasResults) ? .results : .home
     }
 
-    /// The menu bar's one-click path: tick the Safe tier from the last scans and confirm, or scan first.
-    /// Results from a part's own scan count: the overview needs no scan of its own for this.
-    func cleanSafe() {
+    /// The menu bar's one-click path: put the ticks back to the Smart selection from the last scans
+    /// and confirm, or scan first. Results from a part's own scan count: the overview needs no scan of
+    /// its own for this.
+    func cleanSmart() {
         if cleanUps.contains(where: { $0.phase == .results || $0.phase == .done }) {
             sidebarSelection = .overview
-            reviewSafe()
+            reviewSmart()
         } else {
-            quickClean()
+            scanAndClean()
         }
     }
 
-    /// Ticks the Safe tier in every clean-up, leaves the tasks out, and opens the overview's confirmation.
-    func reviewSafe() {
+    /// Puts every clean-up's ticks back to the Smart selection, leaves the tasks out, and opens the
+    /// overview's confirmation.
+    func reviewSmart() {
         overviewPhase = .results
-        for cleanUp in cleanUps { cleanUp.selectSafeDefaults() }
+        for cleanUp in cleanUps { cleanUp.selectSmart() }
         included = Set(AreaGroup.allCases.map(SidebarItem.group).filter(hasWork))
         showingOverviewReview = runSize > 0 || runHasUnknownSize
+    }
+
+    /// Sets the ticks of every clean-up that has results to what the preset stands for, and has Run
+    /// act on each clean-up that then has something ticked. The tick on Performance is left as it is.
+    func select(_ preset: SelectionPreset) {
+        for cleanUp in cleanUps where cleanUp.phase == .results { cleanUp.select(preset) }
+        let groups = Set(AreaGroup.allCases.map(SidebarItem.group))
+        included = included.subtracting(groups).union(groups.filter(hasWork))
+    }
+
+    /// Switches a kind of thing in or out of Smart selection. A clean-up whose ticks were the Smart
+    /// selection follows at once; ticks set by hand are left as they are.
+    func setSmart(_ kind: SmartKind, isOn: Bool) {
+        let following = cleanUps.filter { $0.phase == .results && $0.preset() == .smart }
+        if isOn { settings.smartKinds.insert(kind) } else { settings.smartKinds.remove(kind) }
+        for cleanUp in following { cleanUp.select(.smart) }
+        let groups = Set(following.map { SidebarItem.group($0.group) })
+        included = included.subtracting(groups).union(groups.filter(hasWork))
+    }
+
+    /// The preset every clean-up's ticks amount to, or nil when they differ or were set by hand.
+    var preset: SelectionPreset? {
+        let presets = Set(cleanUps.filter { $0.phase == .results && !$0.findings.isEmpty }.map { $0.preset() })
+        return presets.count == 1 ? presets.first ?? nil : nil
     }
 
     // MARK: Background check
@@ -478,15 +551,32 @@ final class AppModel {
     }
 
     private func notifyAboutScan() {
-        let safe = safeSize
+        let smart = smartSize
+        let found = foundSize
+        notify(
+            title: smart > 0 ? "\(ByteFormat.string(smart)) ready to clean" : "Your disk is in good shape",
+            body: smart > 0
+                ? "\(ByteFormat.string(found)) found in the weekly check. Open SwiftMacCleaner to review and clean."
+                : found > 0 ? "The weekly check found \(ByteFormat.string(found)), none of it in the Smart selection."
+                : "The weekly check found nothing worth removing."
+        )
+    }
+
+    /// Says what the clean after the weekly check did, since nobody was there to see it.
+    private func notifyAboutClean(_ outcome: CleanOutcome) {
+        let left = runPlan.steps.count { $0.method.needsPassword }
+        var body = "The weekly check cleaned the Smart selection. Open SwiftMacCleaner for the receipt."
+        if left > 0 { body += " \(left == 1 ? "One group needs" : "\(left) groups need") your password and stayed." }
+        notify(title: "\(ByteFormat.string(outcome.reclaimed)) freed", body: body)
+    }
+
+    private func notify(title: String, body: String) {
         let center = UNUserNotificationCenter.current()
         center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
             guard granted else { return }
             let content = UNMutableNotificationContent()
-            content.title = safe > 0 ? "\(ByteFormat.string(safe)) can go safely" : "Your disk is in good shape"
-            content.body = safe > 0
-                ? "Build output and caches that rebuild themselves. Open SwiftMacCleaner to review and clean."
-                : "The weekly check found nothing worth removing."
+            content.title = title
+            content.body = body
             center.add(UNNotificationRequest(identifier: "weekly-check", content: content, trigger: nil))
         }
     }

@@ -55,7 +55,7 @@ struct OldXcodeTests {
         let context = ScanContext(home: sandbox.root)
         let report = await XcodeScanner.oldXcodes(others: [old], selected: selected, context: context, minimumSize: 1_000_000)
         let finding = try #require(report.finding)
-        #expect(finding.tier == .careful)
+        #expect(finding.aftermath == .irreplaceable)
         #expect(finding.method == .trash)
         #expect(finding.items.map(\.title) == ["Xcode 16.4"])
         #expect(finding.items.first?.paths == [old])

@@ -26,7 +26,7 @@ struct CleanUpManager: View {
         .frame(maxWidth: 1100)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .orbAction {
-            CleanButton(size: cleanUp.selectedSize, hasUnknownSize: cleanUp.selectionHasUnknownSize) {
+            CleanButton(size: cleanUp.cleanableSize(), hasUnknownSize: cleanUp.selectionHasUnknownSize) {
                 cleanUp.review()
             }
         }

@@ -49,7 +49,7 @@ nonisolated enum Uninstaller {
             plan.steps.append(CleanStep(
                 id: stepID(for: app),
                 title: removesApp ? app.name : "\(app.name): its files only",
-                tier: .review,
+                aftermath: .downloadsAgain,
                 method: .trash,
                 summary: summary(removesApp: removesApp, related: files.count - (removesApp ? 1 : 0)),
                 size: files.reduce(0) { $0 + $1.size },

@@ -85,7 +85,7 @@ struct LargeFileScannerTests {
         #expect(result.findings.map(\.id) == ["largeFiles.downloads"])
         let large = try #require(result.findings.first)
         #expect(large.area == .largeFiles)
-        #expect(large.tier == .review)
+        #expect(large.aftermath == .irreplaceable)
         #expect(large.method == .trash)
         #expect(large.actionTarget == "~/Downloads")
         #expect(large.summary == "1 file of 100 MB or more untouched for 90+ days")

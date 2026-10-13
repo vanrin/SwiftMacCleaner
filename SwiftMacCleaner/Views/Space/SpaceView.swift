@@ -6,7 +6,7 @@
 import SwiftUI
 
 /// Largest Folders: measures a whole folder tree and lets the user walk down into the biggest parts.
-/// It only reads. Removing things stays with the clean-up scan, which knows what is safe.
+/// It only reads. Removing things stays with the clean-up scans, which know what each thing is.
 struct SpaceView: View {
     @Environment(AppModel.self) private var model
 

@@ -28,12 +28,7 @@ struct AreaFindings: View {
             } else if isPane {
                 PaneHeading(title: area.title, detail: detail(findings)) {
                     Spacer(minLength: 0)
-                    Menu("Select") {
-                        Button("Safe", action: selectSafe)
-                        Button("All", action: selectAll)
-                        Button("None", action: selectNone)
-                    }
-                    .fixedSize()
+                    PresetControl(preset: cleanUp.preset(in: area), select: select)
                 }
             } else {
                 PageHeading(title: area.title, detail: detail(findings))
@@ -52,8 +47,8 @@ struct AreaFindings: View {
     private func detail(_ findings: [Finding]) -> String {
         let places = findings.count == 1 ? "1 place" : "\(findings.count) places"
         var text = "\(ByteFormat.string(cleanUp.foundSize(in: area))) found in \(places), \(ByteFormat.string(cleanUp.selectedSize(in: area))) of it selected."
-        if findings.allSatisfy({ $0.tier != .safe }) {
-            text += " Nothing here is ticked for you: each row is a guess backed by the evidence shown, and you decide."
+        if findings.smartSelection(cleanUp.settings.smartKinds).isEmpty {
+            text += " Smart selection ticks nothing here: each row is a guess backed by the evidence shown, and you decide."
         }
         if findings.allSatisfy({ $0.method == .trash }) {
             text += " These go to the Trash and can be put back."
@@ -61,15 +56,7 @@ struct AreaFindings: View {
         return text
     }
 
-    private func selectSafe() {
-        cleanUp.selectSafe(in: area)
-    }
-
-    private func selectAll() {
-        cleanUp.selectAll(in: area)
-    }
-
-    private func selectNone() {
-        cleanUp.selectNone(in: area)
+    private func select(_ preset: SelectionPreset) {
+        cleanUp.select(preset, in: area)
     }
 }

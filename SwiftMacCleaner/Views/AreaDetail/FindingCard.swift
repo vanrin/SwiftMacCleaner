@@ -21,7 +21,7 @@ struct FindingCard: View {
                             .lineLimit(1)
                     }
                     .toggleStyle(.check)
-                    TierBadge(tier: finding.tier)
+                    AftermathBadge(aftermath: finding.aftermath)
                     FindingBadges(finding: finding, active: active)
                     Spacer(minLength: Design.Spacing.medium)
                     SizeLabel(bytes: finding.size, unknown: finding.hasUnknownSize && finding.size == 0)

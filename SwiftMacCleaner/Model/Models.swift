@@ -130,42 +130,105 @@ nonisolated enum AreaGroup: String, CaseIterable, Identifiable, Sendable {
     /// The line under the opening screen's list, about what a scan does and does not do.
     var promise: String {
         switch self {
-        case .system: "Scanning only measures. Nothing is removed until you confirm: caches are deleted right away, and everything else goes to the Trash first, where it can be put back."
-        case .developer: "Scanning only measures. Nothing is removed until you confirm: build output and caches are deleted right away, and everything that would need setting up again goes to the Trash first."
-        case .largeFiles: "Scanning only measures. Nothing is removed until you confirm, and everything goes to the Trash first, where it can be put back."
+        case .system: "A scan shows everything that can go and ticks the part worth cleaning now. Nothing is removed until you confirm."
+        case .developer: "A scan shows everything that can go and ticks what your tools rebuild by themselves. Source files are never touched, and nothing is removed until you confirm."
+        case .largeFiles: "A scan only lists them. Nothing here is ever ticked for you, and what you tick goes to the Trash first, where it can be put back."
+        }
+    }
+
+    /// Whether what the clean-up finds is junk, or the user's own files that happen to be large.
+    var holdsJunk: Bool { self != .largeFiles }
+
+    /// What happens to what is ticked, for the sentence under a summary's headline.
+    var removalSentence: String {
+        switch self {
+        case .system: "Caches and logs are deleted and the Trash is emptied. Anything else you tick goes to the Trash first and can be put back."
+        case .developer: "What rebuilds itself is deleted right away. Anything else you tick goes to the Trash first and can be put back."
+        case .largeFiles: "What you tick goes to the Trash first and can be put back."
         }
     }
 
     var areas: [Area] { Area.allCases.filter { $0.group == self } }
 }
 
-/// How much thought removing something deserves.
-nonisolated enum SafetyTier: Int, CaseIterable, Comparable, Sendable {
-    case safe, review, careful
+/// What you are left with once something is removed. It is a fact about the thing, written on its
+/// group and on the confirmation. Whether it is ticked for you is a separate matter: see `SmartKind`.
+nonisolated enum Aftermath: Int, CaseIterable, Comparable, Sendable {
+    case rebuilds, downloadsAgain, discarded, irreplaceable
 
-    static func < (lhs: SafetyTier, rhs: SafetyTier) -> Bool { lhs.rawValue < rhs.rawValue }
+    static func < (lhs: Aftermath, rhs: Aftermath) -> Bool { lhs.rawValue < rhs.rawValue }
 
     var label: String {
         switch self {
-        case .safe: "Safe"
-        case .review: "Review"
-        case .careful: "Careful"
-        }
-    }
-
-    var headline: String {
-        switch self {
-        case .safe: "Rebuilds itself"
-        case .review: "Needs a re-download"
-        case .careful: "Cannot be recreated"
+        case .rebuilds: "Rebuilds itself"
+        case .downloadsAgain: "Downloads again"
+        case .discarded: "Cannot be put back"
+        case .irreplaceable: "Cannot be recreated"
         }
     }
 
     var explanation: String {
         switch self {
-        case .safe: "Caches and build output. Your tools recreate them the next time they run."
-        case .review: "Removable, but you would have to fetch or set these up again. Goes to the Trash, so it can be put back."
-        case .careful: "Never selected for you. Remove only if you are sure."
+        case .rebuilds: "Caches, logs and build output. Whatever made them makes them again the next time it runs."
+        case .downloadsAgain: "You would have to fetch or set these up again. They go to the Trash first, so they can be put back."
+        case .discarded: "Already thrown away. Emptying the Trash removes it for good."
+        case .irreplaceable: "Once it is gone there is nothing to make it from again. Remove it only if you are sure."
+        }
+    }
+}
+
+/// A kind of thing Smart selection can tick after a scan, each with a switch of its own in Settings.
+/// A finding that belongs to none of them is never ticked for the user.
+nonisolated enum SmartKind: String, CaseIterable, Identifiable, Sendable {
+    case appJunk, systemLogs, trash, buildOutput, staleProjects, unused
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .appJunk: "App caches, logs and temporary files"
+        case .systemLogs: "System logs"
+        case .trash: "Everything in the Trash"
+        case .buildOutput: "Build output and package caches"
+        case .staleProjects: "Dependencies in stale projects"
+        case .unused: "Simulators, toolchains and IDE versions you have stopped using"
+        }
+    }
+
+    /// The line under the title, for the kinds that cost something.
+    var note: String? {
+        switch self {
+        case .systemLogs: "Asks for your password once per clean"
+        case .trash: "Emptying the Trash cannot be undone"
+        case .unused: "They go to the Trash and have to be downloaded again"
+        case .appJunk, .buildOutput, .staleProjects: nil
+        }
+    }
+
+    /// Everything that rebuilds itself is on from the start, and so is the Trash. What has to be
+    /// downloaded again waits to be asked for.
+    var isOnByDefault: Bool { self != .unused }
+
+    static let standard = Set(allCases.filter(\.isOnByDefault))
+
+    /// The kinds stored under a key in the defaults, or the standard ones when nothing was stored.
+    static func stored(forKey key: String, in defaults: UserDefaults) -> Set<SmartKind> {
+        guard let names = defaults.stringArray(forKey: key) else { return standard }
+        return Set(names.compactMap(SmartKind.init))
+    }
+}
+
+/// The three ways to set every tick at once.
+nonisolated enum SelectionPreset: String, CaseIterable, Identifiable, Sendable {
+    case smart, everything, nothing
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .smart: "Smart"
+        case .everything: "Everything"
+        case .nothing: "Nothing"
         }
     }
 }
@@ -180,6 +243,8 @@ nonisolated enum CleanMethod: Sendable, Hashable {
     case command
     /// A command that only root may run. macOS asks for the password; nothing else does.
     case adminCommand
+    /// Old logs that belong to root, deleted by one script that runs as root. See `SystemLogs`.
+    case adminDelete
 
     var verb: String {
         switch self {
@@ -187,10 +252,14 @@ nonisolated enum CleanMethod: Sendable, Hashable {
         case .trash: "Moves to Trash"
         case .command: "Runs"
         case .adminCommand: "Runs with your password"
+        case .adminDelete: "Deletes with your password"
         }
     }
 
-    var needsPassword: Bool { self == .adminCommand }
+    var needsPassword: Bool { self == .adminCommand || self == .adminDelete }
+
+    /// Whether what it removes is gone at once, with no copy left in the Trash.
+    var isFinal: Bool { self != .trash }
 }
 
 /// Something that has to be closed or stopped before a finding can be cleaned.
@@ -239,19 +308,25 @@ nonisolated struct FindingItem: Identifiable, Sendable, Hashable {
     var size: Int64
     var paths: [URL] = []
     var command: [String]? = nil
-    /// Overrides the tier default. `nil` means "ticked only when the finding is safe".
+    /// False keeps the item out of Smart selection even when its finding is part of it, as with the
+    /// newest device support. Nil follows the finding.
     var preselected: Bool? = nil
     /// Shown in monospace under the detail, such as the command that brings a project back.
     var hint: String? = nil
     /// macOS gives no size for this, so `size` is 0 and the row says so instead of showing a number.
     var sizeUnknown: Bool = false
+    /// What root is asked to delete, for an item of a finding that is removed with `.adminDelete`.
+    var systemTarget: SystemLogs.Target? = nil
+    /// The name the item is filed under by the app that keeps it, such as a cache folder's. While an
+    /// app of that name is open the item waits, and the confirmation offers to ask the app to quit.
+    var keptBy: String? = nil
 }
 
-/// A suggestion: a group of items that share a location, a risk level and a way of being removed.
+/// A suggestion: a group of items that share a location, an aftermath and a way of being removed.
 nonisolated struct Finding: Identifiable, Sendable {
     let id: String
     var area: Area
-    var tier: SafetyTier
+    var aftermath: Aftermath
     var title: String
     var summary: String
     var explanation: String
@@ -262,17 +337,41 @@ nonisolated struct Finding: Identifiable, Sendable {
     var note: String? = nil
     /// Something that must not be running while this finding is cleaned.
     var waitsFor: InUseCheck? = nil
+    /// Apps write to these all the time, so a change since the scan says nothing about them and is
+    /// not a reason to leave them. Whether the app that keeps each item is open is asked instead.
+    var keepsChanging = false
 
     var size: Int64 { items.reduce(0) { $0 + $1.size } }
     var hasUnknownSize: Bool { items.contains(where: \.sizeUnknown) }
 }
 
+nonisolated extension Finding {
+    /// Findings that have to be fetched again and are still part of Smart selection once their
+    /// switch is on, because the scan only offers them after they have sat unused.
+    static let unusedFindingIDs: Set<String> = ["xcode.simulators", "toolchains.unused", "ides.oldVersions"]
+
+    /// The kind of thing this is to Smart selection, or nil when it is never ticked for the user.
+    ///
+    /// This is the whole rule, in one place: the Trash, what root deletes, what has gone unused, and
+    /// otherwise only what rebuilds itself. Backups, archives, snapshots, models, disk images and the
+    /// user's own files belong to no kind.
+    var smart: SmartKind? {
+        if area == .trash { return .trash }
+        if method == .adminDelete { return .systemLogs }
+        if Self.unusedFindingIDs.contains(id) { return .unused }
+        guard aftermath == .rebuilds else { return nil }
+        if area == .projects { return .staleProjects }
+        if area.isDeveloper { return .buildOutput }
+        return area == .cachesLogs ? .appJunk : nil
+    }
+}
+
 nonisolated extension Sequence<Finding> {
-    /// The Safe tier's items that are ticked without being asked: what Quick Clean and the menu bar
-    /// remove, and so the only thing either may promise. An item its scanner keeps by default, such
-    /// as the newest device support, is in the Safe tier but not among these.
-    var safeDefaults: [FindingItem] {
-        filter { $0.tier == .safe }.flatMap { finding in finding.items.filter { $0.preselected ?? true } }
+    /// What Smart selection ticks: the items of every finding whose kind is switched on, less the
+    /// ones their scanner keeps by default. It is what a scan ticks by itself, and so the only thing
+    /// Scan and Clean, the menu bar and a clean after the weekly check may promise.
+    func smartSelection(_ kinds: Set<SmartKind>) -> [FindingItem] {
+        filter { $0.smart.map(kinds.contains) ?? false }.flatMap { finding in finding.items.filter { $0.preselected ?? true } }
     }
 }
 
@@ -285,6 +384,7 @@ nonisolated enum ProtectionRule: String, Sendable, CaseIterable {
     case defaultVersion = "Default version"
     case otherDisk = "Other disk"
     case shownOnly = "Shown only"
+    case notYours = "Not yours"
 }
 
 /// Something the scan found and deliberately did not offer, so the numbers add up.
@@ -320,6 +420,8 @@ nonisolated struct ScanContext: Sendable {
     var projectRoots: [URL] = []
     /// Paths the user never wants to see again, as the Never Suggest list stores them.
     var excluded: [String] = []
+    /// The root-owned log folders to measure. Nil, as in tests, leaves them out of the scan.
+    var systemLogRoots: [URL]? = nil
     /// The login shell's PATH and variables, read once for the whole scan. Without it, as in tests,
     /// no tool is asked where it keeps things and only the usual folders are looked at.
     var shell: Task<ShellEnvironment, Never>? = nil

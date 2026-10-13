@@ -150,7 +150,7 @@ nonisolated enum LargeFileScanner {
             result.findings.append(Finding(
                 id: prefix,
                 area: .largeFiles,
-                tier: .review,
+                aftermath: .irreplaceable,
                 title: "Large files \(folder.place)",
                 summary: "\(items.count) \(items.count == 1 ? "file" : "files") of \(ByteFormat.string(context.largeFileSize)) or more untouched for \(context.largeFileDays)+ days",
                 explanation: "Big files \(folder.place) that have not been changed, moved or opened in a while. Projects are left out. They go to the Trash, so they can be put back if one turns out to matter.",

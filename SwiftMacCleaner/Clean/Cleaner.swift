@@ -36,7 +36,7 @@ nonisolated struct SafetyGuard: Sendable {
     static let protectedComponents: Set<String> = [".git", ".hg", ".svn"]
     static let protectedExtensions: Set<String> = ["photoslibrary", "aplibrary", "musiclibrary", "tvlibrary", "keychain-db"]
 
-    /// Careful findings may name an iPhone backup explicitly; nothing else may reach into it.
+    /// The backups finding may name an iPhone backup explicitly; nothing else may reach into it.
     var backupsAllowed = false
 
     func allows(_ url: URL) -> Bool { refusal(for: url) == nil }
@@ -133,6 +133,8 @@ nonisolated struct StepOutcome: Identifiable, Sendable {
     var skippedItems: [String: String] = [:]
     var skippedReason: String?
     var trashed: [TrashedItem] = []
+    /// What became of the step's items, when it came from a clean-up's plan.
+    var fate: CleanFate? = nil
 
     var succeeded: Bool { failures.isEmpty && skippedReason == nil && skippedItems.isEmpty }
 }
@@ -173,13 +175,15 @@ nonisolated enum CleanLog {
 }
 
 nonisolated enum Cleaner {
-    /// Carries out the plan. `skipping` maps step ids to the reason they must be left alone.
+    /// Carries out the plan. `skipping` maps step ids to the reason they must be left alone, and
+    /// `waiting` does the same for single items, such as a cache whose app is open.
     /// `scannedAt` is when the findings were measured: anything changed since is left alone too.
     @concurrent
     static func run(
         plan: CleanPlan,
         safety: SafetyGuard,
         skipping: [String: String] = [:],
+        waiting: [String: String] = [:],
         scannedAt: Date? = nil,
         progress: @escaping @Sendable (CleanProgress) -> Void
     ) async -> CleanOutcome {
@@ -200,15 +204,27 @@ nonisolated enum Cleaner {
                 log.append("skipped: \(reason)")
                 finished += step.operations.count
                 outcomes.append(StepOutcome(id: step.id, title: step.title, method: step.method, size: step.size,
-                                            cleanedItemIDs: [], failures: [], skippedReason: reason))
+                                            cleanedItemIDs: [], failures: [], skippedReason: reason, fate: step.fate))
                 continue
             }
             progress(CleanProgress(fraction: Double(finished) / Double(operationCount), status: step.title))
+            if step.method == .adminDelete {
+                outcomes.append(deleteAsAdmin(step, log: &log))
+                finished += step.operations.count
+                continue
+            }
 
             var outcome = StepOutcome(id: step.id, title: step.title, method: step.method, size: step.size,
-                                      cleanedItemIDs: [], failures: [], skippedReason: nil)
+                                      cleanedItemIDs: [], failures: [], skippedReason: nil, fate: step.fate)
             var failedItems = Set<String>()
-            // Both checks run per item, so an item with several paths is left whole or removed whole.
+            // Every check runs per item, so an item with several paths is left whole or removed whole.
+            for operation in step.operations where outcome.skippedItems[operation.itemID] == nil {
+                if let reason = waiting[operation.itemID] {
+                    outcome.skippedItems[operation.itemID] = reason
+                    failedItems.insert(operation.itemID)
+                    log.append("skipped \(reason)")
+                }
+            }
             if let openFiles {
                 for operation in step.operations where outcome.skippedItems[operation.itemID] == nil {
                     if let use = inUse(operation, openFiles: openFiles, safety: safety) {
@@ -218,7 +234,7 @@ nonisolated enum Cleaner {
                     }
                 }
             }
-            if let scannedAt {
+            if let scannedAt, step.checksFreshness {
                 for operation in step.operations where outcome.skippedItems[operation.itemID] == nil {
                     if let change = changedSinceScan(operation, scannedAt: scannedAt) {
                         outcome.skippedItems[operation.itemID] = change
@@ -295,7 +311,7 @@ nonisolated enum Cleaner {
     private static func target(of operation: CleanOperation) -> URL? {
         switch operation.kind {
         case .delete(let url), .trash(let url): url
-        case .run, .runAsAdmin: nil
+        case .run, .runAsAdmin, .deleteAsAdmin: nil
         }
     }
 
@@ -314,6 +330,14 @@ nonisolated enum Cleaner {
 
     /// How a receipt tells an item that was in use from one that changed.
     static let inUseReason = "a running program has it open"
+    /// How a receipt tells an item that waited for its app to quit.
+    static let openAppReason = "still open"
+
+    /// The sentence for an item left alone because the apps that keep it are open.
+    static func waitingReason(_ title: String, for apps: [OpenApp]) -> String {
+        let names = ListFormat.string(apps.map(\.name))
+        return "\(title): \(names) \(apps.count == 1 ? "is" : "are") \(openAppReason), so it was left alone"
+    }
 
     /// The newest modification date anywhere inside the item. An app writing deep inside a folder
     /// counts as a change to the folder; the walk is bounded so a huge tree stays cheap.
@@ -380,7 +404,58 @@ nonisolated enum Cleaner {
             return runCommand(command, asAdmin: false)
         case .runAsAdmin(let command):
             return runCommand(command, asAdmin: true)
+        case .deleteAsAdmin(let target):
+            // A step's targets go to root together, in `deleteAsAdmin(_:log:)`, and never one by one.
+            return .failed("Left \(target.path) alone: it can only be cleaned together with the rest of its group")
         }
+    }
+
+    /// Hands every target of a step to root in one script, so macOS asks for the password once, and
+    /// reads back which of them it could not finish. A target the guard refuses never reaches root.
+    static func deleteAsAdmin(_ step: CleanStep, roots: [URL] = SystemLogs.roots, log: inout [String]) -> StepOutcome {
+        var outcome = StepOutcome(id: step.id, title: step.title, method: step.method, size: step.size,
+                                  cleanedItemIDs: [], failures: [], skippedReason: nil, fate: step.fate)
+        var accepted: [(itemID: String, target: SystemLogs.Target)] = []
+        for operation in step.operations {
+            guard case .deleteAsAdmin(let target) = operation.kind else { continue }
+            if SystemLogs.allows(target, roots: roots) {
+                accepted.append((operation.itemID, target))
+            } else {
+                outcome.failures.append("Refused to clean \(target.path): not a folder root may be asked to reach into")
+                log.append("FAILED  refused \(target.path)")
+            }
+        }
+        guard !accepted.isEmpty else { return outcome }
+        if Task.isCancelled {
+            outcome.failures.append("Stopped before finishing")
+            return outcome
+        }
+
+        let output = Shell.runAsAdministrator(SystemLogs.command(for: accepted.map(\.target)), timeout: 600)
+        var unfinished = Set<Int>()
+        if let output, output.status == 0, !output.timedOut, !output.cancelled {
+            // Every target went through.
+        } else if let output, !output.timedOut, !output.cancelled, !SystemLogs.failedPositions(in: output.stderr).isEmpty {
+            unfinished = SystemLogs.failedPositions(in: output.stderr)
+        } else {
+            let reason = if output == nil { "the script could not be started" }
+                else if output?.stderr.contains("-128") == true { "the password prompt was cancelled" }
+                else if output?.timedOut == true { "it did not finish in time" }
+                else { output?.stderr.trimmingCharacters(in: .whitespacesAndNewlines) ?? "" }
+            outcome.failures.append("\(step.title) was skipped" + (reason.isEmpty ? "" : ": \(reason)"))
+            log.append("FAILED  \(step.title): \(reason)")
+            return outcome
+        }
+        for (index, entry) in accepted.enumerated() {
+            if unfinished.contains(index) {
+                outcome.failures.append("Could not delete every old log in \(entry.target.path). Something there changed, or macOS keeps it for itself")
+                log.append("FAILED  part of \(entry.target.path) stayed")
+            } else {
+                outcome.cleanedItemIDs.append(entry.itemID)
+                log.append("ok      deleted as administrator the logs untouched for \(SystemLogs.idleDays)+ days in \(entry.target.path)")
+            }
+        }
+        return outcome
     }
 
     /// True when macOS refused to let this user or this app move the item, as opposed to any other failure.
@@ -423,6 +498,7 @@ nonisolated enum Cleaner {
         case .trash(let url): "trashed \(url.path)"
         case .run(let command): "ran \(command.joined(separator: " "))"
         case .runAsAdmin(let command): "ran as administrator \(command.joined(separator: " "))"
+        case .deleteAsAdmin(let target): "deleted as administrator the old logs in \(target.path)"
         }
     }
 

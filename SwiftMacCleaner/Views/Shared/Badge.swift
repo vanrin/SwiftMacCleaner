@@ -5,10 +5,13 @@
 
 import SwiftUI
 
-/// A short label next to a title: what a row waits for, whether it needs a password, or that it is new.
+/// A short label next to a title: what a row waits for, whether it needs a password, that it is new,
+/// what removing it leaves you with, or how much of it is ticked.
 struct Badge: View {
     enum Style {
         case waits, password, new, neutral
+        /// How much of something is ticked.
+        case selected
     }
 
     @Environment(\.theme) private var theme
@@ -30,7 +33,7 @@ struct Badge: View {
         switch style {
         case .waits: AnyShapeStyle(Design.Signal.review)
         case .password: AnyShapeStyle(theme.deep)
-        case .new: AnyShapeStyle(theme.accent)
+        case .new, .selected: AnyShapeStyle(theme.accent)
         case .neutral: AnyShapeStyle(.primary)
         }
     }
@@ -39,7 +42,7 @@ struct Badge: View {
         switch style {
         case .waits: Design.Signal.review.opacity(0.2)
         case .password: .white.opacity(0.92)
-        case .new: theme.accent.opacity(0.22)
+        case .new, .selected: theme.accent.opacity(0.22)
         case .neutral: Design.Surface.well
         }
     }

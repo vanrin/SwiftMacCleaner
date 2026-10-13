@@ -83,14 +83,15 @@ struct MenuBarView: View {
         .onAppear(perform: model.backgroundTick)
     }
 
-    /// The disk split into what stays, what needs a decision, and what can go safely.
+    /// The disk split into what stays, what was found and is not part of the Smart selection, and
+    /// what is.
     private var segments: [UsageSegment] {
         let found = model.foundSize
-        let safe = model.safeSize
+        let smart = model.smartSize
         return [
             UsageSegment(id: "keep", label: "Keeping", bytes: max(0, model.disk.used - found), color: Design.Surface.keeping),
-            UsageSegment(id: "review", label: "Needs your call", bytes: max(0, found - safe), color: theme.faintAccent),
-            UsageSegment(id: "safe", label: "Safe to remove", bytes: safe, color: theme.accent),
+            UsageSegment(id: "found", label: "Also found", bytes: max(0, found - smart), color: theme.faintAccent),
+            UsageSegment(id: "selected", label: "Selected", bytes: smart, color: theme.accent),
         ]
     }
 

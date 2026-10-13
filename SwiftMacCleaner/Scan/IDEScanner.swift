@@ -46,7 +46,7 @@ nonisolated enum IDEScanner {
             result.findings.append(Finding(
                 id: "ides.jetbrains",
                 area: .ides,
-                tier: .safe,
+                aftermath: .rebuilds,
                 title: "JetBrains caches and logs",
                 summary: currentItems.prefix(3).map(\.title).joined(separator: ", ") + (currentItems.count > 3 ? " and more" : ""),
                 explanation: "Indexes, compiled caches and logs the IDE rebuilds the next time it opens a project. Settings and plugins are left alone.",
@@ -92,7 +92,7 @@ nonisolated enum IDEScanner {
                 result.findings.append(Finding(
                     id: "ides.oldVersions",
                     area: .ides,
-                    tier: .review,
+                    aftermath: .downloadsAgain,
                     title: "Old IDE versions",
                     summary: "\(items.count) \(items.count == 1 ? "version" : "versions") older than the one you run",
                     explanation: "Settings, caches and logs for IDE versions you no longer run. The current version of each IDE keeps its own.",

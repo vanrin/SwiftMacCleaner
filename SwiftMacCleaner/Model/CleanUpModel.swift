@@ -23,6 +23,8 @@ final class CleanUpModel {
 
     let home: URL
     let settings: AppSettings
+    /// Which apps are open, for the items that wait on one.
+    let openApps: OpenApps
     /// Which clean-up this is.
     let group: AreaGroup
     /// The areas this clean-up may look at, in the order they are listed.
@@ -57,13 +59,14 @@ final class CleanUpModel {
 
     @ObservationIgnored private var scanTask: Task<Void, Never>?
     @ObservationIgnored private var scanStarted = Date()
-    /// Set by Quick Clean: open the confirmation as soon as the scan ends, with only Safe items ticked.
+    /// Set by Scan and Clean: open the confirmation as soon as the scan ends, with the Smart selection ticked.
     @ObservationIgnored private var reviewWhenScanned = false
 
-    init(home: URL, settings: AppSettings, group: AreaGroup) {
+    init(home: URL, settings: AppSettings, group: AreaGroup, openApps: OpenApps = OpenApps()) {
         self.home = home
         self.settings = settings
         self.group = group
+        self.openApps = openApps
     }
 
     /// Whether a scan is under way or a clean, during which the overview counts this clean-up as busy.
@@ -71,13 +74,13 @@ final class CleanUpModel {
 
     // MARK: Scanning
 
-    /// Scans the given areas, or every area of this clean-up. With `thenReviewSafe`, only the Safe
-    /// tier is ticked when the scan ends and the confirmation opens on its own.
-    func startScan(areas requested: [Area]? = nil, thenReviewSafe: Bool = false) {
+    /// Scans the given areas, or every area of this clean-up. With `thenReview`, the confirmation
+    /// opens on its own when the scan ends, over the Smart selection the scan ticked.
+    func startScan(areas requested: [Area]? = nil, thenReview: Bool = false) {
         let scanned = requested ?? areas
         guard !scanned.isEmpty else { return }
         scanTask?.cancel()
-        reviewWhenScanned = thenReviewSafe
+        reviewWhenScanned = thenReview
 
         findings = []
         protected = []
@@ -140,11 +143,9 @@ final class CleanUpModel {
     }
 
     private func finishScan() {
-        findings.sort { ($0.tier, -$0.size) < ($1.tier, -$1.size) }
+        findings.sort { ($0.aftermath, -$0.size) < ($1.aftermath, -$1.size) }
         protected.sort { ($0.size ?? -1) > ($1.size ?? -1) }
-        selection = Set(findings.flatMap { finding in
-            finding.items.filter { $0.preselected ?? (finding.tier == .safe) }.map(\.id)
-        })
+        selection = smartSelection
         scanDuration = Date().timeIntervalSince(scanStarted)
         scanFinished = Date()
         refreshActiveChecks()
@@ -152,7 +153,7 @@ final class CleanUpModel {
         didScan()
         if reviewWhenScanned {
             reviewWhenScanned = false
-            reviewSafe()
+            reviewSmart()
         }
     }
 
@@ -288,19 +289,34 @@ final class CleanUpModel {
         finding.items.map(binding(for:))
     }
 
-    /// Ticks every item of the area, whatever its tier. The confirmation still says what that includes.
-    func selectAll(in area: Area) {
-        selection.formUnion(findings(in: area).flatMap { $0.items.map(\.id) })
+    /// What a scan ticks by itself: the kinds switched on in Settings, less what their scanners keep by default.
+    private var smartSelection: Set<String> { Set(findings.smartSelection(settings.smartKinds).map(\.id)) }
+
+    /// The ticks a preset stands for, among the items of one area or of every area.
+    private func ticks(for preset: SelectionPreset, in area: Area?) -> Set<String> {
+        let scope = area.map(findings(in:)) ?? findings
+        return switch preset {
+        case .smart: Set(scope.smartSelection(settings.smartKinds).map(\.id))
+        case .everything: Set(scope.flatMap { $0.items.map(\.id) })
+        case .nothing: []
+        }
     }
 
-    /// Ticks only what the scan ticked by itself: the Safe tier, less what its scanner keeps by default.
-    func selectSafe(in area: Area) {
-        selectNone(in: area)
-        selection.formUnion(findings(in: area).safeDefaults.map(\.id))
+    /// Sets every tick of one area, or of the whole clean-up, to what the preset stands for. Everything
+    /// is everything, whatever its aftermath: the confirmation still says what that includes.
+    func select(_ preset: SelectionPreset, in area: Area? = nil) {
+        let scope = area.map(findings(in:)) ?? findings
+        selection.subtract(scope.flatMap { $0.items.map(\.id) })
+        selection.formUnion(ticks(for: preset, in: area))
     }
 
-    func selectNone(in area: Area) {
-        selection.subtract(findings(in: area).flatMap { $0.items.map(\.id) })
+    /// The preset the ticks of one area, or of the whole clean-up, amount to right now. Nil once
+    /// rows have been ticked by hand into something no preset describes.
+    func preset(in area: Area? = nil) -> SelectionPreset? {
+        let scope = area.map(findings(in:)) ?? findings
+        let ticked = selection.intersection(scope.flatMap { $0.items.map(\.id) })
+        // Smart is asked first: where it ticks everything there is, or nothing, that is still Smart.
+        return SelectionPreset.allCases.first { ticks(for: $0, in: area) == ticked }
     }
 
     func findings(in area: Area) -> [Finding] { findings.filter { $0.area == area } }
@@ -333,9 +349,77 @@ final class CleanUpModel {
         }
     }
 
-    /// What the menu bar offers: the part of the Safe tier its button removes. Less than the tier
-    /// adds up to whenever something in it is kept by default.
-    var safeSize: Int64 { findings.safeDefaults.reduce(0) { $0 + $1.size } }
+    // MARK: Waiting for open apps
+
+    /// The ticked items of one area, or of every area, that wait because an app that keeps them is
+    /// open, with the apps each one waits for.
+    func waitingItems(in area: Area? = nil) -> [String: [OpenApp]] {
+        let scope = area.map(findings(in:)) ?? findings
+        return scope.flatMap(\.items).filter { selection.contains($0.id) }.waiting(for: openApps.apps)
+    }
+
+    /// The same, as the sentence each item gets on the receipt.
+    func waitingReasons(in area: Area? = nil) -> [String: String] {
+        let waiting = waitingItems(in: area)
+        guard !waiting.isEmpty else { return [:] }
+        var reasons: [String: String] = [:]
+        for item in findings.flatMap(\.items) {
+            if let apps = waiting[item.id] { reasons[item.id] = Cleaner.waitingReason(item.paths.first?.path ?? item.title, for: apps) }
+        }
+        return reasons
+    }
+
+    /// The apps an item waits for, for the badge on its row. Empty when none of them is open.
+    func keepers(of item: FindingItem) -> [OpenApp] {
+        guard let key = item.keptBy else { return [] }
+        return openApps.apps.filter { $0.keeps(key) }
+    }
+
+    /// The open apps something ticked waits for, each with how much that is, the largest first. A
+    /// group that waits as a whole, as DerivedData does for Xcode, counts for its app as well.
+    func blockingApps(in area: Area? = nil) -> [BlockingApp] {
+        var blocking: [String: BlockingApp] = [:]
+        func add(_ app: OpenApp, _ size: Int64) {
+            blocking[app.bundleID, default: BlockingApp(app: app, size: 0)].size += size
+        }
+        let plan = plan(in: area)
+        let blocked = blockedSteps(in: plan)
+        for step in plan.steps where blocked[step.id] != nil {
+            if case .app(let bundleID, let name)? = step.waitsFor { add(OpenApp(bundleID: bundleID, name: name), step.size) }
+        }
+        let waiting = waitingItems(in: area)
+        // An item of a group that waits as a whole is already counted with its group.
+        let wholeSteps = Set(blocked.keys)
+        for finding in findings where !wholeSteps.contains(finding.id) {
+            for item in finding.items {
+                guard let apps = waiting[item.id] else { continue }
+                for app in apps { add(app, item.size) }
+            }
+        }
+        return blocking.values.sorted { ($0.size, $1.app.name) > ($1.size, $0.app.name) }
+    }
+
+    /// What a clean of one area, or of every area, would remove right now: what is ticked, less what
+    /// waits for something that is open. The round button and the confirmation both show it.
+    func cleanableSize(in area: Area? = nil) -> Int64 {
+        let plan = plan(in: area)
+        return plan.size(leavingOut: Set(blockedSteps(in: plan).keys), waiting: Set(waitingItems(in: area).keys))
+    }
+
+    /// How much of what is ticked waits for something that is open.
+    func waitingSize(in area: Area? = nil) -> Int64 {
+        max(0, selectedSize(in: area) - cleanableSize(in: area))
+    }
+
+    private func selectedSize(in area: Area?) -> Int64 { area.map { selectedSize(in: $0) } ?? selectedSize }
+
+    /// Asks an app to quit, as its own Quit command would. What waited for it is cleaned once it is gone.
+    func quit(_ app: OpenApp) {
+        openApps.quit(app)
+    }
+
+    /// What the menu bar offers and its button removes: the Smart selection, whatever is ticked just now.
+    var smartSize: Int64 { findings.smartSelection(settings.smartKinds).reduce(0) { $0 + $1.size } }
 
     // MARK: Never Suggest
 
@@ -393,24 +477,26 @@ final class CleanUpModel {
     /// Opens the confirmation for one area's ticked items, or for everything ticked.
     func review(area: Area? = nil) {
         reviewArea = area
+        openApps.refresh()
+        refreshActiveChecks()
         showingReview = true
     }
 
-    /// The menu bar's one-click path: tick the Safe tier from the last scan and confirm.
-    func reviewSafe() {
-        guard selectSafeDefaults() else { return }
+    /// The one-step path: put the ticks back to the Smart selection and confirm.
+    func reviewSmart() {
+        guard selectSmart() else { return }
         reviewArea = nil
         showingReview = selectedSize > 0
     }
 
-    /// Ticks only what the scan ticked by itself, the Safe tier less what its scanners keep by default,
-    /// and leaves the "done" screen for the results. False before there are any.
+    /// Puts the ticks back to the Smart selection and leaves the "done" screen for the results. False
+    /// before there are any.
     @discardableResult
-    func selectSafeDefaults() -> Bool {
+    func selectSmart() -> Bool {
         guard phase == .results || phase == .done else { return false }
         phase = .results
         openArea = nil
-        selection = Set(findings.safeDefaults.map(\.id))
+        selection = smartSelection
         return true
     }
 
@@ -442,18 +528,23 @@ final class CleanUpModel {
 
     /// Cleans what is ticked in one area, or everywhere, and waits for it. Nil when there was nothing
     /// to do. The overview runs each clean-up this way in turn and keeps the receipts together.
+    /// `unattended` leaves out every step that would ask for a password, for a clean nobody is watching.
     @discardableResult
-    func runClean(area: Area?) async -> CleanOutcome? {
-        let plan = plan(in: area)
+    func runClean(area: Area?, unattended: Bool = false) async -> CleanOutcome? {
+        let plan = unattended ? plan(in: area).withoutPasswordSteps : plan(in: area)
         guard !plan.isEmpty, phase == .results else { return nil }
         showingReview = false
         cleanProgress = CleanProgress(fraction: 0, status: "Getting ready")
         phase = .cleaning
 
+        // Asked afresh at the last moment: an app may have been opened, or quit, since the confirmation.
+        openApps.refresh()
+        refreshActiveChecks()
         let skipping = blockedSteps(in: plan)
+        let waiting = waitingReasons(in: area)
         let safety = safetyGuard()
         let scannedAt = scanFinished
-        let result = await Cleaner.run(plan: plan, safety: safety, skipping: skipping, scannedAt: scannedAt) { progress in
+        let result = await Cleaner.run(plan: plan, safety: safety, skipping: skipping, waiting: waiting, scannedAt: scannedAt) { progress in
             Task { @MainActor in self.cleanProgress = progress }
         }
         finishClean(result)
@@ -461,17 +552,33 @@ final class CleanUpModel {
     }
 
     /// Steps that have to wait because what owns the files is open, with the reason.
-    /// Nothing is quit on the user's behalf: it may be mid-build, or running this very app.
+    /// Nothing is quit unless the user asks for it: it may be mid-build, or running this very app.
     func blockedSteps(in plan: CleanPlan) -> [String: String] {
         var blocked: [String: String] = [:]
         for step in plan.steps {
-            guard let check = step.waitsFor, InUse.isActive(check) else { continue }
+            guard let check = step.waitsFor, isActive(check, for: step.id) else { continue }
             blocked[step.id] = check.skipReason
         }
         return blocked
     }
 
-    func activeChecks() -> [String: InUseCheck] { activeChecksByFinding }
+    /// Whether a check holds its finding back right now. An app is asked about as it is this moment,
+    /// which costs nothing and follows it quitting. A background process costs a launch to ask about,
+    /// so the answer from the last look is used: `refreshActiveChecks()` takes a new one.
+    private func isActive(_ check: InUseCheck, for findingID: String) -> Bool {
+        switch check {
+        case .app(let bundleID, _): openApps.isOpen(bundleID: bundleID)
+        case .process: activeChecksByFinding[findingID] != nil
+        }
+    }
+
+    func activeChecks() -> [String: InUseCheck] {
+        var active: [String: InUseCheck] = [:]
+        for finding in findings {
+            if let check = finding.waitsFor, isActive(check, for: finding.id) { active[finding.id] = check }
+        }
+        return active
+    }
 
     func refreshActiveChecks() {
         var active: [String: InUseCheck] = [:]

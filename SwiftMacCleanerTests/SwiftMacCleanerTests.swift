@@ -130,7 +130,7 @@ struct CleanerTests {
         defer { sandbox.remove() }
         let good = try sandbox.file(".npm/_cacache/blob.bin").deletingLastPathComponent()
         let finding = Finding(
-            id: "f", area: .packageCaches, tier: .safe, title: "Caches", summary: "", explanation: "",
+            id: "f", area: .packageCaches, aftermath: .rebuilds, title: "Caches", summary: "", explanation: "",
             method: .delete, actionTarget: "~/.npm",
             items: [
                 FindingItem(id: "f/good", title: "npm", detail: "", size: 10, paths: [good]),
@@ -154,7 +154,7 @@ struct CleanerTests {
         defer { sandbox.remove() }
         let folder = try sandbox.file("Library/Developer/Xcode/DerivedData/App-abc/Build/x.o").deletingLastPathComponent()
         let finding = Finding(
-            id: "xcode.derivedData", area: .xcode, tier: .safe, title: "DerivedData", summary: "", explanation: "",
+            id: "xcode.derivedData", area: .xcode, aftermath: .rebuilds, title: "DerivedData", summary: "", explanation: "",
             method: .delete, actionTarget: "",
             items: [FindingItem(id: "dd/app", title: "App", detail: "", size: 10, paths: [folder])]
         )
@@ -170,7 +170,7 @@ struct CleanerTests {
 @MainActor
 struct AppModelCleanTests {
     private func finding(id: String, items: [FindingItem], waitsFor: InUseCheck? = nil) -> Finding {
-        Finding(id: id, area: .packageCaches, tier: .safe, title: id, summary: "", explanation: "",
+        Finding(id: id, area: .packageCaches, aftermath: .rebuilds, title: id, summary: "", explanation: "",
                 method: .delete, actionTarget: "", items: items, waitsFor: waitsFor)
     }
 
@@ -235,7 +235,7 @@ struct AppModelCleanTests {
 struct CleanPlanTests {
     @Test func shellScriptQuotesAwkwardPaths() {
         let finding = Finding(
-            id: "f", area: .projects, tier: .safe, title: "Projects", summary: "", explanation: "",
+            id: "f", area: .projects, aftermath: .rebuilds, title: "Projects", summary: "", explanation: "",
             method: .delete, actionTarget: "",
             items: [FindingItem(id: "f/1", title: "", detail: "", size: 1,
                                 paths: [URL(fileURLWithPath: "/Users/me/Code/it's mine/node_modules")])]
@@ -246,7 +246,7 @@ struct CleanPlanTests {
 
     @Test func commandFindingsBecomeRunOperations() {
         let finding = Finding(
-            id: "docker.unused", area: .containers, tier: .review, title: "Docker", summary: "", explanation: "",
+            id: "docker.unused", area: .containers, aftermath: .downloadsAgain, title: "Docker", summary: "", explanation: "",
             method: .command, actionTarget: "docker image prune",
             items: [FindingItem(id: "d/images", title: "", detail: "", size: 5,
                                 command: ["/usr/local/bin/docker", "image", "prune", "--all", "--force"])]

@@ -61,7 +61,7 @@ nonisolated enum DuplicatePlan {
             checked.plan.steps.append(CleanStep(
                 id: stepID(for: kind),
                 title: kind.title,
-                tier: .review,
+                aftermath: .downloadsAgain,
                 method: .trash,
                 summary: "Move \(count == 1 ? "1 duplicate" : "\(count) duplicates") to the Trash. A copy of each stays",
                 size: steps.reduce(0) { $0 + $1.size },

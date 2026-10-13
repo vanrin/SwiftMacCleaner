@@ -27,17 +27,6 @@ extension Area {
     }
 }
 
-extension SafetyTier {
-    /// The colour of this tier's badge and bars. The tier's name is always written next to it.
-    var color: Color {
-        switch self {
-        case .safe: Design.Signal.safe
-        case .review: Design.Signal.review
-        case .careful: .white
-        }
-    }
-}
-
 extension AreaGroup {
     /// The palette of this group's icon and of its page.
     var theme: Theme {

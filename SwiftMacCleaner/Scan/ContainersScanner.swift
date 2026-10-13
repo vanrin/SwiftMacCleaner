@@ -110,7 +110,7 @@ nonisolated enum ContainersScanner {
         result.findings.append(Finding(
             id: "docker.unused",
             area: .containers,
-            tier: .review,
+            aftermath: .downloadsAgain,
             title: "Docker images and build cache",
             summary: items.map { $0.title.lowercased() }.joined(separator: ", ").capitalizedFirst,
             explanation: "Images no container uses, layers kept from earlier builds, and stopped containers. Images are pulled or built again when you need them. Volumes are left alone because they can hold data.",
@@ -215,7 +215,7 @@ nonisolated enum ContainersScanner {
         result.findings.append(Finding(
             id: "\(id).machines",
             area: .containers,
-            tier: .review,
+            aftermath: .irreplaceable,
             title: "\(toolName) machines not started for \(context.staleDays)+ days",
             summary: "\(context.tilde(root)), \(items.count) \(items.count == 1 ? "machine" : "machines")",
             explanation: "Virtual machines \(toolName) created. Deleting one loses whatever was installed inside it; a new one is made the next time you start \(toolName).",

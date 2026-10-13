@@ -41,7 +41,7 @@ nonisolated enum ToolchainScanner {
         result.findings.append(Finding(
             id: "toolchains.unused",
             area: .toolchains,
-            tier: .review,
+            aftermath: .downloadsAgain,
             title: "Unused toolchain versions",
             summary: "\(items.count) installed \(items.count == 1 ? "version" : "versions") that \(items.count == 1 ? "is" : "are") not your default",
             explanation: "Older JDKs, Node versions and SDKs installed by version managers. A project pinned to one of them would need it installed again. The default and the newest version of each tool are never offered.",

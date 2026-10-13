@@ -82,7 +82,7 @@ nonisolated enum AndroidScanner {
         let finding = Finding(
             id: "android.emulators",
             area: .android,
-            tier: .review,
+            aftermath: .downloadsAgain,
             title: "Android emulators and system images",
             summary: "\(context.tilde(avdRoot)), \(items.count) \(items.count == 1 ? "item" : "items")",
             explanation: "An emulator loses its installed apps and data when removed. System images can be downloaded again from the SDK Manager.",

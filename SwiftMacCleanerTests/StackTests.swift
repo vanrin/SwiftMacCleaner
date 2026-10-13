@@ -218,11 +218,11 @@ struct MovedLocationTests {
 
         // The reviewed folder is still the only thing that is deleted outright and ticked.
         let usual = try #require(report.findings.first)
-        #expect(usual.tier == .safe)
+        #expect(usual.aftermath == .rebuilds)
         #expect(usual.items.map(\.title) == ["npm cache"])
 
         let moved = try #require(report.findings.last)
-        #expect(moved.tier == .review)
+        #expect(moved.aftermath == .downloadsAgain)
         #expect(moved.method == .trash)
         #expect(moved.items.map(\.title) == ["Cargo registry"])
         #expect(moved.items.first?.preselected == false)

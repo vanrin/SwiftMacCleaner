@@ -34,7 +34,7 @@ struct HomeView: View {
                 }
                 IntroHeading(
                     title: disk.name,
-                    detail: "\(ByteFormat.string(disk.free)) free of \(ByteFormat.string(disk.capacity)). One scan runs every part of the app. It only measures, and nothing is removed until you confirm."
+                    detail: "\(ByteFormat.string(disk.free)) free of \(ByteFormat.string(disk.capacity)). One scan runs every part of the app, shows everything that can go, and selects the part worth cleaning now."
                 )
             }
             // One scan runs every part of the app; each part's own entry runs it alone.

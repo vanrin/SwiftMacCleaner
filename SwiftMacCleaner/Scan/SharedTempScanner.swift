@@ -236,7 +236,7 @@ nonisolated enum SharedTempScanner {
         return Finding(
             id: "caches.tmp",
             area: .cachesLogs,
-            tier: .review,
+            aftermath: .irreplaceable,
             title: "Idle work folders in \(root.path)",
             summary: "\(items.count) \(items.count == 1 ? "item" : "items") untouched for a day or more",
             explanation: "Scratch space programs left in the temp folder every program shares. macOS empties that folder at each restart, so nothing in it was meant to last. Only what has sat untouched for a day, holds no socket, and has nothing open in a running program is offered. It goes to the Trash rather than being deleted, in case you parked something there yourself.",

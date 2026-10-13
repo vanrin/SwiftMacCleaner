@@ -78,7 +78,7 @@ nonisolated enum XcodeScanner {
         let finding = Finding(
             id: "xcode.derivedData",
             area: .xcode,
-            tier: .safe,
+            aftermath: .rebuilds,
             title: "Xcode DerivedData",
             summary: "\(context.tilde(root)), \(items.count) \(items.count == 1 ? "folder" : "folders")",
             explanation: "Build products and indexes. Xcode recreates them on the next build, which will take longer than usual.",
@@ -155,7 +155,7 @@ nonisolated enum XcodeScanner {
         return Finding(
             id: "xcode.deviceSupport",
             area: .xcode,
-            tier: .safe,
+            aftermath: .rebuilds,
             title: "Device support",
             summary: "Debug symbols for \(items.count) OS \(items.count == 1 ? "version" : "versions") copied from your devices",
             explanation: "Debug symbols copied from devices you plugged in. They are copied again the next time that OS version connects.",
@@ -220,7 +220,7 @@ nonisolated enum XcodeScanner {
         let finding = Finding(
             id: "xcode.simulators",
             area: .xcode,
-            tier: .review,
+            aftermath: .downloadsAgain,
             title: "Simulator runtimes and devices",
             summary: "\(items.count) \(items.count == 1 ? "item" : "items") you have not used in \(context.staleDays)+ days",
             explanation: "Runtimes and devices you have not used in a while. A runtime is a multi-gigabyte download from Xcode if you need it back, and a deleted device loses its installed apps and data. Booted devices and the newest runtime for each platform are never offered.",
@@ -377,7 +377,7 @@ nonisolated enum XcodeScanner {
         return Finding(
             id: "xcode.archives",
             area: .xcode,
-            tier: .careful,
+            aftermath: .irreplaceable,
             title: "Xcode Archives",
             summary: "\(items.count) \(items.count == 1 ? "archive" : "archives"), needed to symbolicate crashes from builds you shipped",
             explanation: "Archives hold the dSYMs for builds you shipped. Without them, crash logs from those builds cannot be symbolicated.",
@@ -426,7 +426,7 @@ nonisolated enum XcodeScanner {
         let finding = Finding(
             id: oldXcodesFindingID,
             area: .xcode,
-            tier: .careful,
+            aftermath: .irreplaceable,
             title: "Older Xcode versions in Applications",
             summary: "\(items.count) \(items.count == 1 ? "copy" : "copies") of Xcode besides the selected one",
             explanation: "Whole Xcode installs that are not the one your tools use. Each is a multi-gigabyte download from Apple if a project turns out to need it. Moved to the Trash, so it can be put back.",

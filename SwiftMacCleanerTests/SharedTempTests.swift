@@ -121,9 +121,10 @@ struct SharedTempScannerTests {
         #expect(offers.protected.first?.rule == .recentlyUsed)
 
         let finding = try #require(SharedTempScanner.finding(for: offers.idle, root: temp.root))
-        #expect(finding.tier == .review)
+        #expect(finding.aftermath == .irreplaceable)
         #expect(finding.method == .trash)
-        #expect([finding].safeDefaults.isEmpty)
+        // Somebody's work in progress: no switch in Settings makes Smart selection tick it.
+        #expect([finding].smartSelection(Set(SmartKind.allCases)).isEmpty)
         #expect(SharedTempScanner.finding(for: []) == nil)
     }
 
@@ -230,7 +231,7 @@ struct TempRemovalTests {
         try Data(repeating: 1, count: 1_000).write(to: cache)
         let safety = SafetyGuard(root: temp.home, extraRoots: [temp.root])
         let plan = CleanPlan(steps: [CleanStep(
-            id: "caches.tmp", title: "Idle work folders", tier: .review, method: .delete, summary: "", size: 0,
+            id: "caches.tmp", title: "Idle work folders", aftermath: .downloadsAgain, method: .delete, summary: "", size: 0,
             operations: [
                 CleanOperation(itemID: "held", kind: .delete(held.deletingLastPathComponent())),
                 CleanOperation(itemID: "free", kind: .delete(free.deletingLastPathComponent())),

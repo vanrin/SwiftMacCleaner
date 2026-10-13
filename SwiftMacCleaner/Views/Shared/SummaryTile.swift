@@ -5,6 +5,12 @@
 
 import SwiftUI
 
+/// A short fact on a tile, and how it is drawn.
+struct TileBadge: Hashable {
+    var text: String
+    var style: Badge.Style = .neutral
+}
+
 /// One thing a scan found, as a tile: what it is, the apps it concerns, and a way in. A tile whose
 /// finding can be acted on straight away carries a second, solid button for that.
 struct SummaryTile: View {
@@ -18,8 +24,9 @@ struct SummaryTile: View {
     var isActionable = true
     /// System symbols pictured on lenses in the body of the tile, for things that have no icon of their own.
     var symbols: [String] = []
-    /// The safety tiers of what the tile holds, as badges at the bottom left.
-    var tiers: [SafetyTier] = []
+    /// Short facts about what the tile holds, as badges at the bottom left: how much of it is ticked,
+    /// and what removing it leaves you with.
+    var badges: [TileBadge] = []
     /// A solid button beside Review, for acting on the finding without looking at it first.
     var primaryTitle: String? = nil
     var primaryAction: () -> Void = {}
@@ -60,13 +67,13 @@ struct SummaryTile: View {
                     Spacer(minLength: 0)
                 }
                 HStack(spacing: Design.Spacing.small) {
-                    if tiers.isEmpty {
+                    if badges.isEmpty {
                         Spacer(minLength: 0)
                     } else {
                         // Three badges do not fit beside the buttons on a narrow tile, so they wrap.
                         FlowLayout(spacing: Design.Spacing.small) {
-                            ForEach(tiers, id: \.self) { tier in
-                                TierBadge(tier: tier)
+                            ForEach(badges, id: \.self) { badge in
+                                Badge(text: badge.text, style: badge.style)
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)

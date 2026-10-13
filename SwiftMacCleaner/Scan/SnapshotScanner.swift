@@ -42,7 +42,7 @@ nonisolated enum SnapshotScanner {
         return Finding(
             id: "snapshots.local",
             area: .snapshots,
-            tier: .review,
+            aftermath: .irreplaceable,
             title: "Time Machine local snapshots",
             summary: "\(item.title) on \(DiskInfo.current(for: context.home).name)",
             explanation: "Time Machine keeps hourly snapshots on this disk while the backup disk is away, and macOS thins them itself when space runs short. This is the one step that asks for your password. A new snapshot is made at the next backup.",
@@ -97,7 +97,7 @@ nonisolated enum SnapshotScanner {
         result.findings.append(Finding(
             id: "snapshots.backups",
             area: .snapshots,
-            tier: .careful,
+            aftermath: .irreplaceable,
             title: "iPhone and iPad backups",
             summary: "\(items.count) \(items.count == 1 ? "backup" : "backups") in \(context.tilde(root))",
             explanation: "Full backups of your devices made by Finder. A backup cannot be recreated once it is gone; Finder makes a new one the next time the device is plugged in and backed up. Anything only on an old backup is lost with it.",

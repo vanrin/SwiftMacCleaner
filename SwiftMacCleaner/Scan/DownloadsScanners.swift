@@ -48,7 +48,7 @@ nonisolated enum InstallerScanner {
         return AreaScanResult(findings: [Finding(
             id: "installers.downloads",
             area: .installers,
-            tier: .review,
+            aftermath: .downloadsAgain,
             title: "Installers in Downloads",
             summary: "\(items.count) disk \(items.count == 1 ? "image or installer" : "images and installers")",
             explanation: "Disk images and installer packages. Once the app is installed these are rarely needed, and they can be downloaded again.",

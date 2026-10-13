@@ -128,6 +128,8 @@ nonisolated struct PathCandidate: Sendable {
     var extraPaths: [URL] = []
     var preselected: Bool? = nil
     var hint: String? = nil
+    /// The name the app that keeps this files it under. See `FindingItem.keptBy`.
+    var keptBy: String? = nil
 }
 
 nonisolated enum Sizing {
@@ -166,7 +168,8 @@ nonisolated enum Sizing {
                 size: size,
                 paths: [candidate.url] + candidate.extraPaths,
                 preselected: candidate.preselected,
-                hint: candidate.hint
+                hint: candidate.hint,
+                keptBy: candidate.keptBy
             )
         }
         .sorted { $0.size > $1.size }
