@@ -553,11 +553,11 @@ final class AppModel {
     func startBackgroundChecks(after delay: TimeInterval = 0) {
         guard checkTimer == nil else { return }
         checkTimer = Timer.scheduledTimer(withTimeInterval: 1800, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.backgroundTick() }
+            Task { @MainActor [weak self] in self?.backgroundTick() }
         }
         guard delay > 0 else { return backgroundTick() }
         Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
-            Task { @MainActor in self?.backgroundTick() }
+            Task { @MainActor [weak self] in self?.backgroundTick() }
         }
     }
 

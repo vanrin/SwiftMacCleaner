@@ -1,0 +1,21 @@
+//
+//  Signing.xcconfig
+//  SwiftMacCleaner
+//
+//  How every target is signed.
+//
+//  With nothing else set, the app is signed to run on the Mac that built it, which needs no Apple
+//  developer account. To sign with a team of your own, make a file beside this one called
+//  Local.xcconfig, which git leaves alone, and put these two lines in it:
+//
+//      DEVELOPMENT_TEAM = ABCDE12345
+//      CODE_SIGN_IDENTITY = Apple Development
+//
+//  macOS ties Full Disk Access to the signature. An app signed to run locally is a new app to macOS
+//  after each build and may have to be given access again; one signed with a team keeps it.
+//
+
+CODE_SIGN_IDENTITY = -
+DEVELOPMENT_TEAM =
+
+#include? "Local.xcconfig"

@@ -154,7 +154,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 #if DEBUG
 /// Runs the scanners without any window, for checking them against a real disk. Nothing is removed.
 nonisolated enum ScanReportPrinter {
-    static func run(areaNames: [String]) {
+    @MainActor static func run(areaNames: [String]) {
         let requested = areaNames.compactMap(Area.init(rawValue:))
         // Downloads, the Trash and device backups raise permission prompts, so those areas are only scanned when asked for.
         let prompting: Set<Area> = [.trash, .largeFiles, .installers, .leftovers, .snapshots]
@@ -198,7 +198,7 @@ nonisolated enum ScanReportPrinter {
 
     /// Prints what decides the developer areas: the tools found, the kinds of project in the project
     /// folders, and the variables the login shell sets that say where a tool keeps its folders.
-    static func printStack() {
+    @MainActor static func printStack() {
         let home = FileManager.default.homeDirectoryForCurrentUser
         let roots = AppSettings().scanContext().projectRoots
         let asked = Set(Catalog.allGroups.flatMap(\.locations).flatMap(\.asks).compactMap { ask -> String? in
@@ -227,7 +227,7 @@ nonisolated enum ScanReportPrinter {
     /// Scan and Clean without the window: the same scan, the same Smart selection, the same guard,
     /// in-use and freshness checks, the same log. Only the confirmation click is missing, which is
     /// why this exists for the terminal alone, and why it leaves out what would ask for a password.
-    static func quickClean() {
+    @MainActor static func quickClean() {
         let settings = AppSettings()
         let home = FileManager.default.homeDirectoryForCurrentUser
         var context = settings.scanContext()
@@ -312,7 +312,7 @@ nonisolated enum ScanReportPrinter {
     }
 
     /// Prints what the Applications scan finds. Nothing is removed.
-    static func printApps(matching name: String?, updates: Bool) {
+    @MainActor static func printApps(matching name: String?, updates: Bool) {
         let settings = AppSettings()
         let home = FileManager.default.homeDirectoryForCurrentUser
         let safety = SafetyGuard(root: home, neverSuggest: settings.neverSuggest.map(\.path))
@@ -362,7 +362,7 @@ nonisolated enum ScanReportPrinter {
 
     /// The Uninstall button's path for one app, without the window. Only the confirmation click is missing,
     /// which is why this exists for the terminal alone.
-    static func uninstall(appAt path: String) {
+    @MainActor static func uninstall(appAt path: String) {
         let settings = AppSettings()
         let home = FileManager.default.homeDirectoryForCurrentUser
         let neverSuggest = settings.neverSuggest.map(\.path)
@@ -407,7 +407,7 @@ nonisolated enum ScanReportPrinter {
 
     /// Prints the groups of identical files in the folders, the one that gives back the most first.
     /// Without a folder it looks through the home folder.
-    static func printDuplicates(folders: [String]) {
+    @MainActor static func printDuplicates(folders: [String]) {
         let settings = AppSettings()
         let home = FileManager.default.homeDirectoryForCurrentUser
         let safety = SafetyGuard(root: home, neverSuggest: settings.neverSuggest.map(\.path))
@@ -463,10 +463,10 @@ nonisolated enum ScanReportPrinter {
         finished.wait()
     }
 
-    static func printPerformance() {
+    @MainActor static func printPerformance() {
         let settings = AppSettings()
         let home = FileManager.default.homeDirectoryForCurrentUser
-        let lastRuns = MainActor.assumeIsolated { settings.lastMaintenanceRuns }
+        let lastRuns = settings.lastMaintenanceRuns
         let finished = DispatchSemaphore(value: 0)
         Task.detached {
             defer {

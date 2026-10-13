@@ -8,5 +8,8 @@ build/
 xcuserdata/
 *.xcuserstate
 
+# Signing with a team of one's own: see Config/Signing.xcconfig
+Config/Local.xcconfig
+
 # macOS
 .DS_Store

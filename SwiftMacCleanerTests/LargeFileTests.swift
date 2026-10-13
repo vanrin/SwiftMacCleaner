@@ -233,9 +233,9 @@ struct LargeFileScannerTests {
         try sandbox.file("Desktop/render.mov")
 
         // Desktop and Documents kept in iCloud, and a folder in Downloads some other service syncs.
-        let result = await sandbox.scan { url in
+        let result = await sandbox.scan(isInCloud: { url in
             ["Documents", "Desktop"].contains(url.lastPathComponent) || url.path.contains("/synced/")
-        }
+        })
         #expect(result.findings.isEmpty)
         #expect(result.protected.map(\.title) == ["Documents", "Desktop"])
         #expect(result.protected.allSatisfy { $0.rule == .protectedList && $0.size == nil && $0.why.contains("iCloud") })
@@ -244,7 +244,7 @@ struct LargeFileScannerTests {
 
         // With something to offer elsewhere there is nothing to explain.
         try sandbox.file("Downloads/dataset.zip")
-        let mixed = await sandbox.scan { $0.lastPathComponent == "Documents" }
+        let mixed = await sandbox.scan(isInCloud: { $0.lastPathComponent == "Documents" })
         #expect(mixed.findings.map(\.id) == ["largeFiles.downloads", "largeFiles.desktop"])
         #expect(mixed.protected.map(\.title) == ["Documents"])
         #expect(mixed.skipReason == nil)

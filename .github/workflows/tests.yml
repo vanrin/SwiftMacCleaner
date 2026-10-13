@@ -1,0 +1,27 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    # The app needs macOS 27 and Xcode 27. This image has both; GitHub still calls it a preview.
+    runs-on: xcode-27
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build the app and run the unit tests
+        run: |
+          xcodebuild test \
+            -project SwiftMacCleaner.xcodeproj \
+            -scheme SwiftMacCleaner \
+            -destination 'platform=macOS'

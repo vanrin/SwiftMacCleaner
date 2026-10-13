@@ -74,8 +74,8 @@ final class AppsModel {
         var size: Int64
     }
 
-    static let installersFindingID = "installers.downloads"
-    static let leftoverFilesFindingID = "leftovers.apps"
+    nonisolated static let installersFindingID = "installers.downloads"
+    nonisolated static let leftoverFilesFindingID = "leftovers.apps"
 
     let home: URL
     let settings: AppSettings
