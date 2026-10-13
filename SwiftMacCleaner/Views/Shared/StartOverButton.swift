@@ -23,15 +23,17 @@ struct StartOverButton: View {
 }
 
 extension View {
-    /// Asks before a scan's results are left behind, since they are forgotten.
-    ///
-    /// - Parameter message: What is forgotten and what stays, in a sentence or two.
-    func confirmsStartingOver(_ isPresented: Binding<Bool>, message: String, perform action: @escaping () -> Void) -> some View {
+    /// Asks before a scan's results are left behind, since they are forgotten, and then starts over
+    /// from that entry of the sidebar. The model decides how far that reaches: one part, or every
+    /// part when the scan was the overview's. The question says which.
+    func confirmsStartingOver(_ isPresented: Binding<Bool>, from item: SidebarItem, in model: AppModel) -> some View {
         confirmationDialog("Start over?", isPresented: isPresented) {
-            Button("Start Over", action: action)
+            Button("Start Over") {
+                model.startOver(from: item)
+            }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text(message)
+            Text(model.startOverWarning(from: item))
         }
     }
 }

@@ -39,16 +39,12 @@ struct OverviewView: View {
                 clean: { model.run() }, copyScript: model.copyRunScript
             )
         }
-        .confirmsStartingOver(
-            $isStartingOver,
-            message: "The overview goes back to its start. Each part keeps what it found, and nothing on your Mac is removed or changed.",
-            perform: model.startOver
-        )
+        .confirmsStartingOver($isStartingOver, from: .overview, in: model)
         .toolbar {
             if model.overviewPhase == .results || model.overviewPhase == .done {
                 ToolbarItem {
                     StartOverButton(isAsking: $isStartingOver)
-                        .help("Go back to the start of the overview. Each part keeps what it found.")
+                        .help("Forget what every part found and go back to the start")
                 }
             }
         }

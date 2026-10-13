@@ -32,7 +32,7 @@ struct AppsView: View {
         .sheet(isPresented: $apps.showingReview) {
             AppsReviewSheet()
         }
-        .confirmsStartingOver($isStartingOver, message: "What this scan found in Applications, and what you ticked there, is forgotten. Nothing on your Mac is removed or changed.", perform: apps.reset)
+        .confirmsStartingOver($isStartingOver, from: .apps, in: model)
         .toolbar {
             if apps.phase == .managing {
                 ToolbarItem(placement: .navigation) {

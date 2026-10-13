@@ -479,12 +479,18 @@ final class AppModel {
         overviewPhase = overviewParts.contains(where: hasResults) ? .results : .home
     }
 
-    /// Leaves what the overview's scan showed and goes back to its opening screen. Each part keeps
-    /// what it found, until it is scanned again or started over itself.
+    /// Forgets what the overview's scan found and goes back to its opening screen. Its scan is every
+    /// part's scan, so every part goes back to its own opening screen with it. A part in the middle
+    /// of cleaning, removing or running a task is left to finish, and keeps what it has.
     func startOver() {
         guard overviewPhase == .results || overviewPhase == .done else { return }
         showingOverviewReview = false
         overviewOutcome = nil
+        included = []
+        for cleanUp in cleanUps where cleanUp.phase != .cleaning { cleanUp.reset() }
+        if apps.phase != .removing, apps.installing.isEmpty { apps.reset() }
+        if performance.phase != .running { performance.reset() }
+        protection.reset()
         overviewPhase = .home
     }
 

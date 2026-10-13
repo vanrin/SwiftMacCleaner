@@ -28,7 +28,7 @@ struct ProtectionView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             protection.refresh()
         }
-        .confirmsStartingOver($isStartingOver, message: "What this check found is forgotten. Nothing on your Mac is changed.", perform: protection.reset)
+        .confirmsStartingOver($isStartingOver, from: .protection, in: model)
         .toolbar {
             if protection.phase == .results {
                 ToolbarItem {

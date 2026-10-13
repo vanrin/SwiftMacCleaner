@@ -32,7 +32,7 @@ struct PerformanceView: View {
         .sheet(isPresented: $performance.showingReview) {
             PerformanceReviewSheet()
         }
-        .confirmsStartingOver($isStartingOver, message: "What this scan found in Performance, and what you ticked there, is forgotten. Nothing on your Mac is removed or changed.", perform: performance.reset)
+        .confirmsStartingOver($isStartingOver, from: .performance, in: model)
         .toolbar {
             if performance.phase == .managing {
                 ToolbarItem(placement: .navigation) {

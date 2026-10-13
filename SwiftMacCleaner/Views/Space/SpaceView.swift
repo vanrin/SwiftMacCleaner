@@ -25,7 +25,7 @@ struct SpaceView: View {
                 }
             }
         }
-        .confirmsStartingOver($isStartingOver, message: "What was measured is forgotten, and you choose again what to measure. Nothing on your Mac is removed or changed.", perform: space.reset)
+        .confirmsStartingOver($isStartingOver, from: .space, in: model)
         .toolbar {
             if space.phase == .done {
                 ToolbarItem {

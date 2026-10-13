@@ -32,7 +32,7 @@ struct DuplicatesView: View {
             DuplicatesReviewSheet()
         }
         .fileImporter(isPresented: $duplicates.showingFolderPicker, allowedContentTypes: [.folder], onCompletion: choose)
-        .confirmsStartingOver($isStartingOver, message: "The duplicates this scan found, and what you ticked among them, are forgotten. Nothing on your Mac is removed or changed.", perform: duplicates.reset)
+        .confirmsStartingOver($isStartingOver, from: .duplicates, in: model)
         .toolbar {
             if duplicates.phase == .results || duplicates.phase == .done {
                 ToolbarItem {

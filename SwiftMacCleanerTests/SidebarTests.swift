@@ -89,27 +89,56 @@ struct SidebarTests {
         let parts: [SidebarItem] = [.group(.system), .apps, .performance, .protection]
         for part in parts { #expect(model.hasResults(part)) }
 
-        // Starting over on the overview takes it back to its opening screen and leaves each part what it found.
+        // Each part was scanned on its own, so starting over in one forgets that one alone: its opening
+        // screen is back and its entry falls silent.
+        #expect(!model.overviewHoldsScan)
+        #expect(!model.startsEverythingOver(from: .protection))
+        model.startOver(from: .protection)
+        #expect(model.protection.phase == .idle && model.protection.findings.isEmpty)
+        #expect(model.sidebarStatus(of: .protection) == SidebarStatus())
+        for part in parts.dropLast() { #expect(model.hasResults(part)) }
+        model.protection.showDemo("results")
+
+        // The overview's scan is every part's scan. While it stands, starting over in any one part
+        // takes every part back with it, and the question asked first says so.
         model.cleanSmart()
         #expect(model.overviewPhase == .results)
-        model.startOver()
+        #expect(model.startsEverythingOver(from: .apps))
+        #expect(model.startOverWarning(from: .apps).contains("all of them start over together"))
+        model.sidebarSelection = .apps
+        model.startOver(from: .apps)
+        #expect(model.sidebarSelection == .apps)
         #expect(model.overviewPhase == .home)
         #expect(!model.showingOverviewReview)
-        #expect(model.sidebarStatus(of: .overview) == SidebarStatus())
-        for part in parts { #expect(model.hasResults(part)) }
-
-        // Starting over in a part forgets its scan: the opening screen is back and the entry falls silent.
-        model.cleanUp(.system).reset()
-        model.apps.reset()
-        model.performance.reset()
-        model.protection.reset()
-        for part in parts {
+        #expect(model.included.isEmpty)
+        for part in [SidebarItem.overview] + parts {
             #expect(!model.hasResults(part))
             #expect(model.sidebarStatus(of: part) == SidebarStatus())
         }
         #expect(model.cleanUp(.system).phase == .home && model.cleanUp(.system).findings.isEmpty)
         #expect(model.apps.phase == .idle && model.performance.phase == .idle)
         #expect(model.protection.phase == .idle && model.protection.findings.isEmpty)
+        #expect(model.foundSize == 0)
+    }
+
+    @Test func startingOverLeavesAPartThatIsStillWorkingToFinish() throws {
+        let home = try temporaryHome()
+        defer { try? FileManager.default.removeItem(at: home) }
+        let model = AppModel(home: home)
+        model.cleanUp(.system).show(findings: [finding(id: "logs", area: .cachesLogs, size: 2_000_000_000)])
+        model.cleanUp(.developer).showDemo("cleaning")
+        model.performance.showDemo("running")
+        #expect(model.cleanUp(.developer).phase == .cleaning)
+        #expect(model.performance.phase == .running)
+
+        model.cleanSmart()
+        #expect(model.overviewPhase == .results)
+        model.startOver()
+        #expect(model.overviewPhase == .home)
+        #expect(model.cleanUp(.system).phase == .home)
+        // A clean and a task under way are not cut short.
+        #expect(model.cleanUp(.developer).phase == .cleaning)
+        #expect(model.performance.phase == .running)
     }
 
     @Test func foldingTheSidebarIsRemembered() throws {
