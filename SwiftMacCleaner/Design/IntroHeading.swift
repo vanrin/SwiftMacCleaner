@@ -19,7 +19,7 @@ struct IntroHeading: View {
                 .minimumScaleFactor(0.6)
             Text(detail)
                 .font(Design.Typeface.heroSubtitle)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.quiet)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .multilineTextAlignment(alignment == .center ? .center : .leading)

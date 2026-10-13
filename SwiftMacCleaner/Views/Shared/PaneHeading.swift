@@ -19,7 +19,7 @@ struct PaneHeading<Controls: View>: View {
                     .lineLimit(1)
                     .accessibilityAddTraits(.isHeader)
                 Text(detail)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
                     .fixedSize(horizontal: false, vertical: true)
             }
             HStack(spacing: Design.Spacing.medium) {

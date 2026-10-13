@@ -31,7 +31,7 @@ struct AppsReviewRow: View {
                 }
                 Text(isOpen ? "Left alone while it is open" : step.summary)
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
                     .lineLimit(1)
             }
             Spacer(minLength: Design.Spacing.medium)
@@ -44,7 +44,7 @@ struct AppsReviewRow: View {
             SizeLabel(bytes: step.size, isEmphasized: !isOpen)
                 .strikethrough(isOpen)
         }
-        .foregroundStyle(isOpen ? .secondary : .primary)
+        .foregroundStyle(isOpen ? AnyShapeStyle(.quiet) : AnyShapeStyle(.primary))
         .padding(.horizontal, Design.Spacing.large)
         .padding(.vertical, Design.Spacing.medium)
         .overlay(alignment: .top) {

@@ -22,7 +22,7 @@ struct AppsSummary: View {
                         .accessibilityAddTraits(.isHeader)
                     Text("Together with the files they keep in your Library, they take up \(ByteFormat.string(apps.apps.reduce(0) { $0 + $1.size })).")
                         .font(Design.Typeface.tileBody)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.quiet)
                         .multilineTextAlignment(.center)
                     Button("Manage My Applications", action: manageAll)
                         .buttonStyle(.primaryPill)

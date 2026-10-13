@@ -13,7 +13,7 @@ struct SidebarSettingsLink: View {
 
     var body: some View {
         SettingsLink {
-            SidebarLabel(title: "Settings", glyph: .glyphSettings, theme: .violet, isHovered: isHovered, isCollapsed: isCollapsed)
+            SidebarLabel(title: "Settings", glyph: .glyphSettings, theme: .graphite, isHovered: isHovered, isCollapsed: isCollapsed)
         }
         .buttonStyle(.plain)
         .focused($isFocused)

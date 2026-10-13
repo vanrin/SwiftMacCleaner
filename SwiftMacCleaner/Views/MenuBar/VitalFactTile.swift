@@ -22,7 +22,7 @@ struct VitalFactTile: View {
                 .lineLimit(1)
                 Text(fact.detail)
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(Design.Spacing.medium)

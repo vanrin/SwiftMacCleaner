@@ -17,10 +17,10 @@ struct VitalLegendItem: View {
         HStack(spacing: Design.Spacing.small) {
             Circle()
                 .fill(isRemainder ? Design.Surface.track : color)
-                .strokeBorder(isRemainder ? Design.Surface.panelBorder : .clear)
+                .strokeBorder(isRemainder ? Design.Ink.tertiary : .clear)
                 .frame(width: Design.Size.legendSwatch, height: Design.Size.legendSwatch)
             Text(label)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.quiet)
             Spacer(minLength: Design.Spacing.tight)
             Text(value)
                 .bold()

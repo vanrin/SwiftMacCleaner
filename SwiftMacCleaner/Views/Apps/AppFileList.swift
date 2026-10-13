@@ -19,7 +19,7 @@ struct AppFileList: View {
                     Toggle(sources: apps.bindings(for: files), isOn: \.self) {
                         HStack(spacing: Design.Spacing.small) {
                             Image(systemName: kind.symbol)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(.quiet)
                                 .frame(width: Design.Size.sidebarGlyph)
                                 .accessibilityHidden(true)
                             Text(kind.title)

@@ -8,7 +8,6 @@ import SwiftUI
 /// The last look before tasks run or items are removed: what happens, what waits, and what macOS will ask.
 struct PerformanceReviewSheet: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.theme) private var theme
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -24,7 +23,7 @@ struct PerformanceReviewSheet: View {
                     .font(.title)
                     .bold()
                 Text(subtitle(for: section))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
@@ -43,7 +42,7 @@ struct PerformanceReviewSheet: View {
             VStack(alignment: .leading, spacing: Design.Spacing.small) {
                 Text("Before you \(section.verb.lowercased())")
                     .font(.headline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
                 ForEach(checks(performance, plan: plan, blocked: blocked), id: \.text) { check in
                     Label {
                         Text(check.text)
@@ -69,9 +68,10 @@ struct PerformanceReviewSheet: View {
         .padding(Design.Spacing.xLarge)
         .frame(width: Design.Size.sheetWidth)
         .presentationBackground {
-            ThemeBackdrop(theme: theme)
+            ThemeBackdrop()
         }
-        .preferredColorScheme(.dark)
+        .inkedSurface()
+        .preferredColorScheme(.light)
     }
 
     private func cancel() {

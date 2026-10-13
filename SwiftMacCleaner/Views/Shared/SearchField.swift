@@ -14,7 +14,7 @@ struct SearchField: View {
     var body: some View {
         HStack(spacing: Design.Spacing.small) {
             Image(systemName: "magnifyingglass")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.quiet)
                 .accessibilityHidden(true)
             TextField(prompt, text: $text)
                 .textFieldStyle(.plain)
@@ -22,7 +22,7 @@ struct SearchField: View {
                 Button("Clear search", systemImage: "xmark.circle.fill", action: clear)
                     .labelStyle(.iconOnly)
                     .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
             }
         }
         .padding(.horizontal, Design.Spacing.medium)

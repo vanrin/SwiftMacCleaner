@@ -21,7 +21,7 @@ struct NoticePill<Actions: View>: View {
                     Text(title)
                         .font(.headline)
                     Text(text)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.quiet)
                         .fixedSize(horizontal: false, vertical: true)
                     HStack(spacing: Design.Spacing.small) {
                         actions

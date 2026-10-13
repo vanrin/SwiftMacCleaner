@@ -19,7 +19,8 @@ struct HomeView: View {
                 HeroMac {
                     VStack(spacing: Design.Spacing.medium) {
                         OrbFigure(value: ByteFormat.string(disk.free), caption: "free")
-                        UsageBar(segments: segments, total: disk.capacity, height: Design.Size.usageBarHeight)
+                        UsageBar(segments: segments, total: disk.capacity, height: Design.Size.usageBarHeight,
+                                 track: Design.Brand.screenTrack)
                     }
                 }
                 UsageLegend(segments: segments)

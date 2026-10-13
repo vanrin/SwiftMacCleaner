@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// A frosted panel the backdrop glows through: the surface every group of rows sits on.
+/// A panel of white glass raised off the ground: the surface every group of rows sits on.
 struct GlassPanel<Content: View>: View {
     @Environment(\.theme) private var theme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -25,6 +25,7 @@ struct GlassPanel<Content: View>: View {
             RoundedRectangle(cornerRadius: cornerRadius)
                 .fill(fill)
                 .strokeBorder(border)
+                .shadow(color: Design.Surface.shadow, radius: 16, y: 8)
         }
     }
 
@@ -32,7 +33,7 @@ struct GlassPanel<Content: View>: View {
         if reduceTransparency {
             AnyShapeStyle(Design.Surface.solidPanel)
         } else if isHighlighted {
-            AnyShapeStyle(LinearGradient(colors: [theme.accent.opacity(0.34), theme.accent.opacity(0.12)],
+            AnyShapeStyle(LinearGradient(colors: [theme.accent.opacity(0.26), theme.accent.opacity(0.1)],
                                          startPoint: .topLeading, endPoint: .bottomTrailing))
         } else {
             AnyShapeStyle(LinearGradient(colors: [Design.Surface.panelTop, Design.Surface.panelBottom],
@@ -44,7 +45,7 @@ struct GlassPanel<Content: View>: View {
         if contrast == .increased {
             Design.Surface.strongBorder
         } else if isHighlighted {
-            theme.accent.opacity(0.6)
+            theme.accent.opacity(0.5)
         } else {
             Design.Surface.panelBorder
         }

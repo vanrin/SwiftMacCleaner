@@ -8,7 +8,6 @@ import SwiftUI
 /// The last look before apps or leftovers are moved to the Trash: what goes, what waits, and what macOS will ask.
 struct AppsReviewSheet: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.theme) private var theme
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -24,7 +23,7 @@ struct AppsReviewSheet: View {
                     .font(.title)
                     .bold()
                 Text("\(ByteFormat.string(total)) goes to the Trash. Nothing is deleted, and \(systemFiles == 0 ? "it can all" : "all but the files from /Library can") be put back from the next screen.")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
@@ -52,7 +51,7 @@ struct AppsReviewSheet: View {
             VStack(alignment: .leading, spacing: Design.Spacing.small) {
                 Text("Before you \(verb.lowercased())")
                     .font(.headline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
                 ForEach(checks(apps, plan: plan, blockedCount: blocked.count), id: \.text) { check in
                     Label {
                         Text(check.text)
@@ -78,9 +77,10 @@ struct AppsReviewSheet: View {
         .padding(Design.Spacing.xLarge)
         .frame(width: Design.Size.sheetWidth)
         .presentationBackground {
-            ThemeBackdrop(theme: theme)
+            ThemeBackdrop()
         }
-        .preferredColorScheme(.dark)
+        .inkedSurface()
+        .preferredColorScheme(.light)
     }
 
     private func cancel() {

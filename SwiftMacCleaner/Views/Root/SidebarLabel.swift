@@ -30,7 +30,6 @@ struct SidebarLabel: View {
                 .overlay(alignment: .topTrailing) {
                     Circle()
                         .fill(screen.accent)
-                        .shadow(color: screen.accent, radius: 3)
                         .frame(width: Design.Size.sidebarDot, height: Design.Size.sidebarDot)
                         .offset(x: Design.Spacing.tight / 2, y: -Design.Spacing.hairline)
                         .opacity(isCollapsed && hasFindings ? 1 : 0)
@@ -46,7 +45,7 @@ struct SidebarLabel: View {
                     Text(badge)
                         .font(.callout)
                         .monospacedDigit()
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.quiet)
                         .lineLimit(1)
                         .layoutPriority(1)
                 }
@@ -63,8 +62,9 @@ struct SidebarLabel: View {
         .clipped()
         .background {
             RoundedRectangle(cornerRadius: Design.Radius.control)
-                .fill(isSelected ? Design.Surface.quietButton : isHovered ? Design.Surface.hover : .clear)
+                .fill(isSelected ? Design.Surface.selected : isHovered ? Design.Surface.hover : .clear)
                 .strokeBorder(isSelected ? Design.Surface.panelBorder : .clear)
+                .shadow(color: isSelected ? Design.Surface.shadow : .clear, radius: 6, y: 3)
         }
         .contentShape(.rect(cornerRadius: Design.Radius.control))
     }

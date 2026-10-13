@@ -14,7 +14,7 @@ struct LegendItem: View {
             swatch
                 .frame(width: Design.Size.legendSwatch, height: Design.Size.legendSwatch)
             Text(segment.label)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.quiet)
             Text(ByteFormat.string(segment.bytes))
                 .monospacedDigit()
         }
@@ -26,9 +26,10 @@ struct LegendItem: View {
     @ContentBuilder
     private var swatch: some View {
         if segment.isRemainder {
+            // An empty ring: a pale disc would be lost on the pale ground.
             Circle()
                 .fill(Design.Surface.track)
-                .strokeBorder(Design.Surface.panelBorder)
+                .strokeBorder(Design.Ink.tertiary)
         } else if segment.isStriped {
             Circle()
                 .fill(Design.Surface.track)

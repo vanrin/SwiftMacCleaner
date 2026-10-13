@@ -29,7 +29,7 @@ struct ReviewFateRow: View {
                 SizeLabel(bytes: size)
             }
         }
-        .foregroundStyle(.secondary)
+        .foregroundStyle(.quiet)
         .padding(.horizontal, Design.Spacing.large)
         .padding(.top, Design.Spacing.large)
         .padding(.bottom, Design.Spacing.tight)

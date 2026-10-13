@@ -23,7 +23,7 @@ struct ReviewOpenAppRow: View {
                     .lineLimit(1)
                 Text("\(ByteFormat.string(entry.size)) waits for it")
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
                     .lineLimit(1)
             }
             Spacer(minLength: Design.Spacing.medium)

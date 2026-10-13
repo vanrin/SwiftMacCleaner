@@ -15,14 +15,14 @@ struct SpaceHeader: View {
             VStack(alignment: .leading, spacing: Design.Spacing.tight) {
                 Text(model.space.displayPath(node.path))
                     .font(Design.Typeface.code)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
                     .lineLimit(1)
                     .truncationMode(.middle)
                 Text(ByteFormat.string(node.size))
                     .font(Design.Typeface.orbFigure)
                     .monospacedDigit()
                 Text(footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .accessibilityElement(children: .combine)

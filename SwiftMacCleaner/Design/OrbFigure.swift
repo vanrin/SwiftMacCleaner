@@ -21,7 +21,7 @@ struct OrbFigure: View {
                 .animation(.default, value: value)
             Text(caption)
                 .font(Design.Typeface.orbCaption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.quiet)
         }
     }
 }

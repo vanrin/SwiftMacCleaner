@@ -25,7 +25,7 @@ struct LeftoverCard: View {
                     SizeLabel(bytes: finding.size)
                 }
                 Text(finding.explanation)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(Design.Spacing.large)

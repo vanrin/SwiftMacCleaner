@@ -38,7 +38,7 @@ struct ReviewStepRow: View {
                 }
                 Text(detail(isBlocked: isBlocked, allWait: allWait, waitingSize: waitingSize))
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
@@ -47,14 +47,14 @@ struct ReviewStepRow: View {
                 // A task's figure is a guess at what comes back, so it is said as one.
                 Text("up to \(ByteFormat.string(step.size))")
                     .font(Design.Typeface.tileBody)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
                     .monospacedDigit()
             } else {
                 SizeLabel(bytes: isBlocked ? step.size : step.size - waitingSize, isEmphasized: !isBlocked)
                     .strikethrough(isBlocked)
             }
         }
-        .foregroundStyle(isBlocked ? .secondary : .primary)
+        .foregroundStyle(isBlocked ? AnyShapeStyle(.quiet) : AnyShapeStyle(.primary))
         .padding(.horizontal, Design.Spacing.large)
         .padding(.vertical, Design.Spacing.medium)
         .overlay(alignment: .top) {

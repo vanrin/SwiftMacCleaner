@@ -18,7 +18,7 @@ struct TitledDetail: View {
                 .font(Design.Typeface.rowTitle)
                 .lineLimit(1)
             Text(detail)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.quiet)
                 .lineLimit(detailLineLimit)
                 .truncationMode(.middle)
                 .fixedSize(horizontal: false, vertical: detailLineLimit == nil)

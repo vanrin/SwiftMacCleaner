@@ -9,7 +9,6 @@ import SwiftUI
 /// clean-up's confirmation, or the overview's over every ticked part.
 struct ReviewSheet: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.theme) private var theme
     @Environment(\.dismiss) private var dismiss
     /// What the button says: "Clean" for a clean-up, "Run" for the overview, whose plan also has tasks in it.
     var verb = "Clean"
@@ -37,14 +36,14 @@ struct ReviewSheet: View {
                     .font(.title)
                     .bold()
                 Text(subtitle(for: plan, blockedCount: blocked.count))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
             }
 
             GlassPanel {
                 HStack(spacing: Design.Spacing.xLarge) {
                     ReviewFigure(caption: "Free now", value: ByteFormat.string(model.disk.free))
                     Image(systemName: "arrow.right")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.quiet)
                         .accessibilityHidden(true)
                     ReviewFigure(caption: "Free after", value: ByteFormat.string(model.disk.free + total - plan.trashedSize),
                                  isEmphasized: true)
@@ -64,10 +63,10 @@ struct ReviewSheet: View {
                         VStack(alignment: .leading, spacing: Design.Spacing.tight / 2) {
                             Text(blockingApps.count == 1 ? "Open app" : "Open apps")
                                 .font(.headline)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(.quiet)
                             Text("What \(blockingApps.count == 1 ? "it keeps" : "they keep") waits until \(blockingApps.count == 1 ? "it has" : "they have") quit. Nothing is quit unless you ask.")
                                 .font(.callout)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(.quiet)
                         }
                         Spacer()
                         if blockingApps.count > 1 {
@@ -89,7 +88,7 @@ struct ReviewSheet: View {
             VStack(alignment: .leading, spacing: Design.Spacing.small) {
                 Text("What will happen")
                     .font(.headline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
                 GlassPanel {
                     ScrollView {
                         // Grouped by what becomes of each group, so what cannot be undone is said once and plainly.
@@ -118,7 +117,7 @@ struct ReviewSheet: View {
             VStack(alignment: .leading, spacing: Design.Spacing.small) {
                 Text("Before you clean")
                     .font(.headline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
                 ForEach(checks(for: plan, blocked: blocked), id: \.text) { check in
                     Label {
                         Text(check.text)
@@ -146,9 +145,10 @@ struct ReviewSheet: View {
         .padding(Design.Spacing.xLarge)
         .frame(width: Design.Size.sheetWidth)
         .presentationBackground {
-            ThemeBackdrop(theme: theme)
+            ThemeBackdrop()
         }
-        .preferredColorScheme(.dark)
+        .inkedSurface()
+        .preferredColorScheme(.light)
     }
 
     private func copyShellScript() {

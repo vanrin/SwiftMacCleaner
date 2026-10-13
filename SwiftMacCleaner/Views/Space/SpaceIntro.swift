@@ -43,12 +43,10 @@ struct SpaceIntro: View {
                 .labelsHidden()
                 .fixedSize()
                 .controlSize(.large)
-                // The accent is too pale to carry the white label of the chosen segment.
-                .tint(theme.mid)
                 Text(space.scope == .home
                      ? "Your own files: projects, Library, Documents, Downloads and the rest of \(space.displayPath(space.home.path))."
                      : "Everything on \(disk.name): your home folder plus Applications, the system Library and other users.")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }

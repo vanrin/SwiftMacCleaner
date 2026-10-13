@@ -8,7 +8,6 @@ import SwiftUI
 /// Duplicates before a scan: what it does, and where it should look.
 struct DuplicatesIntro: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.theme) private var theme
 
     var body: some View {
         @Bindable var duplicates = model.duplicates
@@ -40,15 +39,13 @@ struct DuplicatesIntro: View {
                     .labelsHidden()
                     .fixedSize()
                     .controlSize(.large)
-                    // The accent is too pale to carry the white label of the chosen segment.
-                    .tint(theme.mid)
                     if duplicates.scope == .folder {
                         Button(duplicates.folder == nil ? "Choose…" : "Change…", action: chooseFolder)
                             .buttonStyle(.pill)
                     }
                 }
                 Text(explanation(duplicates))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
                     .fixedSize(horizontal: false, vertical: true)
                 if let note = duplicates.folderNote {
                     Label(note, systemImage: "exclamationmark.triangle.fill")

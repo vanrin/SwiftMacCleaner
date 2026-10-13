@@ -28,7 +28,7 @@ struct PerformanceIntro: View {
                 }
             }
             Text("Scanning only reads. Nothing runs or changes until you confirm, and tasks that need root ask for your password once.")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.quiet)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .orbAction {

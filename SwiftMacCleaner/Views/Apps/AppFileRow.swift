@@ -20,7 +20,7 @@ struct AppFileRow: View {
                         .truncationMode(.middle)
                     Text(apps.displayPath(file.url.deletingLastPathComponent()))
                         .font(Design.Typeface.code)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.quiet)
                         .lineLimit(1)
                         .truncationMode(.middle)
                 }

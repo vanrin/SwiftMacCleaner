@@ -20,13 +20,13 @@ struct ItemRow: View {
                         .font(Design.Typeface.tileBody)
                         .lineLimit(1)
                     Text(item.detail)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.quiet)
                         .lineLimit(1)
                         .truncationMode(.middle)
                     if let hint = item.hint {
                         Text(hint)
                             .font(Design.Typeface.code)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.quiet)
                             .lineLimit(1)
                             .truncationMode(.middle)
                     }

@@ -13,11 +13,11 @@ struct FreeSpaceForecast: View {
     var body: some View {
         HStack(spacing: Design.Spacing.medium) {
             Text("Free after cleaning")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.quiet)
             Text(ByteFormat.string(now))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.quiet)
             Image(systemName: "arrow.right")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.quiet)
                 .accessibilityLabel("becomes")
             Text(ByteFormat.string(after))
                 .bold()

@@ -23,7 +23,7 @@ struct ReceiptRow: View {
             // A step that frees nothing, such as a task that was run, has no size worth a column.
             if step.size > 0 {
                 SizeLabel(bytes: step.size, isEmphasized: !skipped)
-                    .foregroundStyle(skipped ? .secondary : .primary)
+                    .foregroundStyle(skipped ? AnyShapeStyle(.quiet) : AnyShapeStyle(.primary))
             }
         }
         .padding(.horizontal, Design.Spacing.large)
@@ -44,7 +44,7 @@ struct ReceiptRow: View {
 
     private var symbolStyle: AnyShapeStyle {
         if step.skippedReason != nil {
-            AnyShapeStyle(.secondary)
+            AnyShapeStyle(.quiet)
         } else if isClean {
             AnyShapeStyle(.tint)
         } else {

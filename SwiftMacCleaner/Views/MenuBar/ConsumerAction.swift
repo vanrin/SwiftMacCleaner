@@ -22,7 +22,7 @@ struct ConsumerAction: View {
                 .accessibilityHidden(!consumer.canQuit)
             Text("macOS")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.quiet)
                 .opacity(consumer.isSystem ? 1 : 0)
                 .accessibilityHidden(!consumer.isSystem)
         }

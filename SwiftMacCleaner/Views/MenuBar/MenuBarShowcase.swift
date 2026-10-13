@@ -22,7 +22,7 @@ struct MenuBarShowcase: View {
         }
         .padding(Design.Spacing.xLarge)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-        .background(Design.Surface.solidPanel)
+        .background(Design.Ground.shadow.opacity(0.6))
         .background(.gray)
     }
 }

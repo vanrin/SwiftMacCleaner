@@ -16,7 +16,7 @@ struct ConsumerList: View {
             Text("Top consumers")
                 .font(.callout)
                 .bold()
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.quiet)
                 .accessibilityAddTraits(.isHeader)
             VStack(spacing: 0) {
                 ForEach(consumers) { consumer in
@@ -27,7 +27,7 @@ struct ConsumerList: View {
             .overlay(alignment: .topLeading) {
                 Text("Measuring")
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
                     .opacity(consumers.isEmpty ? 1 : 0)
                     .accessibilityHidden(!consumers.isEmpty)
             }

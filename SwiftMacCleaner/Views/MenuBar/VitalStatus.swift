@@ -16,7 +16,7 @@ struct VitalStatus: View {
                 .font(Design.Typeface.detailTitle)
             Text(detail)
                 .font(.callout)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.quiet)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityElement(children: .combine)

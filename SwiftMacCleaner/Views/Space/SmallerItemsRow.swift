@@ -14,14 +14,14 @@ struct SmallerItemsRow: View {
         HStack(spacing: Design.Spacing.medium) {
             FeatureIcon(Image(systemName: "ellipsis"), theme: theme, isTinted: false)
             Text(node.children.isEmpty ? "Files and folders, none over 20 MB" : "Everything smaller than 20 MB")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.quiet)
             Spacer(minLength: Design.Spacing.medium)
             SizeBar(fraction: SpaceShare.fraction(of: node.smallerItemsSize, in: node.size), isActive: false,
                     width: Design.Size.shareBarWidth, alignment: .leading)
             Text(SpaceShare.text(of: node.smallerItemsSize, in: node.size))
                 .font(.callout)
                 .monospacedDigit()
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.quiet)
                 .frame(width: Design.Size.percentColumn, alignment: .trailing)
             SizeLabel(bytes: node.smallerItemsSize, isEmphasized: false)
                 .frame(width: Design.Size.sizeColumn, alignment: .trailing)

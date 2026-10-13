@@ -21,7 +21,7 @@ struct CoreBars: View {
                     }
                     Text(group.caption)
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.quiet)
                         .lineLimit(1)
                         .fixedSize()
                 }

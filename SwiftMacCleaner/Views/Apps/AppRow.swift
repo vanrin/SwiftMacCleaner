@@ -36,14 +36,14 @@ struct AppRow: View {
                             }
                         }
                         Text(detail)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.quiet)
                             .lineLimit(1)
                     }
                     Spacer(minLength: Design.Spacing.medium)
                     SizeLabel(bytes: app.size)
                     Image(systemName: "chevron.right")
                         .font(.callout)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.quiet)
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
                         .accessibilityHidden(true)
                 }

@@ -34,7 +34,7 @@ struct AppsIntro: View {
                 FeatureBullet(glyph: Image(.glyphLeftovers), text: "Leftovers and Installers")
             }
             Text("Scanning only reads. Nothing is removed until you confirm, and what is removed goes to the Trash, where it can be put back.")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.quiet)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .orbAction {

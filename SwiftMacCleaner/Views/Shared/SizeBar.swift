@@ -21,7 +21,7 @@ struct SizeBar: View {
             .frame(width: width, height: Design.Size.sizeBarHeight)
             .overlay(alignment: alignment) {
                 Capsule()
-                    .fill(isActive ? AnyShapeStyle(theme.accent) : AnyShapeStyle(.secondary))
+                    .fill(isActive ? theme.accent : theme.faintAccent)
                     .frame(width: max(Design.Size.sizeBarHeight, width * min(1, max(0, fraction))))
             }
             .accessibilityHidden(true)

@@ -11,12 +11,14 @@ struct UsageBar: View {
     var segments: [UsageSegment]
     var total: Int64
     var height = Design.Spacing.medium
+    /// The empty part of the bar. A bar on a dark surface is given a pale one.
+    var track = Design.Surface.track
 
     var body: some View {
         ProportionalRow(total: Double(max(total, 1))) {
             ForEach(segments) { segment in
                 Rectangle()
-                    .fill(segment.isStriped ? AnyShapeStyle(Design.Surface.track) : AnyShapeStyle(segment.color))
+                    .fill(segment.isStriped ? AnyShapeStyle(track) : AnyShapeStyle(segment.color))
                     .overlay {
                         Hatch(color: segment.color)
                             .opacity(segment.isStriped ? 1 : 0)
@@ -25,7 +27,7 @@ struct UsageBar: View {
             }
         }
         .frame(height: height)
-        .background(Design.Surface.track)
+        .background(track)
         .clipShape(.capsule)
         .animation(.snappy, value: segments.map(\.bytes))
         .accessibilityHidden(true)

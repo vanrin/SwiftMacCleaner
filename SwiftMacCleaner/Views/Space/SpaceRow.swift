@@ -27,7 +27,7 @@ struct SpaceRow: View {
                         if !note.isEmpty {
                             Text(note)
                                 .font(.callout)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(.quiet)
                                 .lineLimit(1)
                         }
                     }
@@ -38,7 +38,7 @@ struct SpaceRow: View {
                     Text(node.isUnreadable ? "" : SpaceShare.text(of: node.size, in: parentSize))
                         .font(.callout)
                         .monospacedDigit()
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.quiet)
                         .frame(width: Design.Size.percentColumn, alignment: .trailing)
                     SizeLabel(bytes: node.size, unknown: node.isUnreadable)
                         .frame(width: Design.Size.sizeColumn, alignment: .trailing)

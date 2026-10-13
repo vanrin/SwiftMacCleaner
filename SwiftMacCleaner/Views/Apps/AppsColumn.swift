@@ -53,7 +53,7 @@ struct AppsColumn: View {
         Text(title)
             .font(.callout)
             .bold()
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.quiet)
             .padding(.horizontal, Design.Spacing.medium)
             .padding(.top, Design.Spacing.medium)
             .padding(.bottom, Design.Spacing.tight)

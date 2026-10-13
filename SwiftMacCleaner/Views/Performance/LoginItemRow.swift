@@ -33,7 +33,7 @@ struct LoginItemRow: View {
                     }
                 }
                 Text(item.exists ? performance.displayPath(item.path) : "The app is no longer at \(performance.displayPath(item.path)), so this item opens nothing.")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
                     .lineLimit(1)
                     .truncationMode(.middle)
             }

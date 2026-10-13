@@ -25,7 +25,7 @@ struct AreaToggleRow: View {
                     }
                     Text(detail)
                         .font(.callout)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.quiet)
                         .multilineTextAlignment(.leading)
                         .lineLimit(2)
                 }

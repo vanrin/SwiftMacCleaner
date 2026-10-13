@@ -9,7 +9,6 @@ import SwiftUI
 /// matters, and a way into the part itself.
 struct OverviewTile: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.theme) private var theme
     let part: SidebarItem
 
     var body: some View {
@@ -44,14 +43,14 @@ struct OverviewTile: View {
                             .contentTransition(.numericText())
                         Text(figure.caption)
                             .font(Design.Typeface.tileBody)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.quiet)
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
                         if let selection = figure.selection {
                             Text(selection)
                                 .font(Design.Typeface.tileBody)
                                 .bold(figure.isSelected)
-                                .foregroundStyle(figure.isSelected ? AnyShapeStyle(theme.accent) : AnyShapeStyle(.secondary))
+                                .foregroundStyle(figure.isSelected ? AnyShapeStyle(.primary) : AnyShapeStyle(.quiet))
                                 .lineLimit(1)
                                 .contentTransition(.numericText())
                         }

@@ -16,7 +16,7 @@ struct SectionHeading: View {
                 .font(Design.Typeface.tileTitle)
             if let detail {
                 Text(detail)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }

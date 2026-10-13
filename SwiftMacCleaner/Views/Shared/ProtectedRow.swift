@@ -17,7 +17,7 @@ struct ProtectedRow: View {
             Text(item.size.map(ByteFormat.string) ?? "kept")
                 .font(Design.Typeface.tileBody)
                 .monospacedDigit()
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.quiet)
                 .frame(width: Design.Size.sizeColumn, alignment: .trailing)
         }
         .padding(.horizontal, Design.Spacing.large)

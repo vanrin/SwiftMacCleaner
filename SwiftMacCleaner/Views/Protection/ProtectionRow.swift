@@ -30,11 +30,11 @@ struct ProtectionRow: View {
                         .lineLimit(1)
                     Text(finding.status)
                         .font(Design.Typeface.tileBody)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.quiet)
                         .lineLimit(1)
                 }
                 Text(finding.advice ?? check.purpose)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: Design.Spacing.medium)
@@ -84,7 +84,7 @@ struct ProtectionRow: View {
         switch finding.state {
         case .inPlace: ("checkmark.circle.fill", Design.Signal.safe, "In place")
         case .needsLook: ("exclamationmark.triangle.fill", Design.Signal.warning, "Worth a look")
-        case .unknown: ("questionmark.circle.fill", .secondary, "Could not be read")
+        case .unknown: ("questionmark.circle.fill", Design.Ink.secondary, "Could not be read")
         }
     }
 

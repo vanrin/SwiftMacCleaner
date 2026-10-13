@@ -152,8 +152,6 @@ enum Design {
     static let language = Locale.Language(identifier: "en")
 
     enum Motion {
-        /// The backdrop fading from one palette to the next.
-        static let theme = Animation.smooth(duration: 0.7)
         static let press = Animation.snappy(duration: 0.15)
         /// The sidebar folding down to a rail and opening out again, and its names fading with it.
         static let sidebar = Animation.snappy(duration: 0.3)
@@ -164,26 +162,60 @@ enum Design {
         static let pulse = Animation.easeInOut(duration: 1.5)
     }
 
-    /// The see-through surfaces that sit on the backdrop. White at low strength, so the theme shows through.
+    /// Text, and the solid dark tone of what stands out on the ground: the chosen tick, a main pill.
+    nonisolated enum Ink {
+        static let primary = Color(hue: 0.622, saturation: 0.441, brightness: 0.133)
+        static let secondary = Color(hue: 0.623, saturation: 0.265, brightness: 0.400)
+        /// Chevrons and separators.
+        static let tertiary = Color(hue: 0.625, saturation: 0.187, brightness: 0.588)
+    }
+
+    /// The window's ground: pale silver, lighter towards the top left, the same behind every part of the app.
+    enum Ground {
+        static let top = Color(hue: 0.611, saturation: 0.024, brightness: 0.976)
+        static let mid = Color(hue: 0.606, saturation: 0.046, brightness: 0.937)
+        static let deep = Color(hue: 0.611, saturation: 0.066, brightness: 0.886)
+        /// The light behind a screen's artwork.
+        static let bloom = Color.white
+        /// What something raised casts on the ground. Used at low strength.
+        static let shadow = Color(hue: 0.625, saturation: 0.500, brightness: 0.314)
+    }
+
+    /// The glass that sits on the ground: white for what is raised, ink at low strength for what is recessed.
     enum Surface {
-        static let panelTop = Color.white.opacity(0.16)
-        static let panelBottom = Color.white.opacity(0.07)
-        static let panelBorder = Color.white.opacity(0.18)
-        static let strongBorder = Color.white.opacity(0.6)
+        static let panelTop = Color.white.opacity(0.85)
+        static let panelBottom = Color.white.opacity(0.48)
+        static let panelBorder = Color.white.opacity(0.95)
+        /// The edge of a surface when the user asks for more contrast.
+        static let strongBorder = Ink.primary.opacity(0.55)
+        /// The bright edge of something round and raised: the action button, the glass disc, a lens.
+        static let rim = Color.white.opacity(0.95)
+        /// The shadow under a panel.
+        static let shadow = Ground.shadow.opacity(0.12)
         /// What panels fall back to when the user asks for less transparency.
-        static let solidPanel = Color.black.opacity(0.55)
+        static let solidPanel = Color.white.opacity(0.94)
         /// A recessed well inside a panel: a path, a chip, the track of a bar.
-        static let well = Color.white.opacity(0.10)
-        static let track = Color.white.opacity(0.14)
-        static let quietButton = Color.white.opacity(0.16)
-        static let hover = Color.white.opacity(0.06)
+        static let well = Ink.primary.opacity(0.06)
+        static let track = Ink.primary.opacity(0.10)
+        static let quietButton = Ink.primary.opacity(0.08)
+        /// The chosen row of a list: a chip of the same glass as a panel.
+        static let selected = Color.white.opacity(0.8)
+        static let hover = Ink.primary.opacity(0.04)
         /// The part of a ring or bar that is in use and staying.
-        static let keeping = Color.white.opacity(0.3)
+        static let keeping = Ink.primary.opacity(0.24)
         /// The second part of a ring or bar whose first part is in the accent.
-        static let secondShare = Color.white.opacity(0.85)
+        static let secondShare = Ink.primary.opacity(0.72)
+    }
+
+    /// The round action button: graphite, the same in every part of the app.
+    enum Action {
+        static let light = Color(hue: 0.627, saturation: 0.264, brightness: 0.565)
+        static let body = Color(hue: 0.625, saturation: 0.364, brightness: 0.259)
+        static let shade = Ink.primary
     }
 
     /// The colours of the picture the app shares with its icon: the swift, the Mac and its display.
+    /// The swift is the one warm colour in the app.
     enum Brand {
         /// The swift, from the wing in the light to the wing in the shade.
         static let swift = Gradient(colors: [
@@ -191,19 +223,24 @@ enum Design {
             Color(hue: 0.06, saturation: 0.82, brightness: 1),
             Color(hue: 0.016, saturation: 0.84, brightness: 0.93),
         ])
-        static let aluminium = Color(hue: 0.707, saturation: 0.12, brightness: 0.85)
-        static let aluminiumShade = Color(hue: 0.702, saturation: 0.18, brightness: 0.71)
-        static let bezel = Color(hue: 0.708, saturation: 0.73, brightness: 0.09)
-        static let screenLight = Color(hue: 0.708, saturation: 0.74, brightness: 0.54)
-        static let screenDeep = Color(hue: 0.703, saturation: 0.83, brightness: 0.26)
+        static let aluminium = Color(hue: 0.609, saturation: 0.113, brightness: 0.796)
+        static let aluminiumShade = Color(hue: 0.615, saturation: 0.170, brightness: 0.671)
+        /// The line round the lid and the base, which keeps the pale metal apart from the pale ground.
+        static let edge = Color(hue: 0.625, saturation: 0.400, brightness: 0.392).opacity(0.3)
+        static let bezel = Color(hue: 0.625, saturation: 0.615, brightness: 0.051)
+        static let screenLight = Color(hue: 0.627, saturation: 0.691, brightness: 0.431)
+        static let screenDeep = Color(hue: 0.630, saturation: 0.742, brightness: 0.122)
         /// The trail the swift leaves across the display.
-        static let bloom = Color(hue: 0.85, saturation: 0.45, brightness: 1)
+        static let bloom = Color(hue: 0.072, saturation: 0.624, brightness: 1)
+        /// What is written on the display, which stays dark in the light window, and the empty part of a bar there.
+        static let screenText = Color.white
+        static let screenTrack = Color.white.opacity(0.2)
     }
 
-    /// Colours with a fixed meaning, the same on every backdrop.
+    /// Colours with a fixed meaning, the same on every screen. Dark enough to read as text on the ground.
     enum Signal {
-        static let safe = Color(hue: 0.42, saturation: 0.50, brightness: 1)
-        static let review = Color(hue: 0.12, saturation: 0.65, brightness: 1)
-        static let warning = Color(hue: 0.09, saturation: 0.75, brightness: 1)
+        static let safe = Color(hue: 0.429, saturation: 0.943, brightness: 0.412)
+        static let review = Color(hue: 0.112, saturation: 1, brightness: 0.478)
+        static let warning = Color(hue: 0, saturation: 0.818, brightness: 0.690)
     }
 }

@@ -17,7 +17,7 @@ struct DropdownButtonStyle: ButtonStyle {
             Image(systemName: "chevron.down")
                 .font(.callout)
                 .bold()
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.quiet)
                 .accessibilityHidden(true)
         }
         .padding(.horizontal, Design.Spacing.large)

@@ -18,7 +18,7 @@ struct SizeLabel: View {
             .font(Design.Typeface.tileBody)
             .monospacedDigit()
             .bold(isEmphasized && !unknown)
-            .foregroundStyle(unknown ? AnyShapeStyle(.secondary) : AnyShapeStyle(.foreground))
+            .foregroundStyle(unknown ? AnyShapeStyle(.quiet) : AnyShapeStyle(.foreground))
             .lineLimit(1)
     }
 }

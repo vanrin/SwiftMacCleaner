@@ -44,7 +44,7 @@ struct CleanUpIntro: View {
                 }
             }
             Text(group.promise)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.quiet)
                 .fixedSize(horizontal: false, vertical: true)
             // Which of its areas the scan looks at; a clean-up of one area has nothing to choose.
             if group.areas.count > 1 {

@@ -9,7 +9,6 @@ import SwiftUI
 /// back, and what is checked once more on the way.
 struct DuplicatesReviewSheet: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.theme) private var theme
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -22,7 +21,7 @@ struct DuplicatesReviewSheet: View {
                     .font(.title)
                     .bold()
                 Text(summary(size: plan.totalSize))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
@@ -41,7 +40,7 @@ struct DuplicatesReviewSheet: View {
             VStack(alignment: .leading, spacing: Design.Spacing.small) {
                 Text("Before you remove")
                     .font(.headline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
                 ForEach(checks(duplicates), id: \.text) { check in
                     Label {
                         Text(check.text)
@@ -67,9 +66,10 @@ struct DuplicatesReviewSheet: View {
         .padding(Design.Spacing.xLarge)
         .frame(width: Design.Size.sheetWidth)
         .presentationBackground {
-            ThemeBackdrop(theme: theme)
+            ThemeBackdrop()
         }
-        .preferredColorScheme(.dark)
+        .inkedSurface()
+        .preferredColorScheme(.light)
     }
 
     private func cancel() {

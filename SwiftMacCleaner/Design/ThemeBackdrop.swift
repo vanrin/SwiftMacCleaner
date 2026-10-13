@@ -5,12 +5,13 @@
 
 import SwiftUI
 
-/// The gradient behind a whole window: bright where the artwork sits, falling off into the dark corner.
-/// It fades from one palette to the next as the theme changes.
+/// The ground behind a whole window: pale silver, lightest at the top left and falling off towards the
+/// bottom right. It is the same in every part of the app.
 struct ThemeBackdrop: View {
-    let theme: Theme
-
     var body: some View {
+        let top = Design.Ground.top
+        let mid = Design.Ground.mid
+        let deep = Design.Ground.deep
         MeshGradient(
             width: 3, height: 3,
             points: [
@@ -19,13 +20,12 @@ struct ThemeBackdrop: View {
                 [0, 1], [0.5, 1], [1, 1],
             ],
             colors: [
-                theme.mid, theme.mid.mix(with: theme.glow, by: 0.15), theme.mid.mix(with: theme.deep, by: 0.3),
-                theme.mid.mix(with: theme.deep, by: 0.15), theme.mid.mix(with: theme.glow, by: 0.4), theme.deep.mix(with: theme.mid, by: 0.3),
-                theme.mid.mix(with: theme.deep, by: 0.4), theme.deep.mix(with: theme.mid, by: 0.35), theme.deep,
+                top, top, mid,
+                top, top.mix(with: mid, by: 0.6), mid.mix(with: deep, by: 0.5),
+                mid, mid.mix(with: deep, by: 0.6), deep,
             ]
         )
         .ignoresSafeArea()
-        .animation(Design.Motion.theme, value: theme)
         .accessibilityHidden(true)
     }
 }

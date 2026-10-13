@@ -25,7 +25,7 @@ struct OverviewSummary: View {
                         .accessibilityAddTraits(.isHeader)
                     Text(detail(runs))
                         .font(Design.Typeface.tileBody)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.quiet)
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: 640)

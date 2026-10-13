@@ -19,7 +19,7 @@ struct RingFigure: View {
                 .minimumScaleFactor(0.7)
             Text(caption)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.quiet)
         }
         .padding(.horizontal, Design.Size.detailRingLine + Design.Spacing.tight)
         .accessibilityElement(children: .combine)

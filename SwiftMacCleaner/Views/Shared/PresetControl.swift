@@ -8,15 +8,13 @@ import SwiftUI
 /// Smart, Everything, Nothing: the three ways to set every tick of a list at once, side by side. The
 /// one the ticks amount to is lit; none is, once rows have been ticked by hand.
 struct PresetControl: View {
-    @Environment(\.theme) private var theme
-
     let preset: SelectionPreset?
     let select: (SelectionPreset) -> Void
 
     var body: some View {
         HStack(spacing: Design.Spacing.medium) {
             Text("Select")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.quiet)
             HStack(spacing: Design.Spacing.tight / 2) {
                 ForEach(SelectionPreset.allCases) { choice in
                     let isChosen = choice == preset
@@ -25,8 +23,9 @@ struct PresetControl: View {
                         .bold()
                         .padding(.horizontal, Design.Spacing.medium)
                         .padding(.vertical, Design.Spacing.small)
-                        .foregroundStyle(isChosen ? AnyShapeStyle(theme.deep) : AnyShapeStyle(.white))
-                        .background(isChosen ? AnyShapeStyle(.white) : AnyShapeStyle(.clear),
+                        // The chosen one is a white chip raised out of the well.
+                        .foregroundStyle(isChosen ? Design.Ink.primary : Design.Ink.secondary)
+                        .background(isChosen ? .white : .clear,
                                     in: .rect(cornerRadius: Design.Radius.control - Design.Spacing.tight))
                         .contentShape(.rect(cornerRadius: Design.Radius.control - Design.Spacing.tight))
                         .accessibilityAddTraits(isChosen ? .isSelected : [])

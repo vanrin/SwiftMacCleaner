@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// A sidebar icon: two tones of white until its entry is chosen, then its body takes the entry's accent.
+/// A sidebar icon: two tones of ink until its entry is chosen, then its body takes the entry's accent.
 struct SidebarGlyph: View {
     let glyph: ImageResource
     let theme: Theme
@@ -16,7 +16,7 @@ struct SidebarGlyph: View {
     var body: some View {
         Image(glyph)
             .symbolRenderingMode(isSelected ? .palette : .hierarchical)
-            .foregroundStyle(.white, isSelected ? theme.accent : .white)
+            .foregroundStyle(Design.Ink.primary, isSelected ? theme.accent : Design.Ink.primary)
             .symbolEffect(.pulse, isActive: isBusy)
             .imageScale(.small)
             .font(Design.Typeface.sidebarGlyph)

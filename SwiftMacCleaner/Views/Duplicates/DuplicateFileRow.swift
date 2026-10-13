@@ -41,7 +41,7 @@ struct DuplicateFileRow: View {
             if let modified = file.modified {
                 Text(modified.formatted(date: .abbreviated, time: .omitted))
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
                     .lineLimit(1)
                     .help("Last changed \(modified.formatted(date: .long, time: .shortened))")
             }
@@ -71,7 +71,7 @@ struct DuplicateFileRow: View {
                 .truncationMode(.middle)
             Text(model.duplicates.displayPath(file.url.deletingLastPathComponent()))
                 .font(Design.Typeface.code)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.quiet)
                 .lineLimit(1)
                 .truncationMode(.middle)
         }

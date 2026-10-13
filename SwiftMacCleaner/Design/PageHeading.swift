@@ -18,7 +18,7 @@ struct PageHeading: View {
                 .minimumScaleFactor(0.6)
             Text(detail)
                 .font(Design.Typeface.heroSubtitle)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.quiet)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityElement(children: .combine)

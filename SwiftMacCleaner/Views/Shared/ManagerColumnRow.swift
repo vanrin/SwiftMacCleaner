@@ -25,15 +25,16 @@ struct ManagerColumnRow: View {
                 Text(value)
                     .font(.callout)
                     .monospacedDigit()
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
                     .lineLimit(1)
             }
             .padding(.horizontal, Design.Spacing.medium)
             .frame(height: isProminent ? Design.Size.sidebarRow : Design.Size.sidebarRow - Design.Spacing.small)
             .background {
                 RoundedRectangle(cornerRadius: Design.Radius.control)
-                    .fill(isSelected ? Design.Surface.quietButton : isHovered ? Design.Surface.hover : .clear)
+                    .fill(isSelected ? Design.Surface.selected : isHovered ? Design.Surface.hover : .clear)
                     .strokeBorder(isSelected ? Design.Surface.panelBorder : .clear)
+                    .shadow(color: isSelected ? Design.Surface.shadow : .clear, radius: 6, y: 3)
             }
             .contentShape(.rect(cornerRadius: Design.Radius.control))
         }

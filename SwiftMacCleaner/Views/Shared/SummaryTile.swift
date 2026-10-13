@@ -53,7 +53,7 @@ struct SummaryTile: View {
                 }
                 Text(detail)
                     .font(Design.Typeface.tileBody)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
                     .lineLimit(3)
                 Spacer(minLength: 0)
                 if !symbols.isEmpty {

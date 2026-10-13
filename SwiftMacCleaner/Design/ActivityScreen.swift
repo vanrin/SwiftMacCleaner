@@ -24,7 +24,7 @@ struct ActivityScreen<Art: View>: View {
                     .minimumScaleFactor(0.6)
                 Text(detail)
                     .font(detailIsPath ? Design.Typeface.code : Design.Typeface.heroSubtitle)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
                     .lineLimit(1)
                     .truncationMode(.middle)
             }

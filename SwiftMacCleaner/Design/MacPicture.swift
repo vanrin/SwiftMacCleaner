@@ -43,6 +43,7 @@ struct MacPicture: View {
         let lid = Path(roundedRect: Self.lid, cornerRadii: RectangleCornerRadii(topLeading: 30, bottomLeading: 10, bottomTrailing: 10, topTrailing: 30))
         context.fill(lid, with: .linearGradient(Gradient(colors: [.white, Design.Brand.aluminium]),
                                                 startPoint: CGPoint(x: 0, y: Self.lid.minY), endPoint: CGPoint(x: 0, y: Self.lid.maxY)))
+        context.stroke(lid, with: .color(Design.Brand.edge), lineWidth: 2)
         let bezel = Path(roundedRect: Self.bezel, cornerRadii: RectangleCornerRadii(topLeading: 24, bottomLeading: 6, bottomTrailing: 6, topTrailing: 24))
         context.fill(bezel, with: .color(Design.Brand.bezel))
         let display = Path(roundedRect: Self.display, cornerRadius: 16)
@@ -69,6 +70,7 @@ struct MacPicture: View {
         let base = Path(roundedRect: Self.base, cornerRadii: RectangleCornerRadii(topLeading: 6, bottomLeading: 24, bottomTrailing: 24, topTrailing: 6))
         context.fill(base, with: .linearGradient(Gradient(colors: [.white, Design.Brand.aluminium, Design.Brand.aluminiumShade]),
                                                  startPoint: CGPoint(x: 0, y: Self.base.minY), endPoint: CGPoint(x: 0, y: Self.base.maxY)))
+        context.stroke(base, with: .color(Design.Brand.edge), lineWidth: 2)
         let scoop = Path(roundedRect: Self.thumbScoop, cornerRadii: RectangleCornerRadii(bottomLeading: 12, bottomTrailing: 12))
         context.fill(scoop, with: .color(Design.Brand.aluminiumShade))
     }

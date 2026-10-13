@@ -21,7 +21,7 @@ struct ProtectionResults: View {
                         .accessibilityAddTraits(.isHeader)
                     Text(detail(protection))
                         .font(Design.Typeface.tileBody)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.quiet)
                         .multilineTextAlignment(.center)
                 }
                 .frame(maxWidth: .infinity)

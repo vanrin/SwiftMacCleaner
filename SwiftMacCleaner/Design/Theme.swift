@@ -5,46 +5,52 @@
 
 import SwiftUI
 
-/// The colours of one part of the app: its backdrop, the glow behind its artwork, and its accent.
+/// The colours of one part of the app. The window looks the same behind every part; what tells the
+/// parts apart is the lens under each one's glyph.
 nonisolated struct Theme: Hashable, Sendable {
-    /// The darkest corner of the backdrop.
-    let deep: Color
-    /// The body of the backdrop.
-    let mid: Color
-    /// The light behind the artwork, and the fill of the round action button.
-    let glow: Color
-    /// Rings, icons and anything else that should stand out against the backdrop.
-    let accent: Color
-    /// The tint of the lens under a glyph. Deep enough for a white glyph to stand out on it in every palette.
+    /// The tint of the lens under a glyph. Every lens is about as light as the next, so a white glyph
+    /// stands out on all of them.
     let lens: Color
+    /// The lens towards its bottom edge, and all of it when the user asks for more contrast.
+    let lensShade: Color
+    /// Rings, bars and dots. The same steel in every part; only a finished clean has its own.
+    let accent: Color
 
     /// The accent held back, for what was found but is not ticked.
     var faintAccent: Color { accent.opacity(0.45) }
 
-    /// Builds a palette around one hue, with a neighbouring hue for the glow.
-    /// `shadeHue` moves the dark corner towards another hue, the way violet falls off into navy.
-    /// `lift` brightens the backdrop for warm hues, which turn to mud when they are as dark as the cool ones.
-    init(hue: Double, glowHue: Double, shadeHue: Double? = nil, lift: Double = 0) {
-        deep = Color(hue: shadeHue ?? hue, saturation: 0.88, brightness: 0.22 + lift / 2)
-        mid = Color(hue: hue, saturation: 0.82, brightness: 0.52 + lift)
-        glow = Color(hue: glowHue, saturation: 0.78, brightness: 0.84)
-        accent = Color(hue: glowHue, saturation: 0.45, brightness: 1)
-        lens = Color(hue: glowHue, saturation: 0.84, brightness: 0.56)
+    /// Mid enough to show on the light ground and on the Mac's dark display alike.
+    private static let steel = Color(hue: 0.622, saturation: 0.436, brightness: 0.639)
+
+    init(lens: Color, shade: Color, accent: Color? = nil) {
+        self.lens = lens
+        lensShade = shade
+        self.accent = accent ?? Self.steel
     }
 
-    static let violet = Theme(hue: 0.775, glowHue: 0.85, shadeHue: 0.70)
-    static let indigo = Theme(hue: 0.70, glowHue: 0.73, shadeHue: 0.66)
-    static let blue = Theme(hue: 0.63, glowHue: 0.59, shadeHue: 0.68)
-    static let ocean = Theme(hue: 0.58, glowHue: 0.54, shadeHue: 0.63)
-    static let teal = Theme(hue: 0.50, glowHue: 0.46, shadeHue: 0.55)
-    static let green = Theme(hue: 0.35, glowHue: 0.28, shadeHue: 0.38)
-    static let amber = Theme(hue: 0.10, glowHue: 0.13, shadeHue: 0.06, lift: 0.04)
-    static let orange = Theme(hue: 0.045, glowHue: 0.08, shadeHue: 0.02, lift: 0.08)
-    static let rose = Theme(hue: 0.97, glowHue: 0.98, shadeHue: 0.93, lift: 0.04)
-    static let magenta = Theme(hue: 0.89, glowHue: 0.91, shadeHue: 0.83)
+    static let graphite = Theme(lens: Color(hue: 0.619, saturation: 0.275, brightness: 0.400),
+                                shade: Color(hue: 0.625, saturation: 0.392, brightness: 0.200))
+    static let indigo = Theme(lens: Color(hue: 0.626, saturation: 0.595, brightness: 0.863),
+                              shade: Color(hue: 0.627, saturation: 0.660, brightness: 0.600))
+    static let blue = Theme(lens: Color(hue: 0.557, saturation: 0.971, brightness: 0.800),
+                            shade: Color(hue: 0.558, saturation: 0.993, brightness: 0.525))
+    static let ocean = Theme(lens: Color(hue: 0.522, saturation: 0.939, brightness: 0.643),
+                             shade: Color(hue: 0.522, saturation: 0.981, brightness: 0.420))
+    static let teal = Theme(lens: Color(hue: 0.486, saturation: 0.966, brightness: 0.580),
+                            shade: Color(hue: 0.486, saturation: 1, brightness: 0.376))
+    static let green = Theme(lens: Color(hue: 0.413, saturation: 0.922, brightness: 0.600),
+                             shade: Color(hue: 0.413, saturation: 1, brightness: 0.392))
+    static let amber = Theme(lens: Color(hue: 0.120, saturation: 0.982, brightness: 0.643),
+                             shade: Color(hue: 0.119, saturation: 0.991, brightness: 0.420))
+    static let rose = Theme(lens: Color(hue: 0.960, saturation: 0.599, brightness: 0.792),
+                            shade: Color(hue: 0.954, saturation: 0.688, brightness: 0.541))
+    static let violet = Theme(lens: Color(hue: 0.731, saturation: 0.500, brightness: 0.808),
+                              shade: Color(hue: 0.737, saturation: 0.570, brightness: 0.557))
+    /// A finished clean: green, rings and all.
+    static let done = Theme(lens: green.lens, shade: green.lensShade, accent: green.lens)
 }
 
 extension EnvironmentValues {
     /// The palette of the screen a view is on.
-    @Entry var theme: Theme = .violet
+    @Entry var theme: Theme = .graphite
 }

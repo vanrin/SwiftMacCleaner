@@ -19,7 +19,7 @@ struct LeftoverRow: View {
                         .lineLimit(1)
                         .truncationMode(.middle)
                     Text(item.detail)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.quiet)
                         .lineLimit(1)
                         .truncationMode(.middle)
                 }

@@ -15,7 +15,7 @@ struct MemoryComposition: View {
             UsageBar(segments: [
                 UsageSegment(id: "active", label: "Active", bytes: reading.active, color: theme.accent),
                 UsageSegment(id: "wired", label: "Wired", bytes: reading.wired, color: Design.Surface.secondShare),
-                UsageSegment(id: "compressed", label: "Compressed", bytes: reading.compressed, color: theme.glow),
+                UsageSegment(id: "compressed", label: "Compressed", bytes: reading.compressed, color: theme.faintAccent),
             ], total: reading.total)
             Grid(horizontalSpacing: Design.Spacing.large, verticalSpacing: Design.Spacing.tight) {
                 GridRow {
@@ -23,7 +23,7 @@ struct MemoryComposition: View {
                     VitalLegendItem(label: "Wired", value: VitalFormat.memory(reading.wired), color: Design.Surface.secondShare)
                 }
                 GridRow {
-                    VitalLegendItem(label: "Compressed", value: VitalFormat.memory(reading.compressed), color: theme.glow)
+                    VitalLegendItem(label: "Compressed", value: VitalFormat.memory(reading.compressed), color: theme.faintAccent)
                     VitalLegendItem(label: "Available", value: VitalFormat.memory(reading.available), isRemainder: true)
                 }
             }

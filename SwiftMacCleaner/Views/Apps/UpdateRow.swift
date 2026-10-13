@@ -26,12 +26,12 @@ struct UpdateRow: View {
                         Text("\(update.installedVersion) → \(update.newVersion)")
                             .font(Design.Typeface.tileBody)
                             .monospacedDigit()
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.quiet)
                             .lineLimit(1)
                             .accessibilityLabel("Version \(update.installedVersion) to \(update.newVersion)")
                     }
                     Text(detail)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.quiet)
                         .lineLimit(1)
                 }
                 Spacer(minLength: Design.Spacing.medium)
@@ -48,7 +48,7 @@ struct UpdateRow: View {
                         ProgressView()
                             .controlSize(.small)
                         Text(model.apps.installingNow == update.id ? "Updating…" : "Waiting…")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.quiet)
                     }
                     .accessibilityElement(children: .combine)
                 } else {
@@ -69,7 +69,7 @@ struct UpdateRow: View {
                 Button(action: toggleNotes) {
                     Text(notes)
                         .font(.callout)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.quiet)
                         .multilineTextAlignment(.leading)
                         .lineLimit(showsAllNotes ? nil : 2)
                         .frame(maxWidth: .infinity, alignment: .leading)

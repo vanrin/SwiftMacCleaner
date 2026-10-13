@@ -16,7 +16,7 @@ struct ReviewFigure: View {
         VStack(alignment: alignment, spacing: Design.Spacing.tight / 2) {
             Text(caption)
                 .font(.callout)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.quiet)
             Text(value)
                 .font(.title2)
                 .monospacedDigit()

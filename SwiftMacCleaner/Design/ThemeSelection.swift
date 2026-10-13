@@ -13,9 +13,9 @@ extension Area {
         case .projects: .teal
         case .android: .green
         case .containers: .ocean
-        case .packageCaches: .orange
+        case .packageCaches: .amber
         case .toolchains: .indigo
-        case .ides: .magenta
+        case .ides: .violet
         case .models: .rose
         case .cachesLogs: .green
         case .trash: .rose
@@ -42,28 +42,28 @@ extension SidebarItem {
     /// The palette of this entry's icon and of its own screens.
     var theme: Theme {
         switch self {
-        case .overview: .violet
+        case .overview: .graphite
         case .group(let group): group.theme
         case .space: .ocean
-        case .duplicates: .magenta
+        case .duplicates: .violet
         case .apps: .blue
-        case .performance: .orange
+        case .performance: .rose
         case .protection: .green
         }
     }
 }
 
 extension AppModel {
-    /// The palette for what is on screen. Each sidebar entry has its own, and a finished clean turns green.
+    /// The palette for what is on screen. Each sidebar entry has its own, and a finished clean has the green one.
     var theme: Theme {
         let item = sidebarSelection
         return switch item {
         case .space, .protection: item.theme
-        case .duplicates: duplicates.phase == .done ? .green : item.theme
-        case .apps: apps.phase == .done ? .green : item.theme
-        case .performance: performance.phase == .done ? .green : item.theme
-        case .group(let group): cleanUp(group).phase == .done ? .green : item.theme
-        case .overview: overviewPhase == .done ? .green : item.theme
+        case .duplicates: duplicates.phase == .done ? .done : item.theme
+        case .apps: apps.phase == .done ? .done : item.theme
+        case .performance: performance.phase == .done ? .done : item.theme
+        case .group(let group): cleanUp(group).phase == .done ? .done : item.theme
+        case .overview: overviewPhase == .done ? .done : item.theme
         }
     }
 }

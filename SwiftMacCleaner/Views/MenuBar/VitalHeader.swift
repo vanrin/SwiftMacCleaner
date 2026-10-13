@@ -21,7 +21,7 @@ struct VitalHeader: View {
             Text(note)
                 .font(.callout)
                 .monospacedDigit()
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.quiet)
                 .lineLimit(1)
         }
         .accessibilityElement(children: .combine)

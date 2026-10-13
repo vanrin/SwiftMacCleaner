@@ -28,7 +28,7 @@ struct ProtectionIntro: View {
                 FeatureBullet(glyph: Image(systemName: "network"), text: "The network")
             }
             Text("Checking only reads, and asks for no password. Nothing is changed from here: each setting is yours to change in System Settings.")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.quiet)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .orbAction {

@@ -19,7 +19,7 @@ struct ProgressRing: View {
             Circle()
                 .trim(from: 0, to: min(1, max(0, fraction)))
                 .stroke(
-                    AngularGradient(colors: [theme.accent.opacity(0.55), .white], center: .center,
+                    AngularGradient(colors: [theme.accent.opacity(0.45), theme.accent], center: .center,
                                     startAngle: .zero, endAngle: .degrees(360 * max(fraction, 0.01))),
                     style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
                 )

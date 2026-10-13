@@ -22,7 +22,7 @@ struct Notice<Actions: View>: View {
                 if let symbol {
                     Image(systemName: symbol)
                         .font(.title3)
-                        .foregroundStyle(isWarning ? AnyShapeStyle(Design.Signal.warning) : AnyShapeStyle(.secondary))
+                        .foregroundStyle(isWarning ? AnyShapeStyle(Design.Signal.warning) : AnyShapeStyle(.quiet))
                         .accessibilityHidden(true)
                 }
                 TitledDetail(title: title, detail: text, detailLineLimit: nil)

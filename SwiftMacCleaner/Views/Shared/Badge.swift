@@ -32,8 +32,9 @@ struct Badge: View {
     private var foreground: AnyShapeStyle {
         switch style {
         case .waits: AnyShapeStyle(Design.Signal.review)
-        case .password: AnyShapeStyle(theme.deep)
-        case .new, .selected: AnyShapeStyle(theme.accent)
+        case .password: AnyShapeStyle(.white)
+        // The accent is too pale for small type, so it tints the capsule and the words stay in ink.
+        case .new, .selected: AnyShapeStyle(Design.Ink.primary)
         case .neutral: AnyShapeStyle(.primary)
         }
     }
@@ -41,8 +42,8 @@ struct Badge: View {
     private var background: Color {
         switch style {
         case .waits: Design.Signal.review.opacity(0.2)
-        case .password: .white.opacity(0.92)
-        case .new, .selected: theme.accent.opacity(0.22)
+        case .password: Design.Ink.primary.opacity(0.88)
+        case .new, .selected: theme.accent.opacity(0.24)
         case .neutral: Design.Surface.well
         }
     }

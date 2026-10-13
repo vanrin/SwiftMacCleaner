@@ -34,27 +34,27 @@ struct FeatureIcon: View {
             // At the small scale a glyph's grid is drawn exactly as large as the font.
             .imageScale(.small)
             .font(.system(size: diameter * Design.Size.lensGlyphShare))
-            .foregroundStyle(.white)
+            // White on a tinted lens; on a clear one, which is as pale as the ground, the glyph is in ink.
+            .foregroundStyle(isTinted ? .white : Design.Ink.secondary)
             .frame(width: diameter, height: diameter)
             .background {
                 Circle()
                     .fill(fill)
                     .strokeBorder(rim)
-                    .shadow(color: theme.deep.opacity(isTinted ? 0.45 : 0), radius: 3, y: 2)
+                    .shadow(color: Design.Ground.shadow.opacity(isTinted ? 0.3 : 0), radius: 3, y: 2)
             }
             .accessibilityHidden(true)
     }
 
-    /// With Increase Contrast on, the tint drops to the palette's darkest colour, so both tones of the glyph stand out.
+    /// With Increase Contrast on, the tint drops to the lens's darker tone, so both tones of the glyph stand out.
     private var fill: AnyShapeStyle {
         if !isTinted {
             AnyShapeStyle(reduceTransparency ? Design.Surface.solidPanel : Design.Surface.well)
         } else if contrast == .increased {
-            AnyShapeStyle(theme.deep)
+            AnyShapeStyle(theme.lensShade)
         } else {
             // Deeper towards the bottom, never lighter than the tint, so the glyph keeps its contrast all the way up.
-            AnyShapeStyle(LinearGradient(colors: [theme.lens, theme.lens.mix(with: theme.deep, by: 0.35)],
-                                         startPoint: .top, endPoint: .bottom))
+            AnyShapeStyle(LinearGradient(colors: [theme.lens, theme.lensShade], startPoint: .top, endPoint: .bottom))
         }
     }
 
@@ -63,7 +63,7 @@ struct FeatureIcon: View {
         if contrast == .increased {
             AnyShapeStyle(Design.Surface.strongBorder)
         } else if isTinted {
-            AnyShapeStyle(LinearGradient(colors: [theme.accent, theme.accent.opacity(0.15)],
+            AnyShapeStyle(LinearGradient(colors: [Design.Surface.rim, Design.Surface.rim.opacity(0.3)],
                                          startPoint: .top, endPoint: .bottom))
         } else {
             AnyShapeStyle(Design.Surface.panelBorder)

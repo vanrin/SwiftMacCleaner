@@ -41,7 +41,7 @@ struct MaintenanceRow: View {
                     }
                 }
                 Text(check.unavailable ?? check.reason ?? task.summary)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
                     .lineLimit(2)
             }
             Spacer(minLength: Design.Spacing.medium)
@@ -60,13 +60,13 @@ struct MaintenanceRow: View {
                             .fixedSize(horizontal: false, vertical: true)
                         Text(lastRun)
                             .font(.callout)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.quiet)
                     }
                     .padding(Design.Spacing.large)
                     .frame(width: Design.Size.noticeWidth)
                 }
         }
-        .foregroundStyle(check.isAvailable ? .primary : .secondary)
+        .foregroundStyle(check.isAvailable ? AnyShapeStyle(.primary) : AnyShapeStyle(.quiet))
         .padding(.horizontal, Design.Spacing.large)
         .padding(.vertical, Design.Spacing.medium)
         .overlay(alignment: .top) {

@@ -24,7 +24,7 @@ struct MenuBarView: View {
                 Text(ByteFormat.string(disk.capacity))
                     .font(.callout)
                     .monospacedDigit()
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
             }
 
             HStack(spacing: Design.Spacing.medium) {
@@ -50,7 +50,7 @@ struct MenuBarView: View {
                     Text("Largest areas")
                         .font(.callout)
                         .bold()
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.quiet)
                     ForEach(model.largestAreas(3), id: \.area) { entry in
                         HStack(spacing: Design.Spacing.medium) {
                             FeatureIcon(Image(entry.area.glyph), theme: entry.area.theme, size: Design.Size.sidebarGlyph)
@@ -65,7 +65,7 @@ struct MenuBarView: View {
             HStack {
                 Text(footer)
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
                 Spacer()
                 Button("Open SwiftMacCleaner", action: openMain)
                     .buttonStyle(.plain)

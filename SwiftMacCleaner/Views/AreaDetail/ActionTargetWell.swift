@@ -15,7 +15,7 @@ struct ActionTargetWell: View {
             Text(verb)
                 .font(.callout)
                 .bold()
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.quiet)
             Text(target)
                 .font(Design.Typeface.code)
                 .lineLimit(1)

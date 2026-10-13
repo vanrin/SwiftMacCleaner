@@ -4,9 +4,9 @@
       <rect x="188" y="304" width="648" height="414" rx="16"/>
     </clipPath>
     <linearGradient id="trail" gradientUnits="userSpaceOnUse" x1="215" y1="690" x2="800" y2="340">
-      <stop offset="0" stop-color="#FF8CF4" stop-opacity="0"/>
-      <stop offset="0.3" stop-color="#FF8CF4" stop-opacity="0.85"/>
-      <stop offset="0.7" stop-color="#FFD9FB"/>
+      <stop offset="0" stop-color="#FFB988" stop-opacity="0"/>
+      <stop offset="0.3" stop-color="#FFB988" stop-opacity="0.5"/>
+      <stop offset="0.7" stop-color="#FFE6D2"/>
       <stop offset="1" stop-color="#FFFFFF"/>
     </linearGradient>
   </defs>

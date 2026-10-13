@@ -29,7 +29,7 @@ struct DuplicateGroupCard: View {
                     SizeLabel(bytes: group.reclaimable)
                     Text("to get back")
                         .font(.callout)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.quiet)
                 }
                 .accessibilityElement(children: .combine)
             }

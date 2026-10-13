@@ -24,7 +24,7 @@ struct LoadShare: View {
                     .monospacedDigit()
                 Text(label)
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
             }
         }
         .accessibilityElement(children: .combine)

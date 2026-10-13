@@ -28,12 +28,12 @@ struct FindingCard: View {
                 }
                 Text(finding.explanation)
                     .font(Design.Typeface.tileBody)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
                     .fixedSize(horizontal: false, vertical: true)
                 ActionTargetWell(verb: finding.method.verb, target: finding.actionTarget)
                 if let note = finding.note {
                     Text(note)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.quiet)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }

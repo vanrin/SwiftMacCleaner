@@ -40,7 +40,7 @@ struct DetailView: View {
                 ToolbarItem(placement: .principal) {
                     Text(title)
                         .font(.headline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.quiet)
                 }
                 // A title is not a control, so it gets no glass behind it.
                 .sharedBackgroundVisibility(.hidden)

@@ -7,7 +7,6 @@ import SwiftUI
 
 /// The glass disc that is the artwork of a screen: a ring around the edge and the figure that matters in the middle.
 struct HeroOrb<Center: View>: View {
-    @Environment(\.theme) private var theme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// What the ring is split into. Ignored while `progress` is set.
@@ -26,13 +25,14 @@ struct HeroOrb<Center: View>: View {
         ZStack {
             // The body of the disc: lit from the top left, like a lens.
             Circle()
-                .fill(RadialGradient(colors: [.white.opacity(0.34), theme.accent.opacity(0.16), .white.opacity(0.05)],
+                .fill(RadialGradient(colors: [.white.opacity(0.95), .white.opacity(0.62), .white.opacity(0.38)],
                                      center: UnitPoint(x: 0.3, y: 0.18), startRadius: 0, endRadius: size * 0.9))
-                .strokeBorder(LinearGradient(colors: [Design.Surface.strongBorder, Design.Surface.panelBorder],
+                .strokeBorder(LinearGradient(colors: [Design.Surface.rim, Design.Surface.panelBorder],
                                              startPoint: .top, endPoint: .bottom), lineWidth: 1.5)
+                .shadow(color: Design.Ground.shadow.opacity(0.16), radius: size * 0.08, y: size * 0.05)
             // A second rim just inside the edge gives the glass its thickness.
             Circle()
-                .strokeBorder(LinearGradient(colors: [.white.opacity(0.22), .white.opacity(0.02)],
+                .strokeBorder(LinearGradient(colors: [Design.Ground.shadow.opacity(0.01), Design.Ground.shadow.opacity(0.1)],
                                              startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: ringWidth * 0.5)
                 .padding(ringWidth * 0.35)
             ring
@@ -45,7 +45,7 @@ struct HeroOrb<Center: View>: View {
         .background {
             // The glow and the shadow reach past the disc without taking up room in the layout.
             Circle()
-                .fill(RadialGradient(colors: [theme.glow.opacity(0.55), theme.glow.opacity(0)],
+                .fill(RadialGradient(colors: [Design.Ground.bloom.opacity(0.9), Design.Ground.bloom.opacity(0)],
                                      center: .center, startRadius: size * 0.44, endRadius: size * 0.72))
                 .frame(width: size * 1.44, height: size * 1.44)
                 .phaseAnimator([1.0, 1.07]) { halo, scale in
@@ -57,7 +57,7 @@ struct HeroOrb<Center: View>: View {
         }
         .background(alignment: .bottom) {
             Ellipse()
-                .fill(theme.deep.opacity(0.55))
+                .fill(Design.Ground.shadow.opacity(0.3))
                 .frame(width: size * 0.78, height: size * 0.12)
                 .blur(radius: size * 0.06)
                 .offset(y: size * 0.1)

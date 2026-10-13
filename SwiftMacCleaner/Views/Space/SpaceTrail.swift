@@ -26,7 +26,7 @@ struct SpaceTrail: View {
                         }
                         .buttonStyle(.borderless)
                         .bold(isCurrent)
-                        .foregroundStyle(isCurrent ? .primary : .secondary)
+                        .foregroundStyle(isCurrent ? AnyShapeStyle(.primary) : AnyShapeStyle(.quiet))
                         .disabled(isCurrent)
                     }
                 }

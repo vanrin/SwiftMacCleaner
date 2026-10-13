@@ -33,7 +33,7 @@ struct VitalTile: View {
                         Text(summary?.line ?? "Reading")
                             .font(.subheadline)
                             .monospacedDigit()
-                            .foregroundStyle(level == .high ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
+                            .foregroundStyle(level == .high ? AnyShapeStyle(.primary) : AnyShapeStyle(.quiet))
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                     }

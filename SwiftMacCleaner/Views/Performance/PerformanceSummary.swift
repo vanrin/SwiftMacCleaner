@@ -20,7 +20,7 @@ struct PerformanceSummary: View {
                         .accessibilityAddTraits(.isHeader)
                     Text("Run what is recommended, or pick any task yourself. Login items and background items are listed for you to review.")
                         .font(Design.Typeface.tileBody)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.quiet)
                         .multilineTextAlignment(.center)
                     Button("View All Tasks", action: viewTasks)
                         .buttonStyle(.primaryPill)

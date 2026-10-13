@@ -28,7 +28,7 @@ struct PerformanceReviewRow: View {
                 }
                 Text(isBlocked ? "Left alone while \(step.waitsFor?.name ?? "it") is open" : step.summary)
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.quiet)
                     .lineLimit(2)
                     .truncationMode(.middle)
             }
@@ -38,7 +38,7 @@ struct PerformanceReviewRow: View {
                     .strikethrough(isBlocked)
             }
         }
-        .foregroundStyle(isBlocked ? .secondary : .primary)
+        .foregroundStyle(isBlocked ? AnyShapeStyle(.quiet) : AnyShapeStyle(.primary))
         .padding(.horizontal, Design.Spacing.large)
         .padding(.vertical, Design.Spacing.medium)
         .overlay(alignment: .top) {
