@@ -24,6 +24,13 @@ struct RootView: View {
             SidebarHintOverlay(hint: hint)
         }
         .animation(reduceMotion ? nil : Design.Motion.sidebar, value: isCollapsed)
+        #if DEBUG
+        .overlay {
+            if model.showsMenuBarDemo {
+                MenuBarShowcase()
+            }
+        }
+        #endif
         // One backdrop for the whole window: the sidebar has no pane of its own.
         .containerBackground(for: .window) {
             ThemeBackdrop(theme: theme)

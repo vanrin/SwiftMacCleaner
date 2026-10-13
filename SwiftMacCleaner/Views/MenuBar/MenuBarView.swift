@@ -5,12 +5,14 @@
 
 import SwiftUI
 
-/// The popover under the menu bar item: how full the disk is, what the last scan found, one button.
+/// The popover under the menu bar item: how full the disk is, what the processor, memory and battery
+/// are doing, what the last scan found, one button.
 struct MenuBarView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.dismiss) private var dismiss
 
-    private let theme = Theme.violet
+    private let theme = MenuBarSurface.theme
 
     var body: some View {
         let disk = model.disk
@@ -38,6 +40,8 @@ struct MenuBarView: View {
             UsageBar(segments: segments, total: disk.capacity)
                 .accessibilityHidden(false)
                 .accessibilityLabel("Disk usage")
+
+            VitalTiles()
 
             MenuBarOffer(open: openMain)
 
@@ -69,18 +73,18 @@ struct MenuBarView: View {
                     .foregroundStyle(.tint)
             }
         }
-        .padding(Design.Spacing.large)
-        .frame(width: Design.Size.menuBarWidth)
+        .menuBarSurface()
         .background {
-            ThemeBackdrop(theme: theme)
+            // In the demo the details are drawn in the window beside the popover, not in a panel of their own.
+            VitalsPanelAnchor(model: model, detail: model.showsMenuBarDemo ? nil : model.vitals.detail, openMain: openMain)
         }
-        .environment(\.theme, theme)
-        .tint(theme.accent)
-        // A menu bar window keeps the system's appearance whatever is preferred, so the dark scheme is set
-        // on the content itself. Otherwise the text is black on the backdrop while the Mac is in Light mode.
-        .environment(\.colorScheme, .dark)
-        .typesettingLanguage(Design.language)
-        .onAppear(perform: model.backgroundTick)
+        .onAppear(perform: opened)
+        .onDisappear(perform: model.vitals.menuClosed)
+    }
+
+    private func opened() {
+        model.backgroundTick()
+        model.vitals.menuOpened()
     }
 
     /// The disk split into what stays, what was found and is not part of the Smart selection, and
@@ -105,5 +109,8 @@ struct MenuBarView: View {
         // Opened at login, the app is hidden until it is asked for.
         NSApp.unhide(nil)
         NSApp.activate()
+        // The menu has done its part. Left open it would hang over the window it just brought forward,
+        // with the details beside it.
+        dismiss()
     }
 }

@@ -15,14 +15,16 @@ struct PillButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
 
     var kind = Kind.quiet
+    /// For a button in a row of a list, where the usual pill would stand taller than the row's text.
+    var isCompact = false
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(Design.Typeface.tileBody)
+            .font(isCompact ? .callout : Design.Typeface.tileBody)
             .bold()
             .lineLimit(1)
-            .padding(.horizontal, Design.Spacing.large)
-            .padding(.vertical, Design.Spacing.small)
+            .padding(.horizontal, isCompact ? Design.Spacing.medium : Design.Spacing.large)
+            .padding(.vertical, isCompact ? Design.Spacing.tight : Design.Spacing.small)
             .foregroundStyle(kind == .primary ? AnyShapeStyle(theme.deep) : AnyShapeStyle(.white))
             .background(kind == .primary ? AnyShapeStyle(.white) : AnyShapeStyle(Design.Surface.quietButton), in: .capsule)
             .contentShape(.capsule)
@@ -35,4 +37,5 @@ struct PillButtonStyle: ButtonStyle {
 extension ButtonStyle where Self == PillButtonStyle {
     static var pill: PillButtonStyle { PillButtonStyle() }
     static var primaryPill: PillButtonStyle { PillButtonStyle(kind: .primary) }
+    static var compactPill: PillButtonStyle { PillButtonStyle(isCompact: true) }
 }

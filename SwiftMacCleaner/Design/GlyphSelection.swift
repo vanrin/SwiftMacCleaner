@@ -54,3 +54,14 @@ extension SidebarItem {
         }
     }
 }
+
+extension VitalKind {
+    /// The glyph beside this reading's name in its details.
+    var glyph: ImageResource {
+        switch self {
+        case .cpu: .glyphCpu
+        case .memory: .glyphMemory
+        case .battery: .glyphBattery
+        }
+    }
+}

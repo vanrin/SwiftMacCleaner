@@ -63,6 +63,12 @@ enum Launcher {
             ScanReportPrinter.printProtection()
             return
         }
+        // `SwiftMacCleaner --print-vitals` prints the processor, memory and battery readings of the menu
+        // bar, with the apps that use the most, and exits. It looks twice, two seconds apart.
+        if CommandLine.arguments.contains("--print-vitals") {
+            ScanReportPrinter.printVitals()
+            return
+        }
         #endif
         // `SwiftMacCleaner --free-purgeable` is how the Free Up Purgeable Space task runs: the app starts
         // itself without a window, reserves the disk's free space for a moment, and reports what macOS gave back.
@@ -99,9 +105,11 @@ struct SwiftMacCleanerApp: App {
                 .environment(model)
         }
 
-        MenuBarExtra("SwiftMacCleaner", image: "MenuBarGlyph", isInserted: $settings.showsMenuBarItem) {
+        MenuBarExtra(isInserted: $settings.showsMenuBarItem) {
             MenuBarView()
                 .environment(model)
+        } label: {
+            MenuBarLabel(vitals: model.vitals)
         }
         .menuBarExtraStyle(.window)
     }
@@ -490,6 +498,51 @@ nonisolated enum ScanReportPrinter {
             }
             for issue in background.issues { print("   ! \(issue)") }
             print("\nDone in \(String(format: "%.1f", Date().timeIntervalSince(started))) s")
+        }
+        finished.wait()
+    }
+
+    /// Prints what the menu bar's tiles and details would show right now.
+    static func printVitals() {
+        let finished = DispatchSemaphore(value: 0)
+        Task.detached {
+            defer {
+                fflush(stdout)
+                finished.signal()
+            }
+            let sampler = VitalsSampler()
+            _ = await sampler.sample(isFull: true)
+            try? await Task.sleep(for: .seconds(2))
+            let started = ContinuousClock.now
+            let vitals = await sampler.sample(isFull: true)
+            print("Read in \((ContinuousClock.now - started).formatted(.units(allowed: [.milliseconds], width: .abbreviated)))")
+            if let cpu = vitals.cpu {
+                print("CPU  \(cpu.chip): load \(VitalFormat.percent(cpu.load, decimals: 1)) (user \(VitalFormat.percent(cpu.user, decimals: 1)), "
+                      + "system \(VitalFormat.percent(cpu.system, decimals: 1))), load average \(cpu.loadAverage), \(cpu.heat.line), level \(cpu.level)")
+                for group in cpu.coreGroups {
+                    print("     \(group.kind.caption(count: group.cores.count)): " + group.cores.map { VitalFormat.percent($0.load) }.joined(separator: " "))
+                }
+                for fact in cpu.facts() { print("     \(fact.title): \(fact.value)  |  \(fact.detail)") }
+            }
+            if let memory = vitals.memory {
+                print("MEM  pressure \(VitalFormat.percent(memory.pressure)) (\(memory.state.title)), \(memory.summary.line): "
+                      + "active \(VitalFormat.memory(memory.active)), wired \(VitalFormat.memory(memory.wired)), "
+                      + "compressed \(VitalFormat.memory(memory.compressed)), available \(VitalFormat.memory(memory.available))")
+                for fact in memory.facts { print("     \(fact.title): \(fact.value)  |  \(fact.detail)") }
+            }
+            if let battery = vitals.battery {
+                print("BATT \(VitalFormat.percent(battery.charge)), \(battery.title). \(battery.detail)  [\(battery.line)]")
+                for fact in battery.facts { print("     \(fact.title): \(fact.value)  |  \(fact.detail)") }
+            } else {
+                print("BATT none")
+            }
+            for (title, measure, list) in [("By processor", Consumer.Measure.cpu, vitals.byCPU), ("By memory", .memory, vitals.byMemory)] {
+                print(title)
+                for consumer in list {
+                    let action = consumer.canQuit ? "Quit" : consumer.isSystem ? "macOS" : ""
+                    print("     \(consumer.text(for: measure).padding(toLength: 9, withPad: " ", startingAt: 0)) \(consumer.name)  \(action)  |  \(consumer.id)")
+                }
+            }
         }
         finished.wait()
     }

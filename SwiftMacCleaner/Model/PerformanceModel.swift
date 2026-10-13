@@ -84,6 +84,8 @@ final class PerformanceModel {
 
     @ObservationIgnored private var task: Task<Void, Never>?
     @ObservationIgnored private var scanned: Date?
+    /// A task asked for before anything was weighed up, to be put to the user once the scan is in.
+    @ObservationIgnored private var reviewWhenScanned: MaintenanceTask?
 
     init(home: URL, settings: AppSettings) {
         self.home = home
@@ -129,11 +131,16 @@ final class PerformanceModel {
             refreshBlocked()
             phase = .summary
             didScan()
+            if let task = reviewWhenScanned {
+                reviewWhenScanned = nil
+                review(task)
+            }
         }
     }
 
     func stop() {
         task?.cancel()
+        reviewWhenScanned = nil
         phase = .idle
         didScan()
     }
@@ -157,6 +164,21 @@ final class PerformanceModel {
     func showSummary() {
         guard phase == .managing || phase == .done else { return }
         phase = .summary
+    }
+
+    /// Ticks one task alone and opens the confirmation over it, for a button elsewhere in the app that
+    /// leads to that task. When nothing has been weighed up yet the scan comes first, since it is what
+    /// says whether the task can run at all.
+    func review(_ task: MaintenanceTask) {
+        guard phase != .running else { return }
+        guard phase != .idle, phase != .scanning else {
+            reviewWhenScanned = task
+            if phase == .idle { startScan() }
+            return
+        }
+        selectedTasks = [task]
+        manage(.maintenance)
+        showingReview = check(for: task)?.isAvailable == true
     }
 
     /// The tile's shortcut: tick what is recommended and go straight to the confirmation.

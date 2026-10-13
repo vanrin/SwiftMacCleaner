@@ -24,6 +24,10 @@ enum Design {
         static let control: Double = 12
         static let tile: Double = 18
         static let panel: Double = 20
+        /// One core's bar in the CPU details.
+        static let bar: Double = 4
+        /// The details that stand beside the menu bar popover, rounded like the popover's own window.
+        static let menuBarPanel: Double = 14
     }
 
     enum Size {
@@ -89,6 +93,27 @@ enum Design {
         static let noticeWidth: Double = 340
         static let sheetWidth: Double = 640
         static let menuBarWidth: Double = 360
+        /// How far the details of a reading stand from the menu bar popover they open beside.
+        static let menuBarGap: Double = 10
+        /// The ring on a tile of the menu bar popover, and the tile's height.
+        static let vitalRing: Double = 56
+        static let vitalRingLine: Double = 6
+        static let vitalTile: Double = 120
+        /// The ring at the top of a reading's details.
+        static let detailRing: Double = 120
+        static let detailRingLine: Double = 12
+        /// The bar beside a figure in the CPU details that says which part of the ring it is.
+        static let legendBarWidth: Double = 4
+        static let legendBarHeight: Double = 28
+        /// One core's bar in the CPU details: as wide as this when there is room, never thinner than the minimum.
+        static let coreBarWidth: Double = 14
+        static let coreBarMinimum: Double = 3
+        static let coreBarHeight: Double = 44
+        static let coreBarSpacing: Double = 5
+        /// A row of the apps that use the most, its icon, and the room kept for a Quit button.
+        static let consumerRow: Double = 32
+        static let consumerIcon: Double = 24
+        static let consumerAction: Double = 52
     }
 
     enum Typeface {
@@ -113,6 +138,11 @@ enum Design {
         /// A sidebar glyph. At the small scale its grid is drawn as large as this font, which fills the glyph's frame.
         static let sidebarGlyph = Font.title.scaled(by: 1.1)
         static let rowTitle = Font.title3.weight(.semibold)
+        /// The figure in the ring of a menu bar tile, and in the larger ring of a reading's details.
+        static let vitalFigure = Font.body.weight(.semibold)
+        static let detailFigure = Font.largeTitle.weight(.semibold)
+        /// The name of a reading at the top of its details, and the word that sums it up.
+        static let detailTitle = Font.title2.weight(.semibold)
         /// Paths and commands.
         static let code = Font.system(.callout, design: .monospaced)
     }
@@ -149,6 +179,8 @@ enum Design {
         static let hover = Color.white.opacity(0.06)
         /// The part of a ring or bar that is in use and staying.
         static let keeping = Color.white.opacity(0.3)
+        /// The second part of a ring or bar whose first part is in the accent.
+        static let secondShare = Color.white.opacity(0.85)
     }
 
     /// The colours of the picture the app shares with its icon: the swift, the Mac and its display.

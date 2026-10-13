@@ -68,9 +68,20 @@ final class AppSettings {
         didSet { defaults.set(checksAppUpdates, forKey: "checksAppUpdates") }
     }
 
-    /// Whether the disk status item sits in the menu bar.
+    /// Whether the app's item sits in the menu bar.
     var showsMenuBarItem: Bool {
         didSet { defaults.set(showsMenuBarItem, forKey: "showsMenuBarItem") }
+    }
+
+    /// Whether the processor's load is written beside the icon in the menu bar. Off unless asked
+    /// for: it is the one thing that has the app read the Mac while nothing of it is open.
+    var showsCPUBesideIcon: Bool {
+        didSet { defaults.set(showsCPUBesideIcon, forKey: "showsCPUBesideIcon") }
+    }
+
+    /// Whether memory pressure is written beside the icon in the menu bar.
+    var showsMemoryBesideIcon: Bool {
+        didSet { defaults.set(showsMemoryBesideIcon, forKey: "showsMemoryBesideIcon") }
     }
 
     /// Whether the sidebar is folded down to a rail of glyphs, with the names left out.
@@ -109,6 +120,8 @@ final class AppSettings {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         showsMenuBarItem = defaults.object(forKey: "showsMenuBarItem") as? Bool ?? true
+        showsCPUBesideIcon = defaults.bool(forKey: "showsCPUBesideIcon")
+        showsMemoryBesideIcon = defaults.bool(forKey: "showsMemoryBesideIcon")
         isSidebarCollapsed = defaults.bool(forKey: "sidebarCollapsed")
         smartKinds = SmartKind.stored(forKey: "smartKinds", in: defaults)
         weeklyCheck = defaults.object(forKey: "weeklyCheck") as? Bool ?? true

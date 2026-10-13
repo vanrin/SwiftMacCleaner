@@ -57,7 +57,15 @@ private struct GeneralSettings: View {
                 }
             }
             Section {
-                Toggle("Show disk space in the menu bar", isOn: $settings.showsMenuBarItem)
+                Toggle("Show SwiftMacCleaner in the menu bar", isOn: $settings.showsMenuBarItem)
+                Toggle("Show CPU load beside the icon", isOn: $settings.showsCPUBesideIcon)
+                    .disabled(!settings.showsMenuBarItem)
+                Toggle("Show memory pressure beside the icon", isOn: $settings.showsMemoryBesideIcon)
+                    .disabled(!settings.showsMenuBarItem)
+            } footer: {
+                Text("The menu shows the disk, the processor, memory and the battery. They are read every two seconds while the menu is open, and not at all while it is closed. With a reading beside the icon, the processor and memory are read every five seconds for as long as the app runs. The battery has no reading beside the icon because macOS already shows it in the menu bar.")
+            }
+            Section {
                 Toggle("Check once a week", isOn: $settings.weeklyCheck)
                 OpenAtLoginToggle(openAtLogin: model.openAtLogin)
             } footer: {

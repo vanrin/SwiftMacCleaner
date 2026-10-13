@@ -65,6 +65,8 @@ final class AppModel {
     let apps: AppsModel
     let performance: PerformanceModel
     let protection: ProtectionModel
+    /// The processor, memory and battery readings on the menu bar popover.
+    let vitals: VitalsModel
     /// Which apps are open, shared by every clean-up: a cache waits while the app that keeps it is open.
     let openApps = OpenApps()
     /// Whether macOS opens the app at login.
@@ -108,6 +110,8 @@ final class AppModel {
     @ObservationIgnored private var stackTask: Task<Void, Never>?
     /// Launched with made-up results: the weekly check must not start a real scan over them.
     @ObservationIgnored private var isDemo = false
+    /// Set by `--demo menubar`: the main window shows the menu bar popover in place of the app.
+    private(set) var showsMenuBarDemo = false
 
     init(home: URL = FileManager.default.homeDirectoryForCurrentUser, settings: AppSettings = AppSettings(),
          openAtLogin: OpenAtLogin = OpenAtLogin()) {
@@ -121,6 +125,7 @@ final class AppModel {
         apps = AppsModel(home: home, settings: settings)
         performance = PerformanceModel(home: home, settings: settings)
         protection = ProtectionModel(settings: settings)
+        vitals = VitalsModel(settings: settings)
         disabledAreas = Area.stored(forKey: "disabledAreas")
         forcedAreas = Area.stored(forKey: "forcedAreas")
         putBackPending = PutBack.pending(home: home)
@@ -135,11 +140,19 @@ final class AppModel {
         performance.didScan = { [weak self] in self?.partDidScan() }
         performance.didRun = { [weak self] outcome in self?.absorb(outcome) }
         protection.didScan = { [weak self] in self?.partDidScan() }
+        vitals.start()
         #if DEBUG
         if let flag = CommandLine.arguments.firstIndex(of: "--demo") {
             isDemo = true
             openApps.list = { DemoData.openApps }
-            let arguments = Array(CommandLine.arguments.dropFirst(flag + 1))
+            // `--vitals <state>` after any demo puts the menu bar's readings in that state: see `VitalsDemoData`.
+            var arguments = Array(CommandLine.arguments.dropFirst(flag + 1))
+            var state = "normal"
+            if let option = arguments.firstIndex(of: "--vitals") {
+                state = arguments.dropFirst(option + 1).first ?? state
+                arguments.removeSubrange(option...)
+            }
+            vitals.standIn = VitalsDemoData.vitals(state)
             loadDemo(screen: arguments.first ?? "results", arguments: Array(arguments.dropFirst()))
         }
         #endif
@@ -618,6 +631,13 @@ final class AppModel {
 
     func isRunning(bundleID: String) -> Bool { RunningApps.isRunning(bundleID: bundleID) }
 
+    /// Where the menu bar's Free Up Memory leads: Performance, with that one task ticked and the
+    /// confirmation open over it. The task asks for the password, so it is never run from the menu itself.
+    func freeUpMemory() {
+        sidebarSelection = .performance
+        performance.review(.freeMemory)
+    }
+
     // MARK: Put Back
 
     /// Takes in what a clean-up, Applications or Performance removed: the Trash items join the offer
@@ -735,6 +755,11 @@ final class AppModel {
             // `--demo protection [intro|scanning|results|fine|scan]`
             sidebarSelection = .protection
             protection.showDemo(arguments.first ?? "results")
+        case "menubar":
+            // `--demo menubar [cpu|memory|battery]`: the menu bar popover in the window, with that reading's
+            // details open beside it. `--vitals <state>` after it picks the state, as for any demo.
+            showsMenuBarDemo = true
+            if let kind = arguments.first.flatMap(VitalKind.init(rawValue:)) { vitals.toggle(kind) }
         case "system", "developer", "largeFiles":
             // `--demo <group> [intro|scanning|summary|quiet|manager|review|cleaning|done|scan]`
             guard let group = AreaGroup(rawValue: screen) else { return }
