@@ -1,0 +1,25 @@
+name: Idea
+description: Something the app could find, clean, check or show.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you would like
+      description: What the app would do, and where you would expect to find it.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: What it would help with
+      description: What you do today instead, and what is wrong with that.
+    validations:
+      required: true
+  - type: textarea
+    id: safe
+    attributes:
+      label: How the app could tell it is safe
+      description: |
+        If the idea removes something: what tells it apart from things that must stay, and what
+        should happen if an app is using it at the time. Leave this empty if it removes nothing.

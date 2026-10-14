@@ -1,0 +1,4 @@
+contact_links:
+  - name: Report a security problem
+    url: https://github.com/vanrin/SwiftMacCleaner/security/advisories/new
+    about: Anything that could make the app remove the wrong thing or misuse your password. Only you and the maintainer see it.

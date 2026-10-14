@@ -1,0 +1,77 @@
+name: Bug report
+description: Something the app did, offered or showed that it should not have.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time. If the app removed, or offered to remove, something its review
+        sheet did not show, or a path got past `SafetyGuard`, please do not post it here.
+        [Report it in private](https://github.com/vanrin/SwiftMacCleaner/security/advisories/new)
+        instead, as [SECURITY.md](https://github.com/vanrin/SwiftMacCleaner/blob/main/SECURITY.md) says.
+  - type: dropdown
+    id: part
+    attributes:
+      label: Which part of the app
+      options:
+        - Overview
+        - System Clean Up
+        - Developer Clean Up
+        - Large old files
+        - Largest Folders
+        - Duplicates
+        - Applications
+        - Performance
+        - Protection
+        - Menu bar
+        - Settings
+        - Somewhere else
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what the app offered or did, and what you expected instead. A screenshot helps.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to make it happen again
+      placeholder: |
+        1. Open Developer Clean Up and scan.
+        2. Open Xcode in the list.
+        3. …
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      description: From the Apple menu, About This Mac.
+      placeholder: macOS 27.0
+    validations:
+      required: true
+  - type: input
+    id: build
+    attributes:
+      label: Which build
+      description: The commit you built (`git rev-parse --short HEAD`), or the release you downloaded.
+    validations:
+      required: true
+  - type: dropdown
+    id: full-disk-access
+    attributes:
+      label: Full Disk Access
+      description: Whether the app had it, in System Settings, Privacy & Security, Full Disk Access.
+      options:
+        - "On"
+        - "Off"
+        - Not sure
+  - type: textarea
+    id: log
+    attributes:
+      label: The log of the clean
+      description: |
+        If a clean went wrong, its log is in `~/Library/Logs/SwiftMacCleaner/`, named after when it ran.
+        It lists paths in your home folder, so take out anything you would rather not share.
+      render: text

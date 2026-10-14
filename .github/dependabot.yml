@@ -1,0 +1,7 @@
+# The app has no dependencies of its own; this keeps the actions the tests run with up to date.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
