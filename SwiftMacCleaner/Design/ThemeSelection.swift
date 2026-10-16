@@ -42,7 +42,7 @@ extension SidebarItem {
     /// The palette of this entry's icon and of its own screens.
     var theme: Theme {
         switch self {
-        case .overview: .graphite
+        case .overview, .activity: .graphite
         case .group(let group): group.theme
         case .space: .ocean
         case .duplicates: .violet
@@ -58,7 +58,7 @@ extension AppModel {
     var theme: Theme {
         let item = sidebarSelection
         return switch item {
-        case .space, .protection: item.theme
+        case .space, .protection, .activity: item.theme
         case .duplicates: duplicates.phase == .done ? .done : item.theme
         case .apps: apps.phase == .done ? .done : item.theme
         case .performance: performance.phase == .done ? .done : item.theme

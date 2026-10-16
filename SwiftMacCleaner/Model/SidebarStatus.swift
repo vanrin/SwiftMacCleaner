@@ -70,7 +70,7 @@ extension AppModel {
                 if updates > 0 { detail += " · \(updates) \(updates == 1 ? "update" : "updates")" }
                 return SidebarStatus(badge: count.formatted(), detail: detail, hasFindings: updates > 0)
             }
-        case .space:
+        case .space, .activity:
             return SidebarStatus()
         case .duplicates:
             switch duplicates.phase {

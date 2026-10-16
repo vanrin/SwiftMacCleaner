@@ -23,6 +23,8 @@ enum SidebarItem: Hashable {
     case performance
     /// Protection: how this Mac's own defences are set. Its check only reads, and Run has nothing to do there.
     case protection
+    /// My Activity: what the app has done on this Mac, added up, and every run of it in History.
+    case activity
 
     var title: String {
         switch self {
@@ -33,6 +35,7 @@ enum SidebarItem: Hashable {
         case .apps: "Applications"
         case .performance: "Performance"
         case .protection: "Protection"
+        case .activity: "My Activity"
         }
     }
 
@@ -71,6 +74,8 @@ final class AppModel {
     let openApps = OpenApps()
     /// Whether macOS opens the app at login.
     let openAtLogin: OpenAtLogin
+    /// The record of what the app has done on this Mac.
+    let activity: ActivityModel
 
     private(set) var disk = DiskInfo.current()
     /// Items from the last clean that are still in the Trash and can be put back.
@@ -126,24 +131,32 @@ final class AppModel {
         performance = PerformanceModel(home: home, settings: settings)
         protection = ProtectionModel(settings: settings)
         vitals = VitalsModel(settings: settings)
+        activity = ActivityModel(home: home)
         disabledAreas = Area.stored(forKey: "disabledAreas")
         forcedAreas = Area.stored(forKey: "forcedAreas")
         putBackPending = PutBack.pending(home: home)
         updateStack()
+        let activity = activity
         for cleanUp in cleanUps {
             cleanUp.didScan = { [weak self] in self?.partDidScan() }
             cleanUp.didClean = { [weak self] outcome in self?.absorb(outcome) }
+            cleanUp.didRecord = { activity.add($0) }
         }
         apps.didScan = { [weak self] in self?.partDidScan() }
         apps.didRemove = { [weak self] outcome in self?.absorb(outcome) }
+        apps.didRecord = { activity.add($0) }
         duplicates.didRemove = { [weak self] outcome in self?.absorb(outcome) }
+        duplicates.didRecord = { activity.add($0) }
         performance.didScan = { [weak self] in self?.partDidScan() }
         performance.didRun = { [weak self] outcome in self?.absorb(outcome) }
-        protection.didScan = { [weak self] in self?.partDidScan() }
+        performance.didRecord = { activity.add($0) }
+        protection.didScan = { [weak self] in self?.protectionDidScan() }
         vitals.start()
         #if DEBUG
         if let flag = CommandLine.arguments.firstIndex(of: "--demo") {
             isDemo = true
+            // Nothing a demo does is real, so none of it is kept.
+            activity.isRecording = false
             openApps.list = { DemoData.openApps }
             // `--vitals <state>` after any demo puts the menu bar's readings in that state: see `VitalsDemoData`.
             var arguments = Array(CommandLine.arguments.dropFirst(flag + 1))
@@ -263,7 +276,7 @@ final class AppModel {
         case .performance: performance.phase == .scanning
         case .protection: protection.phase == .scanning
         case .duplicates: duplicates.phase == .scanning
-        case .overview, .space: false
+        case .overview, .space, .activity: false
         }
     }
 
@@ -274,7 +287,7 @@ final class AppModel {
         case .apps: apps.phase != .idle && apps.phase != .scanning
         case .performance: performance.phase != .idle && performance.phase != .scanning
         case .protection: protection.phase == .results
-        case .overview, .space, .duplicates: false
+        case .overview, .space, .duplicates, .activity: false
         }
     }
 
@@ -288,7 +301,7 @@ final class AppModel {
             return cleanUp.phase == .results && (cleanUp.selectedSize > 0 || cleanUp.selectionHasUnknownSize)
         case .performance:
             return performance.phase != .idle && performance.phase != .scanning && !performance.recommended.isEmpty
-        case .apps, .protection, .overview, .space, .duplicates:
+        case .apps, .protection, .overview, .space, .duplicates, .activity:
             return false
         }
     }
@@ -314,6 +327,12 @@ final class AppModel {
     /// The areas with the most found across every clean-up, largest first.
     func largestAreas(_ count: Int) -> [(area: Area, size: Int64)] {
         cleanUps.flatMap { $0.largestAreas(count) }.sorted { $0.size > $1.size }.prefix(count).map { $0 }
+    }
+
+    /// The Protection check is kept as it stood, so My Activity can say so after the app opens again.
+    private func protectionDidScan() {
+        if let snapshot = protection.snapshot { activity.keep(snapshot) }
+        partDidScan()
     }
 
     /// Called by every part when its scan ends. The overview's scan is done when the last of them is.
@@ -436,6 +455,8 @@ final class AppModel {
         runTotal = cleanUps.count + (runsTasks ? 1 : 0)
         runDone = 0
         overviewPhase = .running
+        // What every part does from here on is kept as one record: this run of the overview.
+        activity.beginRun()
         Task {
             var outcomes: [CleanOutcome] = []
             for cleanUp in cleanUps {
@@ -449,6 +470,7 @@ final class AppModel {
                 runDone += 1
             }
             runningPart = nil
+            activity.finishRun()
             overviewOutcome = CleanOutcome.merged(outcomes)
             sidebarSelection = .overview
             overviewPhase = overviewOutcome == nil ? .results : .done
@@ -639,8 +661,10 @@ final class AppModel {
 
     // MARK: Navigation
 
-    /// Every entry leads somewhere at any time: each part has its own opening screen.
+    /// Every entry leads somewhere at any time: each part has its own opening screen. My Activity chosen
+    /// again goes back from its History to its cards.
     func select(_ item: SidebarItem) {
+        if item == .activity, sidebarSelection == .activity { activity.showCards() }
         sidebarSelection = item
     }
 
@@ -667,8 +691,23 @@ final class AppModel {
     /// Returns everything the last clean moved to the Trash to where it was.
     func putBack() {
         guard let manifest = putBackPending else { return }
+        restore(manifest)
+    }
+
+    /// Returns what one run of My Activity's History moved to the Trash, and leaves the rest on offer.
+    func putBack(_ record: ActivityRecord) {
+        let items = record.waitingInTrash(pending: putBackSet)
+        guard !items.isEmpty else { return }
+        restore(PutBack.Manifest(date: record.date, items: items))
+    }
+
+    /// Where everything Put Back still holds sits in the Trash, for asking which run each item came from.
+    var putBackSet: Set<URL> { Set(putBackPending?.items.map(\.inTrash) ?? []) }
+
+    private func restore(_ manifest: PutBack.Manifest) {
         let count = manifest.items.count
         let failures = PutBack.restore(manifest, home: home)
+        activity.markPutBack(manifest.items.filter { !Files.exists($0.inTrash) && Files.exists($0.original) })
         putBackPending = PutBack.pending(home: home)
         disk = DiskInfo.current()
         if failures.isEmpty {
@@ -770,6 +809,21 @@ final class AppModel {
             // `--demo protection [intro|scanning|results|fine|scan]`
             sidebarSelection = .protection
             protection.showDemo(arguments.first ?? "results")
+        case "activity":
+            // `--demo activity [history|empty]`: the cards over made-up work, its History, or the
+            // cards before anything was done.
+            sidebarSelection = .activity
+            if arguments.first == "empty" {
+                activity.showDemo(records: [], protection: nil)
+            } else {
+                activity.showDemo(records: ActivityDemoData.records(), protection: ActivityDemoData.protection())
+                apps.showDemo("summary")
+                performance.showDemo("summary")
+                if let trashed = activity.records.last?.trashed.map(\.item), !trashed.isEmpty {
+                    putBackPending = PutBack.Manifest(date: activity.records.last?.date ?? Date(), items: trashed)
+                }
+                if arguments.first == "history" { activity.showHistory() }
+            }
         case "menubar":
             // `--demo menubar [cpu|memory|battery]`: the menu bar popover in the window, with that reading's
             // details open beside it. `--vitals <state>` after it picks the state, as for any demo.

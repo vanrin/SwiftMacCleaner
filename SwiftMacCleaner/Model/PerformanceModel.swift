@@ -57,6 +57,8 @@ final class PerformanceModel {
     let settings: AppSettings
     /// Called after a run, so the owner can refresh the disk figure and the offer to put things back.
     @ObservationIgnored var didRun: (CleanOutcome) -> Void = { _ in }
+    /// Called after a run with what it did, for My Activity. Not for the made-up run of a demo.
+    @ObservationIgnored var didRecord: (ActivityRecord) -> Void = { _ in }
     /// Called when a scan ends or is stopped, so the overview knows when every part of its scan is done.
     @ObservationIgnored var didScan: () -> Void = {}
 
@@ -352,11 +354,13 @@ final class PerformanceModel {
     /// `recordsRuns` is off for the demo, whose made-up run must not count as a real one.
     private func finish(_ result: CleanOutcome, section: Section, recordsRuns: Bool = true) {
         var done = 0
+        let record: ActivityRecord
         switch section {
         case .maintenance:
             let ran = tasksRun(in: result)
             if recordsRuns { settings.recordMaintenanceRun(of: ran) }
             done = ran.count
+            record = .tasks(result, ran: MaintenanceTask.allCases.filter(ran.contains))
             let lastRuns = settings.lastMaintenanceRuns
             checks = checks.map { check in
                 var check = check
@@ -369,11 +373,13 @@ final class PerformanceModel {
         case .loginItems:
             let removed = result.cleanedItemIDs
             done = loginItems.count { removed.contains(PerformancePlan.stepID(for: $0)) }
+            record = .startupItems(result, kind: .loginItems, removed: done)
             loginItems.removeAll { removed.contains(PerformancePlan.stepID(for: $0)) }
             selectedLoginItems = selectedLoginItems.filter { id in loginItems.contains { $0.id == id } }
         case .backgroundItems:
             let removed = result.cleanedItemIDs
             done = backgroundItems.count { removed.contains(PerformancePlan.stepID(for: $0)) }
+            record = .startupItems(result, kind: .backgroundItems, removed: done)
             backgroundItems.removeAll { removed.contains(PerformancePlan.stepID(for: $0)) }
             selectedBackgroundItems = selectedBackgroundItems.filter { id in backgroundItems.contains { $0.id == id } }
         }
@@ -381,6 +387,7 @@ final class PerformanceModel {
         outcome = result
         refreshBlocked()
         didRun(result)
+        if recordsRuns { didRecord(record) }
         phase = .done
     }
 

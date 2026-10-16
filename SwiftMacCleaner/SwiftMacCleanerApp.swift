@@ -305,6 +305,14 @@ nonisolated enum ScanReportPrinter {
             print("\nFree space: \(ByteFormat.string(outcome.freeBefore)) before, \(ByteFormat.string(outcome.freeAfter)) after, "
                   + "\(ByteFormat.string(outcome.reclaimed)) reclaimed in \(String(format: "%.0f", outcome.duration)) s")
             if let log = outcome.logURL { print("Log: \(log.path)") }
+            // Kept in My Activity as one run of every part, the way Scan and Clean in the window is.
+            let groups = Dictionary(findings.map { ($0.id, $0.area.group) }, uniquingKeysWith: { first, _ in first })
+            let parts = AreaGroup.allCases.compactMap { group -> ActivityRecord? in
+                var part = outcome
+                part.steps = outcome.steps.filter { groups[$0.id] == group }
+                return part.steps.isEmpty ? nil : .clean(part, part: ActivityRecord.Part(group))
+            }
+            if let record = ActivityRecord.overview(parts) { ActivityLog.append(record, home: home) }
             fflush(stdout)
             finished.signal()
         }

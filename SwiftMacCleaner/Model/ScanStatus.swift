@@ -25,7 +25,7 @@ extension AppModel {
         case .apps: "Looking at your apps"
         case .performance: "Examining your Mac"
         case .protection: "Checking your Mac's protection"
-        case .overview, .space, .duplicates: ""
+        case .overview, .space, .duplicates, .activity: ""
         }
     }
 
@@ -36,7 +36,7 @@ extension AppModel {
         case .apps: apps.progress.detail
         case .performance: performance.progress
         case .protection: "Reading how its defences are set"
-        case .overview, .space, .duplicates: ""
+        case .overview, .space, .duplicates, .activity: ""
         }
     }
 

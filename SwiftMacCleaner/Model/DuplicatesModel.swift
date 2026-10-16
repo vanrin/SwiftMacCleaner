@@ -52,6 +52,8 @@ final class DuplicatesModel {
     let settings: AppSettings
     /// Called after a removal, so the owner can refresh the disk figure and the offer to put things back.
     @ObservationIgnored var didRemove: (CleanOutcome) -> Void = { _ in }
+    /// Called after a removal with what it did, for My Activity.
+    @ObservationIgnored var didRecord: (ActivityRecord) -> Void = { _ in }
 
     var scope: Scope = .home
     /// The folder looked through when the scope is one folder.
@@ -281,6 +283,7 @@ final class DuplicatesModel {
         selected.formIntersection(groups.flatMap(\.files).map(\.id))
         outcome = result
         didRemove(result)
+        didRecord(.duplicates(result, copies: removal.files, freed: removal.size))
         phase = .done
     }
 

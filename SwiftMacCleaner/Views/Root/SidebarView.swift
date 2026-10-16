@@ -6,9 +6,9 @@
 import SwiftUI
 
 /// The column on the left: the overview, the parts it runs in the order of its tiles, and the two it
-/// leaves alone, Largest Folders and Duplicates, with the settings alone at the foot. Every entry leads somewhere at any time. Folded
+/// leaves alone, Largest Folders and Duplicates, with My Activity and the settings at the foot. Every entry leads somewhere at any time. Folded
 /// down, it is a rail of the same entries with their names left out. The entries stand together in the
-/// middle of the room between the title bar and the settings, at any height of the window.
+/// middle of the room between the title bar and the foot, at any height of the window.
 struct SidebarView: View {
     @Environment(AppModel.self) private var model
     var isCollapsed = false
@@ -16,8 +16,8 @@ struct SidebarView: View {
     @State private var roomHeight: Double = 0
 
     var body: some View {
-        // The entry at the foot has room of its own. The sidebar has no pane, so a list that scrolled
-        // underneath it would show through.
+        // The entries at the foot have room of their own. The sidebar has no pane, so a list that
+        // scrolled underneath them would show through.
         VStack(spacing: 0) {
             ScrollView {
                 VStack(spacing: Design.Spacing.large + Design.Spacing.tight) {
@@ -54,9 +54,13 @@ struct SidebarView: View {
                         .frame(height: Design.Spacing.large)
                 }
             }
-            SidebarSettingsLink(isCollapsed: isCollapsed)
-                .padding(.horizontal, Design.Spacing.small + Design.Spacing.tight / 2)
-                .padding(.vertical, Design.Spacing.medium)
+            // About the app and the whole Mac rather than one part of it.
+            VStack(spacing: Design.Spacing.small) {
+                SidebarButton(item: .activity, isCollapsed: isCollapsed)
+                SidebarSettingsLink(isCollapsed: isCollapsed)
+            }
+            .padding(.horizontal, Design.Spacing.small + Design.Spacing.tight / 2)
+            .padding(.vertical, Design.Spacing.medium)
         }
     }
 }

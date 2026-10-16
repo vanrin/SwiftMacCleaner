@@ -33,6 +33,8 @@ final class CleanUpModel {
     @ObservationIgnored var didScan: () -> Void = {}
     /// Called after a clean, so the owner can refresh the disk figure and the offer to put things back.
     @ObservationIgnored var didClean: (CleanOutcome) -> Void = { _ in }
+    /// Called after a clean with what it did, for My Activity.
+    @ObservationIgnored var didRecord: (ActivityRecord) -> Void = { _ in }
 
     private(set) var phase: Phase = .home
     private(set) var areaStates: [Area: AreaState] = [:]
@@ -251,7 +253,7 @@ final class CleanUpModel {
     func state(of item: SidebarItem) -> AreaState {
         switch item {
         case .group(let group): state(of: group)
-        case .overview, .space, .duplicates, .apps, .performance, .protection: .idle
+        case .overview, .space, .duplicates, .apps, .performance, .protection, .activity: .idle
         }
     }
 
@@ -594,6 +596,7 @@ final class CleanUpModel {
     private func finishClean(_ result: CleanOutcome) {
         take(result)
         didClean(result)
+        didRecord(.clean(result, part: ActivityRecord.Part(group)))
     }
 
     /// Takes in what a clean did: the receipt, and the findings that are left.

@@ -18,7 +18,7 @@ extension AppModel {
         switch item {
         case .overview: true
         case .group, .apps, .performance, .protection: overviewHoldsScan
-        case .space, .duplicates: false
+        case .space, .duplicates, .activity: false
         }
     }
 
@@ -33,7 +33,7 @@ extension AppModel {
         case .protection: protection.reset()
         case .space: space.reset()
         case .duplicates: duplicates.reset()
-        case .overview: break
+        case .overview, .activity: break
         }
     }
 
@@ -49,6 +49,7 @@ extension AppModel {
         case .protection: "What this check found is forgotten. Nothing on your Mac is changed."
         case .space: "What was measured is forgotten, and you choose again what to measure. \(untouched)"
         case .duplicates: "The duplicates this scan found, and what you ticked among them, are forgotten. \(untouched)"
+        case .activity: untouched
         case .overview, .group, .apps, .performance:
             "What this scan found in \(item.title), and what you ticked there, is forgotten. \(untouched)"
         }

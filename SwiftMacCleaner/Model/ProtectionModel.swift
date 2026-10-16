@@ -110,6 +110,19 @@ final class ProtectionModel {
         open(url)
     }
 
+    /// How the check found this Mac, as My Activity keeps it. Nil until a check has finished.
+    var snapshot: ProtectionSnapshot? {
+        guard phase == .results, let scanned else { return nil }
+        return ProtectionSnapshot(date: scanned, settings: findings.map { finding in
+            let state: ProtectionSnapshot.Setting.State = switch finding.state {
+            case .inPlace: .inPlace
+            case .unknown: .unknown
+            case .needsLook: isAccepted(finding.check) ? .accepted : .needsLook
+            }
+            return ProtectionSnapshot.Setting(name: finding.check.title, status: finding.status, state: state)
+        })
+    }
+
     // MARK: Demo
 
     /// Fills the model with made-up findings, so a screen can be looked at without asking this Mac.

@@ -131,6 +131,29 @@ enum Design {
         static let consumerRow: Double = 32
         static let consumerIcon: Double = 24
         static let consumerAction: Double = 52
+        /// The two rows of cards on My Activity, and the narrowest its page may be with three cards to a row.
+        static let activityTopRow: Double = 330
+        static let activityBottomRow: Double = 284
+        /// How far the two rows give way in a short window before the page scrolls instead.
+        static let activityTopRowMinimum: Double = 290
+        static let activityBottomRowMinimum: Double = 244
+        /// What a card takes round its content: its padding, and its name with the space under it.
+        static let activityCardChrome: Double = 72
+        /// A row of the cards that list runs and suggestions.
+        static let activityRow: Double = 51
+        static let suggestionRow: Double = 66
+        static let activityThreeColumns: Double = 860
+        /// How much wider the first card of a row is than the two beside it.
+        static let activityLeadShare: Double = 1.24
+        /// The button on a card that says how its figure is counted.
+        static let infoButton: Double = 24
+        /// A week's bar on the card that counts what was done, and how tall the tallest one stands.
+        static let weekBar: Double = 8
+        static let weekChart: Double = 44
+        /// The bar that splits what was cleaned by part.
+        static let partBar: Double = 12
+        /// The date at the head of a row of History.
+        static let historyDate: Double = 76
     }
 
     enum Typeface {
@@ -162,6 +185,8 @@ enum Design {
         static let detailTitle = Font.title2.weight(.semibold)
         /// Paths and commands.
         static let code = Font.system(.callout, design: .monospaced)
+        /// The figure that leads a card of My Activity.
+        static let cardFigure = Font.largeTitle.scaled(by: 1.2).weight(.semibold)
     }
 
     /// How far the soft copy of a part's icon sits below its face, in units of the icon's 24-unit grid,

@@ -52,6 +52,7 @@ extension SidebarItem {
         case .apps: .moduleApps
         case .performance: .modulePerformance
         case .protection: .moduleProtection
+        case .activity: .moduleActivity
         }
     }
 }

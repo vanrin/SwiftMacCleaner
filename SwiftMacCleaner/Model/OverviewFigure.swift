@@ -58,7 +58,7 @@ extension AppModel {
             if leftovers > 0 { return OverviewFigure(ByteFormat.string(leftovers), "of leftovers and installers to review") }
             let unused = apps.unusedApps.count
             return unused > 0 ? OverviewFigure("\(unused) unused \(unused == 1 ? "app" : "apps")", "to review") : OverviewFigure("Up to date", "nothing to remove")
-        case .overview, .space, .duplicates:
+        case .overview, .space, .duplicates, .activity:
             return OverviewFigure("", "")
         }
     }

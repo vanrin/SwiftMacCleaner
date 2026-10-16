@@ -81,6 +81,8 @@ final class AppsModel {
     let settings: AppSettings
     /// Called after a removal, so the owner can refresh the disk figure and the offer to put things back.
     @ObservationIgnored var didRemove: (CleanOutcome) -> Void = { _ in }
+    /// Called after a removal or a batch of updates with what it did, for My Activity.
+    @ObservationIgnored var didRecord: (ActivityRecord) -> Void = { _ in }
     /// Called when a scan ends or is stopped, so the overview knows when every part of its scan is done.
     @ObservationIgnored var didScan: () -> Void = {}
 
@@ -378,12 +380,20 @@ final class AppsModel {
         let earlier = installTask
         installTask = Task {
             await earlier?.value
+            let started = Date()
+            var installed: [(name: String, from: String, to: String)] = []
             for update in fresh {
                 installingNow = update.id
-                if let failure = await install(update) { installFailures[update.id] = failure }
+                let before = app(withID: update.id)
+                if let failure = await install(update) {
+                    installFailures[update.id] = failure
+                } else if let before, let after = app(withID: update.id), after.version != before.version {
+                    installed.append((before.name, before.version, after.version))
+                }
                 installing.remove(update.id)
             }
             installingNow = nil
+            if !installed.isEmpty { didRecord(.updates(installed, date: started)) }
         }
     }
 
@@ -494,6 +504,20 @@ final class AppsModel {
         let before = apps.count
         let size = apps.flatMap(\.files).filter { removed.contains($0.id) }.reduce(0) { $0 + $1.size }
             + leftovers.flatMap(\.items).filter { removed.contains($0.id) }.reduce(0) { $0 + $1.size }
+        let record: ActivityRecord
+        if isUninstall {
+            var sizes: [String: Int64] = [:]
+            var uninstalled: [String] = []
+            for app in apps {
+                let gone = app.files.filter { removed.contains($0.id) }
+                guard !gone.isEmpty else { continue }
+                sizes[Uninstaller.stepID(for: app)] = gone.reduce(0) { $0 + $1.size }
+                if let bundle = app.bundleFile, removed.contains(bundle.id) { uninstalled.append(app.name) }
+            }
+            record = .uninstall(result, sizes: sizes, uninstalled: uninstalled, items: removed.count)
+        } else {
+            record = .leftovers(result)
+        }
         // An app whose bundle is gone leaves the list. Files of it that were not ticked show up as leftovers next time.
         apps = apps.compactMap { app in
             var app = app
@@ -514,6 +538,7 @@ final class AppsModel {
         outcome = result
         refreshRunning()
         didRemove(result)
+        didRecord(record)
         phase = .done
     }
 

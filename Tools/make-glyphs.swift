@@ -185,6 +185,11 @@ let modules: [Glyph] = [
     Glyph(name: "duplicates", family: "module",
           soft: "M11.75 8.25H18a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-6.25a2 2 0 0 1 -2 -2v-8a2 2 0 0 1 2 -2z",
           back: "M6 3.75h6.25a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2H6a2 2 0 0 1 -2 -2v-8a2 2 0 0 1 2 -2z"),
+    // A disc with a line that climbs to a dot: what the app has done, adding up.
+    Glyph(name: "activity", family: "module",
+          soft: "M3.25 12a8.75 8.75 0 1 0 17.5 0a8.75 8.75 0 1 0 -17.5 0z",
+          bright: "M15.3 9.6a1.6 1.6 0 1 0 3.2 0a1.6 1.6 0 1 0 -3.2 0z",
+          brightLine: "M6.9 14.7l3.1 -3.2l2.7 2.4l3.3 -3.6"),
     Glyph(name: "settings", family: "module",
           soft: "M10.43 5.69L10.79 3.49L13.21 3.49L13.57 5.69L15.35 6.43L17.16 5.12L18.88 6.84L17.57 8.65L18.31 10.43"
               + "L20.51 10.79L20.51 13.21L18.31 13.57L17.57 15.35L18.88 17.16L17.16 18.88L15.35 17.57L13.57 18.31"

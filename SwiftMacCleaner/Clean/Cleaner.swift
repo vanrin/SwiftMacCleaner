@@ -135,6 +135,11 @@ nonisolated struct StepOutcome: Identifiable, Sendable {
     var trashed: [TrashedItem] = []
     /// What became of the step's items, when it came from a clean-up's plan.
     var fate: CleanFate? = nil
+    /// How much of the step went: the measured size of every item that was removed. A task's guess
+    /// at what it gives back counts for nothing here.
+    var cleanedSize: Int64 = 0
+    /// How much of it stayed: items left alone, waiting, or that could not be removed.
+    var leftSize: Int64 = 0
 
     var succeeded: Bool { failures.isEmpty && skippedReason == nil && skippedItems.isEmpty }
 }
@@ -204,12 +209,13 @@ nonisolated enum Cleaner {
                 log.append("skipped: \(reason)")
                 finished += step.operations.count
                 outcomes.append(StepOutcome(id: step.id, title: step.title, method: step.method, size: step.size,
-                                            cleanedItemIDs: [], failures: [], skippedReason: reason, fate: step.fate))
+                                            cleanedItemIDs: [], failures: [], skippedReason: reason, fate: step.fate,
+                                            leftSize: step.sizeIsEstimate ? 0 : step.size))
                 continue
             }
             progress(CleanProgress(fraction: Double(finished) / Double(operationCount), status: step.title))
             if step.method == .adminDelete {
-                outcomes.append(deleteAsAdmin(step, log: &log))
+                outcomes.append(measured(deleteAsAdmin(step, log: &log), step: step))
                 finished += step.operations.count
                 continue
             }
@@ -283,7 +289,7 @@ nonisolated enum Cleaner {
             where !failedItems.contains(operation.itemID) && !outcome.cleanedItemIDs.contains(operation.itemID) {
                 outcome.cleanedItemIDs.append(operation.itemID)
             }
-            outcomes.append(outcome)
+            outcomes.append(measured(outcome, step: step))
         }
 
         let freeAfter = DiskInfo.current(for: safety.root).free
@@ -298,6 +304,22 @@ nonisolated enum Cleaner {
             logURL: CleanLog.write(log, home: safety.root, date: started),
             started: started
         )
+    }
+
+    /// The step's outcome with how much of it went and how much stayed, from the sizes the scan
+    /// measured. A size that is only a task's guess is counted on neither side.
+    static func measured(_ outcome: StepOutcome, step: CleanStep) -> StepOutcome {
+        guard !step.sizeIsEstimate else { return outcome }
+        var outcome = outcome
+        let cleaned = Set(outcome.cleanedItemIDs)
+        for operation in step.operations {
+            if cleaned.contains(operation.itemID) {
+                outcome.cleanedSize += operation.size
+            } else {
+                outcome.leftSize += operation.size
+            }
+        }
+        return outcome
     }
 
     /// The freshness check: a sentence when the item, or anything directly inside it, changed after the scan.
@@ -547,10 +569,13 @@ nonisolated enum PutBack {
         return manifest.items.isEmpty ? nil : manifest
     }
 
-    /// Moves every item back where it was. Returns the ones it could not restore, with the reason.
+    /// Moves every item of the manifest back where it was. Returns the ones it could not restore, with
+    /// the reason. Items still on offer that the manifest leaves out stay on offer, so one clean's items
+    /// can be put back without the rest.
     static func restore(_ manifest: Manifest, home: URL) -> [String] {
         var failures: [String] = []
-        var remaining: [TrashedItem] = []
+        let asked = Set(manifest.items.map(\.inTrash))
+        var remaining = pending(home: home)?.items.filter { !asked.contains($0.inTrash) } ?? []
         let fileManager = FileManager.default
         for item in manifest.items {
             guard Files.exists(item.inTrash) else { continue }

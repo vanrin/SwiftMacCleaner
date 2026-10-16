@@ -23,6 +23,7 @@ all of it, and removes only what you tick.
 | **Applications** | Uninstalls an app together with its files, launch daemons and helpers; lists updates and installs the ones Homebrew has; clears leftovers of apps that are gone, and old installers. |
 | **Performance** | Maintenance tasks, login items and background items. |
 | **Protection** | A read-only check of FileVault, the screen lock, Gatekeeper, System Integrity Protection, malware definitions, automatic updates, the firewall and sharing. It changes nothing. |
+| **My Activity** | What the app has done on this Mac: what it cleaned, part by part, what else it did, what is worth doing next, and every run in a History you can open, read the log of, and put back from. Counted from its own record; nothing is estimated. |
 | **Menu bar** | Processor, memory and battery readings, and a check once a week. |
 
 ## A closer look
@@ -66,7 +67,8 @@ The pictures show the app's demo mode, so the findings in them are made up.
   files under `/Library` or some maintenance tasks, macOS shows its own password prompt for that
   one script.
 - **Every clean is written down** in `~/Library/Logs/SwiftMacCleaner/`, and what went to the Trash
-  can be put back.
+  can be put back. My Activity keeps its own record of each run beside the Put Back list, in
+  `~/Library/Application Support/SwiftMacCleaner/activity.json`, on this Mac only.
 
 ## What it asks macOS for
 
