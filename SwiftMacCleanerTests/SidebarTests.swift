@@ -146,11 +146,12 @@ struct SidebarTests {
         let defaults = try #require(UserDefaults(suiteName: name))
         defer { defaults.removePersistentDomain(forName: name) }
         let settings = AppSettings(defaults: defaults)
-        #expect(!settings.isSidebarCollapsed)
-        settings.toggleSidebar()
+        // A first launch shows the rail.
         #expect(settings.isSidebarCollapsed)
-        #expect(AppSettings(defaults: defaults).isSidebarCollapsed)
         settings.toggleSidebar()
+        #expect(!settings.isSidebarCollapsed)
         #expect(!AppSettings(defaults: defaults).isSidebarCollapsed)
+        settings.toggleSidebar()
+        #expect(AppSettings(defaults: defaults).isSidebarCollapsed)
     }
 }

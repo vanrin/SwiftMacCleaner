@@ -29,7 +29,7 @@ struct ManagerColumnRow: View {
                     .lineLimit(1)
             }
             .padding(.horizontal, Design.Spacing.medium)
-            .frame(height: isProminent ? Design.Size.sidebarRow : Design.Size.sidebarRow - Design.Spacing.small)
+            .frame(height: isProminent ? Design.Size.columnRow : Design.Size.columnRow - Design.Spacing.small)
             .background {
                 RoundedRectangle(cornerRadius: Design.Radius.control)
                     .fill(isSelected ? Design.Surface.selected : isHovered ? Design.Surface.hover : .clear)

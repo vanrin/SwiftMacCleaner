@@ -47,8 +47,13 @@ enum Design {
         static let sidebar: Double = 296
         /// The sidebar folded down to its glyphs.
         static let sidebarRail: Double = 84
-        static let sidebarRow: Double = 40
-        static let sidebarGlyph: Double = 24
+        /// A sidebar entry is as tall as its chip on the rail is wide, so the chip there is square.
+        static let sidebarRow: Double = 48
+        static let sidebarGlyph: Double = 28
+        /// A choice in a manager's column.
+        static let columnRow: Double = 40
+        /// A glyph at the head of a line in a list, and the smallest a part's icon is drawn.
+        static let listGlyph: Double = 24
         /// A part's icon on the glass disc of its opening screen.
         static let heroIcon: Double = 140
         /// How far from the middle of the disc the pointer has its full pull on that icon.

@@ -53,7 +53,7 @@ struct MenuBarView: View {
                         .foregroundStyle(.quiet)
                     ForEach(model.largestAreas(3), id: \.area) { entry in
                         HStack(spacing: Design.Spacing.medium) {
-                            FeatureIcon(Image(entry.area.glyph), theme: entry.area.theme, size: Design.Size.sidebarGlyph)
+                            FeatureIcon(Image(entry.area.glyph), theme: entry.area.theme, size: Design.Size.listGlyph)
                             Text(entry.area.title)
                             Spacer()
                             SizeLabel(bytes: entry.size)

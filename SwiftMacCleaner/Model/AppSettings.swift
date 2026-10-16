@@ -84,7 +84,8 @@ final class AppSettings {
         didSet { defaults.set(showsMemoryBesideIcon, forKey: "showsMemoryBesideIcon") }
     }
 
-    /// Whether the sidebar is folded down to a rail of glyphs, with the names left out.
+    /// Whether the sidebar is folded down to a rail of glyphs, with the names left out. Folded until
+    /// the user opens it out.
     var isSidebarCollapsed: Bool {
         didSet { defaults.set(isSidebarCollapsed, forKey: "sidebarCollapsed") }
     }
@@ -122,7 +123,8 @@ final class AppSettings {
         showsMenuBarItem = defaults.object(forKey: "showsMenuBarItem") as? Bool ?? true
         showsCPUBesideIcon = defaults.bool(forKey: "showsCPUBesideIcon")
         showsMemoryBesideIcon = defaults.bool(forKey: "showsMemoryBesideIcon")
-        isSidebarCollapsed = defaults.bool(forKey: "sidebarCollapsed")
+        // Read with `bool(forKey:)` once set, which also understands a YES or NO given at launch.
+        isSidebarCollapsed = defaults.object(forKey: "sidebarCollapsed") == nil || defaults.bool(forKey: "sidebarCollapsed")
         smartKinds = SmartKind.stored(forKey: "smartKinds", in: defaults)
         weeklyCheck = defaults.object(forKey: "weeklyCheck") as? Bool ?? true
         weeklyCheckCleans = defaults.bool(forKey: "weeklyCheckCleans")

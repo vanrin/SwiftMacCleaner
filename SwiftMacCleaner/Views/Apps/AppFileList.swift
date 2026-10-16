@@ -20,7 +20,7 @@ struct AppFileList: View {
                         HStack(spacing: Design.Spacing.small) {
                             Image(systemName: kind.symbol)
                                 .foregroundStyle(.quiet)
-                                .frame(width: Design.Size.sidebarGlyph)
+                                .frame(width: Design.Size.listGlyph)
                                 .accessibilityHidden(true)
                             Text(kind.title)
                                 .font(.headline)

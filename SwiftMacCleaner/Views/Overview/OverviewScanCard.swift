@@ -56,7 +56,7 @@ struct OverviewScanCard: View {
             Spacer(minLength: 0)
             // As large as the card allows, up to a point: the icon is what the card is.
             ModuleIcon(symbol: part.icon, theme: part.theme,
-                       size: min(Design.Size.scanIcon, max(size.height * 0.42, Design.Size.sidebarGlyph)), depth: Design.Depth.hero)
+                       size: min(Design.Size.scanIcon, max(size.height * 0.42, Design.Size.listGlyph)), depth: Design.Depth.hero)
             Spacer(minLength: 0)
             Text(model.scanDetail(of: part))
                 .font(.callout)
@@ -73,7 +73,7 @@ struct OverviewScanCard: View {
         VStack(alignment: .leading, spacing: Design.Spacing.tight) {
             name(in: size)
             ModuleIcon(symbol: part.icon, theme: part.theme,
-                       size: min(Design.Size.waitingIcon, max(size.height - 64, Design.Size.sidebarGlyph)), depth: Design.Depth.rest)
+                       size: min(Design.Size.waitingIcon, max(size.height - 64, Design.Size.listGlyph)), depth: Design.Depth.rest)
                 .opacity(0.4)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             Text("Scanning")
