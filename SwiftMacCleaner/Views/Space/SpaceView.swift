@@ -29,7 +29,7 @@ struct SpaceView: View {
         .toolbar {
             if space.phase == .done {
                 ToolbarItem {
-                    StartOverButton(isAsking: $isStartingOver)
+                    StartOverButton(item: .space, isAsking: $isStartingOver)
                         .help("Choose what to measure again")
                 }
             }

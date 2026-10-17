@@ -121,6 +121,52 @@ struct SidebarTests {
         #expect(model.foundSize == 0)
     }
 
+    @Test func startingOverAsksOnlyWhileThereAreFindingsToActOn() throws {
+        let home = try temporaryHome()
+        defer { try? FileManager.default.removeItem(at: home) }
+        let model = AppModel(home: home)
+        let system = model.cleanUp(.system)
+
+        // A scan's findings are forgotten, so Start Over asks first; after the clean only the receipt
+        // is left, and it goes straight back.
+        system.show(findings: [finding(id: "logs", area: .cachesLogs, size: 2_000_000_000)])
+        #expect(model.asksBeforeStartingOver(from: .group(.system)))
+        system.show(outcome: DemoData.outcome(for: system.findings, freeBefore: 10_000_000_000))
+        #expect(system.phase == .done)
+        #expect(!model.asksBeforeStartingOver(from: .group(.system)))
+
+        model.apps.showDemo("summary")
+        #expect(model.asksBeforeStartingOver(from: .apps))
+        model.apps.showDemo("done")
+        #expect(!model.asksBeforeStartingOver(from: .apps))
+        model.performance.showDemo("summary")
+        #expect(model.asksBeforeStartingOver(from: .performance))
+        model.performance.showDemo("done")
+        #expect(!model.asksBeforeStartingOver(from: .performance))
+        model.duplicates.showDemo("results")
+        #expect(model.asksBeforeStartingOver(from: .duplicates))
+        model.duplicates.showDemo("done")
+        #expect(!model.asksBeforeStartingOver(from: .duplicates))
+        // A check has nothing to run, so what it found is always what would be forgotten.
+        model.protection.showDemo("results")
+        #expect(model.asksBeforeStartingOver(from: .protection))
+
+        // The overview's scan that has not been run is forgotten for every part, so it asks even on
+        // the receipt of a part that was cleaned on its own.
+        model.cleanSmart()
+        #expect(model.overviewPhase == .results)
+        #expect(model.asksBeforeStartingOver(from: .overview))
+        #expect(model.asksBeforeStartingOver(from: .group(.system)))
+
+        // Without asking, Start Over still goes all the way back.
+        model.startOver()
+        system.show(findings: [finding(id: "logs", area: .cachesLogs, size: 2_000_000_000)])
+        system.show(outcome: DemoData.outcome(for: system.findings, freeBefore: 10_000_000_000))
+        model.startOver(from: .group(.system))
+        #expect(system.phase == .home)
+        #expect(model.sidebarStatus(of: .group(.system)) == SidebarStatus())
+    }
+
     @Test func startingOverLeavesAPartThatIsStillWorkingToFinish() throws {
         let home = try temporaryHome()
         defer { try? FileManager.default.removeItem(at: home) }

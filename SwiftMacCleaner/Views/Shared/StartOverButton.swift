@@ -5,20 +5,27 @@
 
 import SwiftUI
 
-/// The title bar button that leaves a scan's results for the part's opening screen. It only asks:
-/// the screen it belongs to confirms and then does it, with `confirmsStartingOver`. The question is
-/// put by the screen and not by the button, because a view in the title bar cannot be relied on to
-/// present one.
+/// The title bar button that leaves a scan for the part's opening screen. While there are findings
+/// that could still be acted on it only asks: the screen it belongs to confirms and then does it, with
+/// `confirmsStartingOver`. The question is put by the screen and not by the button, because a view in
+/// the title bar cannot be relied on to present one. After a clean there is only the receipt to leave,
+/// and it starts over at once.
 struct StartOverButton: View {
+    @Environment(AppModel.self) private var model
+    let item: SidebarItem
     @Binding var isAsking: Bool
 
     var body: some View {
-        Button("Start Over", systemImage: "arrow.counterclockwise", action: ask)
+        Button("Start Over", systemImage: "arrow.counterclockwise", action: startOver)
             .labelStyle(.titleBar)
     }
 
-    private func ask() {
-        isAsking = true
+    private func startOver() {
+        if model.asksBeforeStartingOver(from: item) {
+            isAsking = true
+        } else {
+            model.startOver(from: item)
+        }
     }
 }
 

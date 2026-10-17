@@ -54,7 +54,7 @@ struct CleanUpView: View {
             }
             if cleanUp.phase == .results || cleanUp.phase == .done {
                 ToolbarItem {
-                    StartOverButton(isAsking: $isStartingOver)
+                    StartOverButton(item: .group(cleanUp.group), isAsking: $isStartingOver)
                         .help("Forget what this scan found and go back to the start of \(cleanUp.group.title)")
                 }
             }

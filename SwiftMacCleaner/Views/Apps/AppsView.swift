@@ -43,7 +43,7 @@ struct AppsView: View {
             }
             if apps.phase == .summary || apps.phase == .managing || apps.phase == .done {
                 ToolbarItem {
-                    StartOverButton(isAsking: $isStartingOver)
+                    StartOverButton(item: .apps, isAsking: $isStartingOver)
                         .disabled(!apps.installing.isEmpty)
                         .help(apps.installing.isEmpty ? "Forget what this scan found and go back to the start of Applications" : "Homebrew is installing an update")
                 }

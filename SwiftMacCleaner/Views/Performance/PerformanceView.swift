@@ -43,7 +43,7 @@ struct PerformanceView: View {
             }
             if performance.phase == .summary || performance.phase == .managing || performance.phase == .done {
                 ToolbarItem {
-                    StartOverButton(isAsking: $isStartingOver)
+                    StartOverButton(item: .performance, isAsking: $isStartingOver)
                         .help("Forget what this scan found and go back to the start of Performance")
                 }
             }

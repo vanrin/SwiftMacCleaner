@@ -43,7 +43,7 @@ struct OverviewView: View {
         .toolbar {
             if model.overviewPhase == .results || model.overviewPhase == .done {
                 ToolbarItem {
-                    StartOverButton(isAsking: $isStartingOver)
+                    StartOverButton(item: .overview, isAsking: $isStartingOver)
                         .help("Forget what every part found and go back to the start")
                 }
             }

@@ -32,7 +32,7 @@ struct ProtectionView: View {
         .toolbar {
             if protection.phase == .results {
                 ToolbarItem {
-                    StartOverButton(isAsking: $isStartingOver)
+                    StartOverButton(item: .protection, isAsking: $isStartingOver)
                         .help("Forget this check and go back to the start of Protection")
                 }
             }

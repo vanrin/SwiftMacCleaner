@@ -36,7 +36,7 @@ struct DuplicatesView: View {
         .toolbar {
             if duplicates.phase == .results || duplicates.phase == .done {
                 ToolbarItem {
-                    StartOverButton(isAsking: $isStartingOver)
+                    StartOverButton(item: .duplicates, isAsking: $isStartingOver)
                         .help("Choose where to look again")
                 }
             }
