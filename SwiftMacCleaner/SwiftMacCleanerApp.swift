@@ -115,8 +115,9 @@ struct SwiftMacCleanerApp: App {
     }
 }
 
-/// Sees to what has to happen whether or not a window opens: the background checks start, and when
-/// macOS opens the app at login, the window stays off the screen.
+/// Sees to what has to happen whether or not a window opens: the background checks start, when
+/// macOS opens the app at login the window stays off the screen, and closing the window can leave
+/// the app running in the menu bar.
 final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The app's one model, handed over as the app is made.
     static var model: AppModel?
@@ -148,6 +149,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func showAfterAll() {
         NotificationCenter.default.removeObserver(self, name: NSApplication.didHideNotification, object: nil)
         NSApp.unhide(nil)
+    }
+
+    /// With the menu bar item shown, closing the window leaves the app running there, and the menu or
+    /// the Dock brings the window back. Without it, nothing of the app would be left to use, so it quits.
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        Self.model?.settings.showsMenuBarItem != true
     }
 }
 
