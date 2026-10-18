@@ -149,5 +149,4 @@ wrong thing, or misuse the password it is given, see [SECURITY.md](SECURITY.md).
 
 ## Licence
 
-[MIT](LICENSE). The folder `.claude/skills/swiftui-pro` holds Paul Hudson's
-[SwiftUI Agent Skill](https://github.com/twostraws/SwiftUI-Agent-Skill), under its own MIT licence.
+[MIT](LICENSE).
