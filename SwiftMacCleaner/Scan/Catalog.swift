@@ -280,7 +280,22 @@ nonisolated enum Catalog {
             waitsFor: .app(bundleID: "com.exafunction.windsurf", name: "Windsurf"),
             locations: Self.electronEditor("Windsurf")
         ),
+        dartAnalysis,
     ]
+
+    /// The Dart analysis server, which Dart and Flutter editors all start.
+    static let dartAnalysis = LocationGroup(
+        id: "ides.dart", area: .ides, aftermath: .rebuilds, method: .delete,
+        title: "Dart analysis cache",
+        explanation: "Summaries the Dart analysis server keeps of every package it has analysed, for every SDK version you have used. It rebuilds what it needs the next time an editor opens a Dart or Flutter project, which takes a little longer that once.",
+        actionTarget: "~/.dartServer/.analysis-driver",
+        minimumSize: 50_000_000,
+        waitsFor: .process(pattern: "dart.*(analysis_server|language-server)", name: "The Dart analysis server",
+                           remedy: "Close the editors that have a Dart or Flutter project open"),
+        locations: [
+            KnownLocation("Dart analysis cache", ".dartServer/.analysis-driver", "Rebuilt when an editor opens a Dart or Flutter project"),
+        ]
+    )
 
     private static func electronEditor(_ folder: String) -> [KnownLocation] {
         let base = "Library/Application Support/\(folder)"
@@ -309,9 +324,23 @@ nonisolated enum Catalog {
         ]
     )
 
+    /// A Docker Desktop that its own updater downloaded and never finished putting in place.
+    static let dockerUpdate = LocationGroup(
+        id: "containers.dockerUpdate", area: .containers, aftermath: .downloadsAgain, method: .trash,
+        title: "Unfinished Docker Desktop update",
+        explanation: "A copy of Docker Desktop its updater downloaded and never finished installing. Docker downloads the update again the next time it checks, so it goes to the Trash and is not ticked for you.",
+        actionTarget: "~/Library/Application Support/com.docker.install/in_progress",
+        minimumSize: 50_000_000,
+        waitsFor: .app(bundleID: "com.docker.docker", name: "Docker"),
+        locations: [
+            KnownLocation("Docker Desktop update", "Library/Application Support/com.docker.install/in_progress",
+                          "Downloaded by Docker's updater and never installed", preselected: false),
+        ]
+    )
+
     /// Every group, so a test can check each entry against the guard.
     static let allGroups: [LocationGroup] = [
-        packageCaches, goModules, gradle, xcodeCaches, xcodeLeftovers, modelDownloads, containerCaches,
+        packageCaches, goModules, gradle, xcodeCaches, xcodeLeftovers, modelDownloads, containerCaches, dockerUpdate,
     ] + editorCaches
 
     /// Folders in ~/Library/Caches that a group claims, so the general cache scan leaves them to it.

@@ -5,8 +5,9 @@
 
 import Foundation
 
-/// App caches and logs in the user's Library, app container caches, the per-user temp folders, what
-/// is this user's in the temp folder every program shares, and the old logs that belong to root.
+/// App caches and logs in the user's Library, app container caches, browser and chat app caches
+/// (see `AppDataScanner`), the per-user temp folders, what is this user's in the temp folder every
+/// program shares, and the old logs that belong to root.
 nonisolated enum CachesLogsScanner {
     /// System caches that are not named com.apple.* but are still best left to macOS.
     static let systemCacheFolders: Set<String> = [
@@ -27,6 +28,7 @@ nonisolated enum CachesLogsScanner {
 
         if let finding = await appCaches(context, ownName: ownName) { findings.append(finding) }
         if let finding = await containerCaches(context, ownName: ownName) { findings.append(finding) }
+        findings += await AppDataScanner.findings(context)
         // Asked once for every temp folder: what a running program has open is left where it is.
         let openFiles = OpenFiles.snapshot(under: GuardRoots.temporaryFolders())
         let shared = SharedTempScanner.scan(context, openFiles: openFiles)

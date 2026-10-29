@@ -24,6 +24,11 @@ nonisolated enum XcodeScanner {
         let simulators = simulators(context)
         if let finding = simulators.finding { result.findings.append(finding) }
         result.protected += simulators.protected
+        if let json = simulators.devicesJSON,
+           let finding = await simulatorCaches(fromJSON: json, offered: Set(simulators.finding?.items.map(\.id) ?? []),
+                                               context: context) {
+            result.findings.append(finding)
+        }
         if let finding = await archives(context) { result.findings.append(finding) }
         let xcodes = await oldXcodes(context)
         if let finding = xcodes.finding { result.findings.append(finding) }
@@ -138,15 +143,21 @@ nonisolated enum XcodeScanner {
         var candidates: [PathCandidate] = []
         for (platform, folderName) in families {
             let folders = Files.subdirectories(of: xcode.appending(path: folderName))
-            let newest = folders.compactMap { majorVersion(in: $0.lastPathComponent) }.max()
+            let choices = deviceSupportChoices(folders.map(\.lastPathComponent))
             for folder in folders {
                 let name = folder.lastPathComponent
-                let isNewest = newest != nil && majorVersion(in: name) == newest
+                let choice = choices[name] ?? .older
+                let detail = switch choice {
+                case .newestForModel(let model): "Newest \(platform) version for \(model), kept by default"
+                case .newestMajor: "Newest \(platform) version on this Mac, kept by default"
+                case .replaced(let model, let newer): "Older \(platform) version for \(model), which has \(newer) here too"
+                case .older: "Older \(platform) version"
+                }
                 candidates.append(PathCandidate(
                     title: "\(platform) \(name)",
-                    detail: isNewest ? "Newest \(platform) version on this Mac, kept by default" : "Older \(platform) version",
+                    detail: detail,
                     url: folder,
-                    preselected: isNewest ? false : nil
+                    preselected: choice.isKept ? false : nil
                 ))
             }
         }
@@ -163,6 +174,63 @@ nonisolated enum XcodeScanner {
             actionTarget: context.tilde(xcode.appending(path: "iOS DeviceSupport")),
             items: items
         )
+    }
+
+    /// Why a device support folder is kept by default, or why it is offered.
+    enum SupportChoice: Equatable {
+        /// The newest version copied from this device model.
+        case newestForModel(String)
+        /// A folder with no model in its name, from the newest major version.
+        case newestMajor
+        /// An older version for a model that has a newer one here as well.
+        case replaced(model: String, newer: String)
+        case older
+
+        var isKept: Bool {
+            switch self {
+            case .newestForModel, .newestMajor: true
+            case .replaced, .older: false
+            }
+        }
+    }
+
+    /// What becomes of each folder, by name.
+    ///
+    /// Xcode names a folder after the device model and its system, as in "iPhone17,2 27.0 (24A437)".
+    /// Updating the phone to 27.0.1 makes Xcode copy a whole new folder and leave the old one, so for
+    /// each model only the newest version is kept. Folders from older Xcode versions carry no model
+    /// ("17.5 (21F79)") and cannot be told apart by device, so every one of the newest major is kept.
+    static func deviceSupportChoices(_ names: [String]) -> [String: SupportChoice] {
+        let parsed = names.compactMap { name in deviceSupportVersion(in: name).map { (name, $0.model, $0.version) } }
+        var newestForModel: [String: [Int]] = [:]
+        for (_, model, version) in parsed {
+            guard let model else { continue }
+            if newestForModel[model].map({ $0.lexicographicallyPrecedes(version) }) ?? true { newestForModel[model] = version }
+        }
+        let newestMajor = parsed.filter { $0.1 == nil }.compactMap(\.2.first).max()
+
+        var choices: [String: SupportChoice] = [:]
+        for (name, model, version) in parsed {
+            if let model, let newest = newestForModel[model] {
+                choices[name] = version == newest
+                    ? .newestForModel(model)
+                    : .replaced(model: model, newer: newest.map(String.init).joined(separator: "."))
+            } else {
+                choices[name] = version.first == newestMajor ? .newestMajor : .older
+            }
+        }
+        return choices
+    }
+
+    /// "iPhone17,2 27.0.1 (24A446)" -> ("iPhone17,2", [27, 0, 1]), "17.5 (21F79)" -> (nil, [17, 5]).
+    static func deviceSupportVersion(in folderName: String) -> (model: String?, version: [Int])? {
+        let tokens = folderName.split(separator: " ")
+        guard let index = tokens.firstIndex(where: { token in
+            token.first?.isNumber == true && token.allSatisfy { $0.isNumber || $0 == "." }
+        }) else { return nil }
+        let version = tokens[index].split(separator: ".").compactMap { Int($0) }
+        let model = index > 0 ? tokens[..<index].joined(separator: " ") : nil
+        return (model, version)
     }
 
     /// "iPhone15,2 17.5 (21F79)" -> 17
@@ -201,11 +269,14 @@ nonisolated enum XcodeScanner {
         var lastUsedAt: String?
     }
 
-    private static func simulators(_ context: ScanContext) -> (finding: Finding?, protected: [ProtectedItem]) {
-        guard let xcrun = Shell.which("xcrun") else { return (nil, []) }
+    /// The simulators worth offering, the ones left alone, and what `simctl` said about the devices.
+    private static func simulators(_ context: ScanContext) -> (finding: Finding?, protected: [ProtectedItem], devicesJSON: String?) {
+        guard let xcrun = Shell.which("xcrun") else { return (nil, [], nil) }
         var items: [FindingItem] = []
         var protected: [ProtectedItem] = []
+        var devicesJSON: String?
         if let output = Shell.run(xcrun, ["simctl", "list", "devices", "-j"], timeout: 40), output.succeeded {
+            devicesJSON = output.stdout
             let report = deviceReport(fromJSON: output.stdout, xcrun: xcrun, context: context)
             items += report.items
             protected += report.protected
@@ -215,7 +286,7 @@ nonisolated enum XcodeScanner {
             items += report.items
             protected += report.protected
         }
-        guard !items.isEmpty else { return (nil, protected) }
+        guard !items.isEmpty else { return (nil, protected, devicesJSON) }
         items.sort { $0.size > $1.size }
         let finding = Finding(
             id: "xcode.simulators",
@@ -228,7 +299,53 @@ nonisolated enum XcodeScanner {
             actionTarget: "xcrun simctl delete, xcrun simctl runtime delete",
             items: items
         )
-        return (finding, protected)
+        return (finding, protected, devicesJSON)
+    }
+
+    // MARK: Caches inside simulators
+
+    static let simulatorCachesFindingID = "xcode.simulatorCaches"
+
+    /// What the simulators the scan keeps have cached inside themselves: downloads, media analysis,
+    /// maps tiles and the like, which the simulated system rebuilds once the device boots again.
+    /// A booted device is left alone, and so is a device that is offered whole. Only what is inside
+    /// each device's Caches folder goes; the folder itself stays.
+    static func simulatorCaches(fromJSON json: String, offered: Set<String>, context: ScanContext) async -> Finding? {
+        let groups = simulatorCacheGroups(fromJSON: json, offered: offered, context: context)
+        let items = await Sizing.items(prefix: simulatorCachesFindingID, from: groups, minimumSize: 20_000_000)
+        guard !items.isEmpty else { return nil }
+        return Finding(
+            id: simulatorCachesFindingID,
+            area: .xcode,
+            aftermath: .rebuilds,
+            title: "Caches inside simulators",
+            summary: "\(items.count) shut-down \(items.count == 1 ? "simulator" : "simulators") you keep",
+            explanation: "Caches the simulated system keeps inside each device, such as downloads, media analysis and map tiles. The device rebuilds them as it runs. Installed apps and their data are left alone, and a booted device is never touched.",
+            method: .delete,
+            actionTarget: "~/Library/Developer/CoreSimulator/Devices/*/data/Library/Caches",
+            items: items,
+            waitsFor: .app(bundleID: "com.apple.iphonesimulator", name: "Simulator")
+        )
+    }
+
+    /// One group per shut-down device that is kept, made of what sits in its Caches folder.
+    static func simulatorCacheGroups(fromJSON json: String, offered: Set<String>, context: ScanContext) -> [PathGroup] {
+        guard let list = try? JSONDecoder().decode(SimDeviceList.self, from: Data(json.utf8)) else { return [] }
+        let devices = context.home.appending(path: "Library/Developer/CoreSimulator/Devices")
+        var groups: [PathGroup] = []
+        for (runtimeKey, entries) in list.devices {
+            for device in entries where device.isAvailable != false && device.state != "Booted" {
+                guard !offered.contains("xcode.simulators/device/\(device.udid)") else { continue }
+                let caches = devices.appending(path: "\(device.udid)/data/Library/Caches")
+                groups.append(PathGroup(
+                    id: device.udid,
+                    title: "\(device.name) (\(runtimeName(fromKey: runtimeKey)))",
+                    detail: device.lastUsedAt.flatMap(date(from:)).map { "Shut down, last used \(context.relative($0))" } ?? "Shut down",
+                    paths: Files.children(of: caches).filter { !Files.isSymlink($0) }
+                ))
+            }
+        }
+        return groups
     }
 
     static func deviceItems(fromJSON json: String, xcrun: String, context: ScanContext) -> [FindingItem] {

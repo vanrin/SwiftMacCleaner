@@ -65,8 +65,9 @@ nonisolated enum ProjectScanner {
                 size: nil
             ))
         }
+        if let finding = await flutterBuildCaches(in: active, context: context) { result.findings.append(finding) }
         guard !stale.isEmpty else {
-            result.skipReason = active.isEmpty && cloudRoots.isEmpty
+            result.skipReason = (active.isEmpty && cloudRoots.isEmpty) || !result.findings.isEmpty
                 ? nil
                 : "Every project with build output was touched in the last \(context.staleDays) days."
             return result
@@ -112,6 +113,57 @@ nonisolated enum ProjectScanner {
             note: note
         ))
         return result
+    }
+
+    // MARK: Old Flutter build caches
+
+    static let buildCachesFindingID = "projects.buildCaches"
+
+    /// Flutter keeps a build cache in `.dart_tool/flutter_build` for every mix of target, mode, defines
+    /// and Flutter version it has built, and a compiled kernel file for each in `build`, and never removes
+    /// the old ones. In a project still in use, the ones untouched for a week are offered, and the newest
+    /// of each kind always stays, since it is most likely the build in use. Stale projects are left to
+    /// the stale finding, which offers the whole folders.
+    static func flutterBuildCaches(in projects: [Project], context: ScanContext,
+                                   minimumSize: Int64 = 20_000_000) async -> Finding? {
+        var groups: [PathGroup] = []
+        for project in projects {
+            var old: [URL] = []
+            for dartTool in project.generated where dartTool.lastPathComponent == ".dart_tool" {
+                old += idleEntries(Files.subdirectories(of: dartTool.appending(path: "flutter_build")), context: context)
+                let build = dartTool.deletingLastPathComponent().appending(path: "build")
+                let kernels = Files.children(of: build).filter { $0.lastPathComponent.hasSuffix(".cache.dill.track.dill") }
+                old += idleEntries(kernels, context: context)
+            }
+            guard !old.isEmpty else { continue }
+            groups.append(PathGroup(
+                id: project.root.path,
+                title: project.root.lastPathComponent,
+                detail: "\(context.tilde(project.root)) · \(old.count) old build \(old.count == 1 ? "cache" : "caches"), untouched for \(context.recentBuildDays)+ days",
+                paths: old,
+                hint: "flutter clean also clears them"
+            ))
+        }
+        let items = await Sizing.items(prefix: buildCachesFindingID, from: groups, minimumSize: minimumSize)
+        guard !items.isEmpty else { return nil }
+        return Finding(
+            id: buildCachesFindingID,
+            area: .projects,
+            aftermath: .rebuilds,
+            title: "Old Flutter build caches",
+            summary: "In \(items.count) \(items.count == 1 ? "project" : "projects") you are still working on",
+            explanation: "Flutter keeps a build cache for every combination of target, mode and Flutter version it has built, and never removes the old ones. Only caches untouched for a week are offered, and the newest one in each project always stays. A build that needs one again makes it again.",
+            method: .delete,
+            actionTarget: ".dart_tool/flutter_build and build/*.dill in each project",
+            items: items
+        )
+    }
+
+    /// The entries nothing has written to since the recent-build cutoff, less the newest one.
+    static func idleEntries(_ entries: [URL], context: ScanContext) -> [URL] {
+        let dated = entries.compactMap { url in Cleaner.newestChange(in: url).map { (url: url, date: $0) } }
+        guard let newest = dated.max(by: { $0.date < $1.date }) else { return [] }
+        return dated.filter { $0.url != newest.url && $0.date < context.recentBuildCutoff }.map(\.url)
     }
 
     /// Whether a folder lives in iCloud, where a local delete becomes a delete everywhere.

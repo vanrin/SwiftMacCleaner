@@ -15,7 +15,7 @@ all of it, and removes only what you tick.
 | Part | What it looks at |
 | --- | --- |
 | **Overview** | One scan that runs the clean-ups, Protection, Performance and Applications together, with a tile for each. |
-| **System Clean Up** | Caches and logs, the Trash, Time Machine local snapshots and iPhone backups. |
+| **System Clean Up** | Caches and logs, browser and web app caches, chat media such as Telegram's, the Trash, Time Machine local snapshots and iPhone backups. |
 | **Developer Clean Up** | Xcode, stale projects, Android and Gradle, containers and VMs, package caches, old toolchains, IDEs and editors, AI models and datasets. Only the areas this Mac has tools for are scanned. Source files are never touched. |
 | **Large old files** | Big files in Downloads, Documents and Desktop that have sat untouched for months. |
 | **Largest Folders** | Measures a folder tree and lets you walk down into it. |

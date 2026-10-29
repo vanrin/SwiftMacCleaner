@@ -32,8 +32,8 @@ nonisolated enum ContainersScanner {
         let orbstack = context.home.appending(path: ".orbstack")
         let hasOrbStack = Files.isDirectory(orbstack)
 
-        if let finding = await CatalogScanner.finding(for: Catalog.containerCaches, context: context) {
-            result.findings.append(finding)
+        for group in [Catalog.containerCaches, Catalog.dockerUpdate] {
+            if let finding = await CatalogScanner.finding(for: group, context: context) { result.findings.append(finding) }
         }
 
         if let docker {

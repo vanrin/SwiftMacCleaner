@@ -13,6 +13,8 @@ nonisolated enum AndroidScanner {
         let emulators = await emulators(context)
         if let finding = emulators.finding { result.findings.append(finding) }
         result.protected += emulators.protected
+        if let finding = await snapshots(context) { result.findings.append(finding) }
+        if let finding = await olderNDKs(context) { result.findings.append(finding) }
         guard !result.findings.isEmpty else {
             let home = context.home
             let installed = Files.exists(home.appending(path: ".gradle")) || Files.exists(home.appending(path: ".android"))
@@ -92,6 +94,84 @@ nonisolated enum AndroidScanner {
             note: note
         )
         return (finding, protected)
+    }
+
+    // MARK: Quick Boot snapshots
+
+    static let snapshotsFindingID = "android.snapshots"
+    static let emulatorCheck = InUseCheck.process(pattern: "qemu-system", name: "An Android emulator", remedy: "Close the emulator")
+
+    /// The snapshot each emulator saves when it closes, so the next start can skip booting. Only
+    /// `default_boot` is offered: snapshots saved by name are the user's own. Emulators that are
+    /// offered whole are left to that finding, and one that ran this week keeps its snapshot unticked.
+    static func snapshots(_ context: ScanContext, minimumSize: Int64 = 50_000_000) async -> Finding? {
+        let avdRoot = context.home.appending(path: ".android/avd")
+        var groups: [PathGroup] = []
+        for avd in Files.subdirectories(of: avdRoot) where avd.pathExtension == "avd" {
+            let started = Files.modificationDate(avd)
+            // Not run for a while: the whole emulator is offered instead.
+            guard let started, started > context.staleCutoff else { continue }
+            let snapshot = avd.appending(path: "snapshots/default_boot")
+            guard Files.isDirectory(snapshot) else { continue }
+            let recent = started > context.recentBuildCutoff
+            groups.append(PathGroup(
+                id: avd.lastPathComponent,
+                title: avd.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "_", with: " ") + " emulator",
+                detail: recent
+                    ? "Ran \(context.relative(started)), so its snapshot is still saving you a cold boot"
+                    : "Last ran \(context.relative(started))",
+                paths: [snapshot],
+                preselected: recent ? false : nil
+            ))
+        }
+        let items = await Sizing.items(prefix: snapshotsFindingID, from: groups, minimumSize: minimumSize)
+        guard !items.isEmpty else { return nil }
+        return Finding(
+            id: snapshotsFindingID,
+            area: .android,
+            aftermath: .rebuilds,
+            title: "Emulator Quick Boot snapshots",
+            summary: "\(items.count) \(items.count == 1 ? "emulator" : "emulators") in \(context.tilde(avdRoot))",
+            explanation: "The memory image an emulator saves when it closes, so it can start in seconds. Without it the next start is a cold boot, which takes longer, and the emulator saves a new snapshot when it closes again. Installed apps and data are left alone.",
+            method: .delete,
+            actionTarget: "~/.android/avd/*.avd/snapshots/default_boot",
+            items: items,
+            waitsFor: emulatorCheck
+        )
+    }
+
+    // MARK: Older NDK versions
+
+    static let ndkFindingID = "android.ndk"
+
+    /// NDK versions installed side by side in the SDK, all but the newest. A project that pins one
+    /// gets it again from the Android Gradle plugin, so they go to the Trash and are not ticked.
+    static func olderNDKs(_ context: ScanContext, minimumSize: Int64 = 50_000_000) async -> Finding? {
+        let ndk = context.home.appending(path: "Library/Android/sdk/ndk")
+        let versions = Files.subdirectories(of: ndk).compactMap { folder -> (URL, [Int])? in
+            let key = folder.lastPathComponent.split(separator: ".").compactMap { Int($0) }
+            return key.isEmpty ? nil : (folder, key)
+        }
+        guard let newest = versions.map(\.1).max(by: { $0.lexicographicallyPrecedes($1) }) else { return nil }
+        let newestName = newest.map(String.init).joined(separator: ".")
+        let candidates = versions.filter { $0.1 != newest }.map { folder, _ in
+            PathCandidate(title: "NDK \(folder.lastPathComponent)",
+                          detail: "Older than NDK \(newestName), which is kept. Downloaded again if a project asks for this version",
+                          url: folder, preselected: false)
+        }
+        let items = await Sizing.items(prefix: ndkFindingID, from: candidates, minimumSize: minimumSize)
+        guard !items.isEmpty else { return nil }
+        return Finding(
+            id: ndkFindingID,
+            area: .android,
+            aftermath: .downloadsAgain,
+            title: "Older Android NDK versions",
+            summary: "\(items.count) \(items.count == 1 ? "version" : "versions") besides NDK \(newestName)",
+            explanation: "Native development kits installed side by side, each a few gigabytes. The Android Gradle plugin downloads a missing one again when a project pins it with ndkVersion. They go to the Trash and nothing here is ticked for you.",
+            method: .trash,
+            actionTarget: context.tilde(ndk),
+            items: items
+        )
     }
 
     /// Reads `image.sysdir.1` from an emulator's config, such as "system-images/android-34/google_apis/arm64-v8a".

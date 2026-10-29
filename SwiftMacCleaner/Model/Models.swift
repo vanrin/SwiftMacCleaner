@@ -35,15 +35,15 @@ nonisolated enum Area: String, CaseIterable, Identifiable, Sendable {
 
     var summary: String {
         switch self {
-        case .xcode: "DerivedData, device support, simulators, previews, archives, old Xcode versions"
-        case .projects: "node_modules, Pods, build and target folders in stale projects"
-        case .android: "~/.gradle, emulators, SDK system images"
+        case .xcode: "DerivedData, device support, simulators and their caches, previews, archives, old Xcode versions"
+        case .projects: "node_modules, Pods, build and target folders in stale projects, old Flutter build caches"
+        case .android: "~/.gradle, emulators and their Quick Boot snapshots, system images, older NDKs"
         case .containers: "Docker, OrbStack, Colima, minikube: unused images, build cache, idle machines"
         case .packageCaches: "npm, pnpm, Yarn, Go, Cargo, pip, Composer, gems, Homebrew and more"
         case .toolchains: "Old JDKs, Node, Python, Ruby, Rust and Flutter versions"
-        case .ides: "VS Code, Cursor, JetBrains and Android Studio caches, logs and old versions"
+        case .ides: "VS Code, Cursor, JetBrains, Android Studio and Dart caches, replaced extensions, old versions"
         case .models: "Hugging Face, Ollama, PyTorch and LM Studio downloads"
-        case .cachesLogs: "~/Library/Caches, app containers, temp folders, logs and crash reports"
+        case .cachesLogs: "~/Library/Caches, app containers, browser caches, chat media, temp folders, logs"
         case .trash: "Items in the Trash that are waiting to be emptied"
         case .snapshots: "Time Machine local snapshots, iPhone backups"
         case .largeFiles: "Big files in Downloads, Documents and Desktop that have sat untouched for months"
@@ -360,7 +360,7 @@ nonisolated extension Finding {
         if method == .adminDelete { return .systemLogs }
         if Self.unusedFindingIDs.contains(id) { return .unused }
         guard aftermath == .rebuilds else { return nil }
-        if area == .projects { return .staleProjects }
+        if area == .projects { return id == ProjectScanner.buildCachesFindingID ? .buildOutput : .staleProjects }
         if area.isDeveloper { return .buildOutput }
         return area == .cachesLogs ? .appJunk : nil
     }

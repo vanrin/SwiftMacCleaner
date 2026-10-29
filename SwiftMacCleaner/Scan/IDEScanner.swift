@@ -32,6 +32,8 @@ nonisolated enum IDEScanner {
             }
         }
 
+        if let finding = await obsoleteExtensions(context) { result.findings.append(finding) }
+
         let installs = installs(home: context.home)
         let (current, old) = split(installs)
 
@@ -107,6 +109,68 @@ nonisolated enum IDEScanner {
             result.skipReason = "No IDEs or editors found."
         }
         return result
+    }
+
+    // MARK: Replaced extensions
+
+    static let obsoleteExtensionsFindingID = "ides.obsoleteExtensions"
+
+    /// An editor built on VS Code, and where it keeps its extensions, relative to home.
+    struct ExtensionHost: Sendable {
+        var name: String
+        var bundleID: String
+        var folder: String
+    }
+
+    static let extensionHosts: [ExtensionHost] = [
+        ExtensionHost(name: "VS Code", bundleID: "com.microsoft.VSCode", folder: ".vscode/extensions"),
+        ExtensionHost(name: "VS Code Insiders", bundleID: "com.microsoft.VSCodeInsiders", folder: ".vscode-insiders/extensions"),
+        ExtensionHost(name: "Cursor", bundleID: "com.todesktop.230313mzl4w4u92", folder: ".cursor/extensions"),
+        ExtensionHost(name: "Windsurf", bundleID: "com.exafunction.windsurf", folder: ".windsurf/extensions"),
+        ExtensionHost(name: "VSCodium", bundleID: "com.vscodium", folder: ".vscode-oss/extensions"),
+    ]
+
+    /// Extension versions the editor has replaced with newer ones and listed in its `.obsolete` file.
+    /// The editor removes them itself some time after a restart; until then each is a full old copy.
+    static func obsoleteExtensions(_ context: ScanContext, minimumSize: Int64 = 5_000_000) async -> Finding? {
+        var groups: [PathGroup] = []
+        for host in extensionHosts {
+            let root = context.home.appending(path: host.folder)
+            guard let marked = Files.json(at: root.appending(path: ".obsolete")) else { continue }
+            for (name, value) in marked where (value as? Bool) == true {
+                // Each name is a folder directly inside the extensions folder, never a path.
+                guard !name.isEmpty, !name.contains("/"), !name.hasPrefix(".") else { continue }
+                let folder = root.appending(path: name)
+                guard Files.isDirectory(folder), !Files.isSymlink(folder) else { continue }
+                groups.append(PathGroup(
+                    id: folder.path,
+                    title: "\(extensionTitle(name)) in \(host.name)",
+                    detail: "Replaced by a newer version, which stays. \(host.name) has marked this copy for removal",
+                    paths: [folder],
+                    keptBy: host.bundleID
+                ))
+            }
+        }
+        let items = await Sizing.items(prefix: obsoleteExtensionsFindingID, from: groups, minimumSize: minimumSize)
+        guard !items.isEmpty else { return nil }
+        return Finding(
+            id: obsoleteExtensionsFindingID,
+            area: .ides,
+            aftermath: .rebuilds,
+            title: "Replaced editor extensions",
+            summary: "\(items.count) old \(items.count == 1 ? "copy" : "copies") of extensions that have been updated",
+            explanation: "When an extension updates, the editor keeps the old copy until a later restart and lists it in its .obsolete file. Nothing is lost: the version in use stays, and settings are left alone.",
+            method: .delete,
+            actionTarget: CatalogScanner.eachRowTarget,
+            items: items
+        )
+    }
+
+    /// "openai.chatgpt-26.1007.21434-darwin-arm64" -> "openai.chatgpt 26.1007.21434".
+    static func extensionTitle(_ folderName: String) -> String {
+        let parts = folderName.split(separator: "-", omittingEmptySubsequences: false)
+        guard let index = parts.firstIndex(where: { $0.first?.isNumber == true }), index > 0 else { return folderName }
+        return parts[..<index].joined(separator: "-") + " " + parts[index]
     }
 
     /// Every product-version with a folder somewhere under Library.

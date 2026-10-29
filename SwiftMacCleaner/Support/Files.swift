@@ -132,6 +132,20 @@ nonisolated struct PathCandidate: Sendable {
     var keptBy: String? = nil
 }
 
+/// One row made of several paths that are measured together and removed together, such as a
+/// browser's caches across its profiles.
+nonisolated struct PathGroup: Sendable {
+    /// Added to the finding's prefix to make the item's id.
+    var id: String
+    var title: String
+    var detail: String
+    var paths: [URL]
+    var preselected: Bool? = nil
+    var hint: String? = nil
+    /// The name the app that keeps this files it under. See `FindingItem.keptBy`.
+    var keptBy: String? = nil
+}
+
 nonisolated enum Sizing {
     /// Measures several locations at once, a few at a time so the disk is not flooded.
     @concurrent
@@ -152,6 +166,19 @@ nonisolated enum Sizing {
             }
             return sizes
         }
+    }
+
+    /// Turns the groups that have paths and are big enough into items, largest first.
+    static func items(prefix: String, from groups: [PathGroup], minimumSize: Int64 = 1_000_000) async -> [FindingItem] {
+        let groups = groups.filter { !$0.paths.isEmpty }
+        let sizes = await sizes(of: groups.flatMap(\.paths))
+        return groups.compactMap { group -> FindingItem? in
+            let size = group.paths.reduce(Int64(0)) { $0 + (sizes[$1] ?? 0) }
+            guard size >= minimumSize else { return nil }
+            return FindingItem(id: "\(prefix)/\(group.id)", title: group.title, detail: group.detail, size: size,
+                               paths: group.paths, preselected: group.preselected, hint: group.hint, keptBy: group.keptBy)
+        }
+        .sorted { $0.size > $1.size }
     }
 
     /// Turns the candidates that exist and are big enough into items, largest first.

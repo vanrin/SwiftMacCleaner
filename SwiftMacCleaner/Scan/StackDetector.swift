@@ -98,7 +98,7 @@ nonisolated enum StackDetector {
         StackSign("Gradle", .android, paths: [".gradle"], tools: ["gradle"]),
         StackSign("Android SDK", .android, paths: [".android", "Library/Android/sdk"]),
 
-        StackSign("Docker", .containers, tools: ["docker"]),
+        StackSign("Docker", .containers, paths: ["Library/Application Support/com.docker.install"], tools: ["docker"]),
         StackSign("OrbStack", .containers, paths: [".orbstack"]),
         StackSign("Colima", .containers, paths: [".colima"], tools: ["colima"]),
         StackSign("Lima", .containers, paths: [".lima"], tools: ["limactl"]),
@@ -144,6 +144,7 @@ nonisolated enum StackDetector {
         StackSign("VS Code", .ides, paths: ["Library/Application Support/Code"]),
         StackSign("Cursor", .ides, paths: ["Library/Application Support/Cursor"]),
         StackSign("Windsurf", .ides, paths: ["Library/Application Support/Windsurf"]),
+        StackSign("Dart analysis server", .ides, paths: [".dartServer"]),
         StackSign("JetBrains", .ides, paths: [
             "Library/Caches/JetBrains", "Library/Logs/JetBrains", "Library/Application Support/JetBrains",
         ]),
